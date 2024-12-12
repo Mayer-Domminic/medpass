@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+package-lock.json
+pnpm-lock.yaml
+
 # Distribution / packaging
 .Python
 build/
