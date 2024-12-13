@@ -201,6 +201,9 @@ env/
 .DS_Store
 *.pem
 
+package-lock.json
+pnpm-lock.yaml
+
 # Testing
 coverage/
 .coverage
