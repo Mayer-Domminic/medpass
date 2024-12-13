@@ -1,5 +1,6 @@
 [build]
-  command = "pnpm run build"
+  base = "medpass"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
