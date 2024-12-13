@@ -1,17 +1,11 @@
 [build]
-  command = "pnpm build"
-  publish = "out"
-  
+  command = "pnpm run build"
+  publish = ".next"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "18"
-  # Ensure TypeScript is properly handled
   NETLIFY_USE_TYPESCRIPT = "true"
