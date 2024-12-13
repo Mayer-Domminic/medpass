@@ -9,8 +9,8 @@ mkdir -p backend/app/{api/v1/endpoints,core,models,schemas}
 cd backend
 
 # Create virtual environment
-python3 -m venv venv
+python3 -m venv backend/venv
 source venv/bin/activate
 
 # Install Python dependencies
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
