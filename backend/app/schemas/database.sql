@@ -200,3 +200,41 @@ CREATE TABLE StudentGrade (
 	FOREIGN KEY (StudentID) REFERENCES Student(StudentID),
 	FOREIGN KEY (GradeClassificationID) REFERENCES GradeClassification(GradeClassificationID)
 );
+
+-- Indexing for database Optimization
+
+-- Exams and Questions indexes
+CREATE INDEX idxQuestionExam ON Question(ExamID);
+CREATE INDEX idxQuestionClassificationContent ON QuestionClassification(ContentAreaID);
+CREATE INDEX idxQuestionOptionsQuestion ON QuestionOptions(QuestionID);
+CREATE INDEX idxQuestionOptionsCorrect ON QuestionOptions(CorrectAnswer);
+
+-- Student Information and Login indexes
+CREATE INDEX idxLoginInfoUsername ON LoginInfo(Username);
+CREATE INDEX idxStudentName ON Student(LastName, FirstName);
+CREATE INDEX idxExtracurricularsStudent ON Extracurriculars(StudentID);
+CREATE INDEX idxClerkshipStudent ON Clerkship(StudentID);
+CREATE INDEX idxClerkshipDates ON Clerkship(StartDate, EndDate);
+
+-- Exam Results and Performance indexes
+CREATE INDEX idxExamResultsStudent ON ExamResults(StudentID);
+CREATE INDEX idxExamResultsExam ON ExamResults(ExamID);
+CREATE INDEX idxExamResultsClerkship ON ExamResults(ClerkshipID);
+CREATE INDEX idxStudentQuestionPerfExam ON StudentQuestionPerformance(ExamResultsID);
+CREATE INDEX idxStudentQuestionPerfQuestion ON StudentQuestionPerformance(QuestionID);
+
+-- Graduation Status indexes
+CREATE INDEX idxGraduationStatusStudent ON GraduationStatus(StudentID);
+CREATE INDEX idxGraduationStatusYear ON GraduationStatus(GraduationYear);
+
+-- Faculty and Class indexes
+CREATE INDEX idxClassBlock ON Class(Block);
+CREATE INDEX idxFacultyName ON Faculty(LastName, FirstName);
+CREATE INDEX idxClassOfferingDates ON ClassOffering(DateTaught, Semester);
+CREATE INDEX idxClassOfferingFaculty ON ClassOffering(FacultyID);
+
+-- Enrollment and Grades indexes
+CREATE INDEX idxEnrollmentRecordStudent ON EnrollmentRecord(StudentID);
+CREATE INDEX idxEnrollmentRecordClass ON EnrollmentRecord(ClassOfferingID);
+CREATE INDEX idxGradeClassificationClass ON GradeClassification(ClassOfferingID);
+CREATE INDEX idxStudentGradeStudent ON StudentGrade(StudentID);
