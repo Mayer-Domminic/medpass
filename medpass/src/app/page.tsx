@@ -1,6 +1,6 @@
 'use client';
-import Dashboard from '../components/Dashboard';
+import AuthPage from '@/components/auth/Welcome';
 
 export default function Home() {
-  return <Dashboard />;
+  return <AuthPage />;
 }

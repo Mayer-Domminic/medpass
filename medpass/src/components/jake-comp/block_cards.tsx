@@ -1,75 +1,75 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, Area } from 'recharts';
 import { Brain, Heart, Pill } from 'lucide-react';
 
 const blockProgressData = {
   A: [
     [
-      { name: 'P1', value: 65 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 85 },
       { name: 'P3', value: 70 },
-      { name: 'P4', value: 90 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 81 }
     ],
     [
-      { name: 'P1', value: 60 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 80 },
       { name: 'P3', value: 65 },
-      { name: 'P4', value: 85 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 77 }
     ],
     [
-      { name: 'P1', value: 55 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 75 },
       { name: 'P3', value: 60 },
-      { name: 'P4', value: 80 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 75 }
     ]
   ],
   B: [
     [
-      { name: 'P1', value: 70 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 90 },
       { name: 'P3', value: 75 },
       { name: 'P4', value: 95 },
       { name: 'P5', value: 83 }
     ],
     [
-      { name: 'P1', value: 55 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 85 },
       { name: 'P3', value: 60 },
-      { name: 'P4', value: 80 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 74 }
     ],
     [
-      { name: 'P1', value: 60 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 80 },
       { name: 'P3', value: 65 },
-      { name: 'P4', value: 85 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 75 }
     ]
   ],
   C: [
     [
-      { name: 'P1', value: 75 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 95 },
       { name: 'P3', value: 80 },
-      { name: 'P4', value: 100 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 89 }
     ],
     [
-      { name: 'P1', value: 70 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 90 },
       { name: 'P3', value: 75 },
-      { name: 'P4', value: 95 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 87 }
     ],
     [
-      { name: 'P1', value: 65 },
+      { name: 'P1', value: 0 },
       { name: 'P2', value: 85 },
       { name: 'P3', value: 70 },
-      { name: 'P4', value: 90 },
+      { name: 'P4', value: 0 },
       { name: 'P5', value: 84 }
     ]
   ]
@@ -88,37 +88,73 @@ interface BlockCardProps {
   data: BlockData[];
 }
 
-const BlockCard = ({ title, completion, color, icon, data }: BlockCardProps) => (
-  <Card className="bg-gray-800/50 border-gray-700">
-    <CardContent className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${color}`}>
-          {icon}
-        </div>
-        <span className="text-sm font-medium text-gray-200">{title}</span>
-      </div>
-      
-      <div className="flex items-end justify-between mb-2">
-        <div className="text-xl font-bold text-white">{completion}%</div>
-        <span className="text-xs text-gray-400">completion</span>
-      </div>
+const getColors = (colorClass: string) => {
+  switch (true) {
+    case colorClass.includes('blue'):
+      return {
+        stroke: '#60A5FA',
+        fill: '#60A5FA20'
+      };
+    case colorClass.includes('red'):
+      return {
+        stroke: '#F87171',
+        fill: '#F8717120'
+      };
+    case colorClass.includes('teal'):
+      return {
+        stroke: '#5EEAD4',
+        fill: '#5EEAD420'
+      };
+    default:
+      return {
+        stroke: '#60A5FA',
+        fill: '#60A5FA20'
+      };
+  }
+};
 
-      <div className="h-12 mt-3">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <Line 
-              type="monotone"
-              dataKey="value"
-              stroke={color.includes('blue') ? '#60A5FA' : color.includes('red') ? '#F87171' : '#5EEAD4'}
-              strokeWidth={2}
-              dot={{ strokeWidth: 1, r: 2 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </CardContent>
-  </Card>
-);
+const BlockCard = ({ title, completion, color, icon, data }: BlockCardProps) => {
+  const colors = getColors(color);
+  
+  return (
+    <Card className="bg-gray-800/50 border-gray-700">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${color}`}>
+            {icon}
+          </div>
+          <span className="text-sm font-medium text-gray-200">{title}</span>
+        </div>
+        
+        <div className="flex items-end justify-between mb-2">
+          <div className="text-xl font-bold text-white">{completion}%</div>
+          <span className="text-xs text-gray-400">completion</span>
+        </div>
+
+        <div className="h-24 mt-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke={colors.stroke}
+                fill={colors.stroke}
+                fillOpacity={0.2}
+              />
+              <Line 
+                type="monotone"
+                dataKey="value"
+                stroke={colors.stroke}
+                strokeWidth={2}
+                dot={{ strokeWidth: 1, r: 2, fill: colors.stroke }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const StepOverview = () => {
   return (
