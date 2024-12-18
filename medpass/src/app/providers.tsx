@@ -1,11 +1,11 @@
-"use client"
+'use client';
 
-import { AuthProvider } from '@/lib/auth/context';
+import { Auth0ProviderWithNavigate } from '@/providers/auth0-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
+    <Auth0ProviderWithNavigate>
       {children}
-    </AuthProvider>
+    </Auth0ProviderWithNavigate>
   );
 }

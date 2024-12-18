@@ -6,7 +6,14 @@ from ....schemas import user as user_schemas
 from ....models import user as user_models
 from ...deps import get_db
 
+from fastapi import APIRouter, Depends
+from ...deps import get_current_user
+
 router = APIRouter()
+
+@router.get("/me")
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    return current_user
 
 @router.post("/", response_model=user_schemas.User)
 def create_user(

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     DATABASE_URL: Optional[str] = None
+    
+    AUTH0_DOMAIN: str
+    AUTH0_API_AUDIENCE: str
 
     class Config:
         env_file = ".env"

@@ -195,6 +195,8 @@ env/
 .env.test.local
 .env.production.local
 
+dev_setup.sh
+
 # IDE
 .idea/
 .vscode/

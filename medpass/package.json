@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth0/auth0-react": "^2.2.4",
     "@pnpm/exe": "^9.14.2",
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-progress": "^1.1.1",
