@@ -1,33 +1,23 @@
-import { useAuth0 } from '@auth0/auth0-react';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+'use client';
 
-export const Dashboard = () => {
-  const { isAuthenticated, user, getAccessTokenSilently } = useAuth0();
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Dashboard } from '@/components/Dashboard';
+
+export default function DashboardPage() {
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/');
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
-  // Example of making an authenticated API call
-  const fetchProtectedData = async () => {
-    try {
-      const token = await getAccessTokenSilently();
-      const response = await fetch('your-api-endpoint', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
 
-  return (
-    <Dashboard />
-  );
-};
+  return <Dashboard />;
+}

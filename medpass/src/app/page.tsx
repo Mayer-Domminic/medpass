@@ -1,6 +1,6 @@
 'use client';
-import AuthPage from '@/components/auth/Welcome';
+import Login from '@/components/auth/Login';
 
 export default function Home() {
-  return <AuthPage />;
+  return <Login />;
 }
