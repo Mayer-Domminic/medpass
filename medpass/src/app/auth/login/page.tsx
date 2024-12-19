@@ -1,14 +1,19 @@
 'use client';
-import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useRouter } from 'next/navigation';
 
-type AuthView = 'welcome' | 'login' | 'register';
+export default function LoginPage() {
+  const { loginWithRedirect, isAuthenticated } = useAuth0();
+  const router = useRouter();
 
-export default function AuthPage() {
-  const { loginWithRedirect } = useAuth0();
-  const [view, setView] = useState<AuthView>('welcome');
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">

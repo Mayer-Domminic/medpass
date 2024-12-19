@@ -1,5 +1,3 @@
-# backend/app/core/config.py
-
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -16,6 +14,8 @@ class Settings(BaseSettings):
     
     AUTH0_DOMAIN: str
     AUTH0_API_AUDIENCE: str
+    
+    API_URL: Optional[str] = "http://localhost:8000"
 
     class Config:
         env_file = ".env"
