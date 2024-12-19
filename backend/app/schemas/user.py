@@ -1,15 +1,20 @@
-# backend/app/schemas/user.py
 from pydantic import BaseModel, EmailStr
+from typing import Optional
+
+class NetIDVerify(BaseModel):
+    net_id: str
 
 class UserBase(BaseModel):
-    email: EmailStr
-    full_name: str | None = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    net_id: Optional[str] = None
 
 class UserCreate(UserBase):
-    password: str
+    auth0_id: str
 
 class User(UserBase):
     id: int
+    auth0_id: str
     is_active: bool
     is_superuser: bool
 

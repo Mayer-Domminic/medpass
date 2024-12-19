@@ -4,11 +4,12 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from jose.exceptions import JWTError
 import httpx
+from .config import settings
 
-class Auth0:
-    def __init__(self, domain: str, api_audience: str):
-        self.domain = domain
-        self.api_audience = api_audience
+class Auth0Handler:
+    def __init__(self):
+        self.domain = settings.AUTH0_DOMAIN
+        self.api_audience = settings.AUTH0_API_AUDIENCE
         self.algorithms = ["RS256"]
         self.jwks = None
         self._fetch_jwks()
@@ -39,9 +40,13 @@ class Auth0:
                     issuer=f"https://{self.domain}/"
                 )
                 return payload
-        except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
+                detail="Unable to find appropriate key",
+            )
+        except JWTError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid authentication credentials: {str(e)}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
