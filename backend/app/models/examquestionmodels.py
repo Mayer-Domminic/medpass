@@ -9,6 +9,7 @@ class Exam(Base):
     examDescription = Column('ExamDescription', String(255))
 
     questions = relationship('Question', back_populates='exam')
+    examResults = relationship('ExamResults', back_populates='exam')
     
 class ContentArea(Base):
     __tablename__ = 'ContentArea'
@@ -40,6 +41,7 @@ class Question(Base):
     exam = relationship('Exam', back_populates='questions')
     classification = relationship('QuestionClassificaiton', back_populates='question')
     questionOptions = relationship('QuestionOptions', back_populates='question')
+    questionPerformance = relationship('StudentQuestionPerformance', back_populates='question')
     
 class QuestionClassification(Base):
     __tablename__ = 'QuestionClassification'
