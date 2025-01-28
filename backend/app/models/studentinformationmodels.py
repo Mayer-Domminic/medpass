@@ -39,6 +39,9 @@ class Student(Base):
     clerkshipStudent = relationship('Clerkship', back_populates='student')
     examResults = relationship('ExamResults', back_populates='student')
     graduationStatus = relationship('GraduationStatus', back_populates='student')
+    #Found in classfacultymodels
+    enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
+    studentGrades = relationship('StudentGrade', back_populates = 'student')
     
     
 class Extracurricular(Base):
