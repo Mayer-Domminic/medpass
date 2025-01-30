@@ -24,7 +24,7 @@ const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
     onClick={onClick}
     title={label}
   >
-    {React.cloneElement(icon as React.ReactElement, {
+    {React.cloneElement(icon as React.ReactElement<any>, {
       className: `w-5 h-5 ${active ? 'text-white' : 'text-gray-400 hover:text-white'}`
     })}
   </Button>

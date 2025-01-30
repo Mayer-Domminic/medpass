@@ -11,7 +11,7 @@ const Select = () => {
     { label: "Block 3: Gastrointestinal & Renal", value: "block3" }
   ];
 
-  const handleSelect = (value, label) => {
+  const handleSelect = (value: string, label: string) => {
     setSelectedValue(label);
     setIsOpen(false);
   };

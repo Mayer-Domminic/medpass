@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Public paths that don't require authentication
-  const publicPaths = ["/", "/auth/login", "/auth/callback"];
+  const publicPaths = ["/", "/auth/login", "/auth/callback", "/dev"];
   if (publicPaths.includes(path)) {
     return NextResponse.next();
   }
