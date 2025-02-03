@@ -20,6 +20,8 @@ const Login = () => {
       authorizationParams: {
         connection,
         prompt: 'login',
+        redirect_uri: `${window.location.origin}/auth/callback`,
+        scope: 'openid profile email offline_access',
       },
       appState: {
         returnTo: '/auth/verify-netid'
