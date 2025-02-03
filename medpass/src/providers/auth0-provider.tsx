@@ -18,7 +18,7 @@ export function Auth0ProviderWithNavigate({ children }: { children: React.ReactN
       domain={domain}
       clientId={clientId}
       authorizationParams={{
-        redirect_uri: typeof window !== 'undefined' ? window.location.origin : '',
+        redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '',
         audience: audience,
       }}
       useRefreshTokens={true}
