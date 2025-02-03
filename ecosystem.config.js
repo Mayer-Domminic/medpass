@@ -5,9 +5,12 @@ module.exports = {
       cwd: './medpass',
       script: 'pnpm',
       args: 'dev',
-      watch: true,
+      watch: false,  // weird perma restart issues
+      kill_timeout: 3000,
+      wait_ready: true,
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        PORT: 3000
       }
     },
     {
@@ -15,7 +18,8 @@ module.exports = {
       cwd: './backend',
       script: './venv/bin/python',
       args: '-m gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker',
-      watch: true,
+      watch: false,  // weird perma restart issues
+      kill_timeout: 3000,
       env: {
         NODE_ENV: 'development',
         PYTHONUNBUFFERED: 'true'
