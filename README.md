@@ -21,10 +21,9 @@ MEDPASS is a predictive analytics platform designed to assess and enhance studen
 - **Deployment**: api.domm.dev
 
 
-
-chmod +x startmedpass.sh
 ./startmedpass.sh
-
+pm2 logs
+pm2 monit
 
 
 

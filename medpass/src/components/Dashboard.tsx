@@ -7,7 +7,7 @@ import StepOverview from '@/components/jake-comp/block_cards';
 import StudyAnalytics from '@/components/jake-comp/analytics';
 import UpcomingTasks from '@/components/jake-comp/upcoming_tasks';
 import StudyResources from '@/components/jake-comp/study_resources';
-import AnatomyViewer from '@/components/Subtopic.tsx/AnatomyViewer';
+import AnatomyViewer from '@/components/nolan-comp/AnatomyViewer';
 
 export const Dashboard = () => {
   const { user, isLoading } = useAuth0();
