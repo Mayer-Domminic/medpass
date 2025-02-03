@@ -13,11 +13,12 @@ module.exports = {
     {
       name: 'medpass-backend',
       cwd: './backend',
-      script: './venv/bin/gunicorn',
-      args: 'app.main:app -w 4 -k uvicorn.workers.UvicornWorker',
+      script: './venv/bin/python',
+      args: '-m gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker',
       watch: true,
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        PYTHONUNBUFFERED: 'true'
       }
     }
   ]
