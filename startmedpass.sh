@@ -1,12 +1,16 @@
 #!/bin/bash
 
-cd ./medpass
-echo "Starting medpass-frontend..."
-pm2 start --name medpass-frontend --interpreter bash -- "pnpm dev" --watch
-cd ../backend
-echo "Starting medpass-backend..." 
-pm2 start \ --name medpass-backend \ --interpreter $(pwd)/venv/bin/python \ --watch \ -- gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
-echo "Saving PM2 process list..."
+# Make sure we're in the right directory
+cd "$(dirname "$0")"
+
+# Delete any existing processes
+pm2 delete all
+
+# Start both apps using the ecosystem config
+pm2 start ecosystem.config.js
+
+# Save the new PM2 process list
 pm2 save
-echo "PM2 status:"
+
+# Display status
 pm2 status

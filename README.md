@@ -20,6 +20,22 @@ MEDPASS is a predictive analytics platform designed to assess and enhance studen
 - **Authentication**: JWT with Auth0
 - **Deployment**: api.domm.dev
 
+
+
+chmod +x startmedpass.sh
+./startmedpass.sh
+
+
+
+
+
+
+
+
+
+
+
+
 ## 📁 Project Structure
 
 ```
