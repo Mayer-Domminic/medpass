@@ -24,7 +24,7 @@ const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
       onClick={onClick}
     >
       <div className="flex items-center justify-center w-full">
-        {React.cloneElement(icon as React.ReactElement, {
+        {React.cloneElement(icon as React.ReactElement<any>, {
           className: `w-5 h-5 stroke-[1.5] 
             ${active ? 'stroke-white' : 'stroke-white group-hover:stroke-gray-900'}`
         })}

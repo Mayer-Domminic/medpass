@@ -1,5 +1,5 @@
 import React from 'react';
-import BlockCard from './nolan-comp/BlockCard';
+import BlockCard from './Subtopic.tsx/BlockCard';
 
 const BlockGrid: React.FC = () => {
   const blocks = [
