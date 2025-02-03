@@ -13,8 +13,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://medpass.domm.dev",
-        "https://medpass.netlify.app"
+        "https://medpass.unr.dev"
     ],
     allow_credentials=True,
     allow_methods=["*"],
