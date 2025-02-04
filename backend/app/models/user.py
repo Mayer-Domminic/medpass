@@ -1,18 +1,23 @@
-from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship
 from ..core.database import Base
-import uuid
+import datetime
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    net_id = Column(String, primary_key=True, index=True)
     auth0_id = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=True) 
+    email = Column(String, unique=True, index=True, nullable=True)
     full_name = Column(String, nullable=True)
-    net_id = Column(String, unique=True, index=True, nullable=True)
     is_active = Column(Boolean(), default=True)
     is_superuser = Column(Boolean(), default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    # Relationships
+    student = relationship("Student", back_populates="user", uselist=False)
+    faculty = relationship("Faculty", back_populates="user", uselist=False)
 
     def __repr__(self):
-        return f"<User {self.auth0_id}>"
+        return f"<User {self.net_id}>"

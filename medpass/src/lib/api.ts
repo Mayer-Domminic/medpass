@@ -1,12 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { UserData, UserProfile } from '@/types/userData';
 
-export interface UserProfile {
-  auth0Id: string;
-  email: string;
-  netId?: string;
-  name?: string;
-  picture?: string;
-}
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const api = {
   async verifyNetId(token: string, netId: string) {
@@ -16,7 +10,7 @@ export const api = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ net_id: netId }), // Changed to match backend schema
+      body: JSON.stringify({ net_id: netId }),
     });
     
     if (!response.ok) {
@@ -52,4 +46,21 @@ export const api = {
     
     return response.json();
   },
+
+  async getUserData(token: string, netId: string): Promise<UserData> {
+    const response = await fetch(`${API_URL}/api/v1/users/by-netid/${netId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to fetch user data');
+    }
+
+    return response.json();
+  },
 };
+
