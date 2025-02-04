@@ -13,7 +13,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://medpass.unr.dev"
+        "https://medpass.unr.dev",
+        "https://api.medpass.unr.dev"
     ],
     allow_credentials=True,
     allow_methods=["*"],
