@@ -1,4 +1,4 @@
-export const API_URL = 'http://localhost:8000';
+export const API_URL = 'http://api.medpass.unr.dev';
 
 export interface UserProfile {
   auth0Id: string;
