@@ -1,13 +1,18 @@
-from typing import Generator, Annotated
+from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from ..core.config import settings
+from ..core.security import verify_password
+from ..models import User
+from ..schemas.token import TokenPayload
 from ..core.database import SessionLocal
-from ..core.auth import Auth0Handler
-from ..models.user import User
 
-auth0_handler = Auth0Handler()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"/api/v1/auth/token"
+)
 
 def get_db() -> Generator:
     try:
@@ -16,30 +21,33 @@ def get_db() -> Generator:
     finally:
         db.close()
 
-async def get_current_user_token(
-    token: str = Depends(oauth2_scheme)
-) -> dict:
-    return await auth0_handler.verify_token(token)
-
 async def get_current_user(
-    token: Annotated[dict, Depends(get_current_user_token)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
 ) -> User:
     try:
-        user = db.query(User).filter(User.auth0_id == token.get("sub")).first()
-        if not user:
-            # Create a new user if they don't exist
-            user = User(
-                auth0_id=token.get("sub"),
-                email=token.get("email"),
-                is_active=True
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        return user
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
+        token_data = TokenPayload(**payload)
+    except (JWTError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(User).filter(User.net_id == token_data.sub).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return user
+
+def get_current_active_superuser(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=400, detail="The user doesn't have enough privileges"
+        )
+    return current_user

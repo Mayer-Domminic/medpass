@@ -25,8 +25,26 @@ MEDPASS is a predictive analytics platform designed to assess and enhance studen
 pm2 logs
 pm2 monit
 
+python -m app.scripts.init_db
 
+```bash
+# Connect to PostgreSQL
+sudo -u postgres psql
 
+# Create database and user
+CREATE DATABASE medpass;
+CREATE USER medpassadmin WITH ENCRYPTED PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE medpass TO medpassadmin;
+
+# Connect to the medpass database
+\c medpass
+
+# Grant needed privileges
+GRANT ALL ON SCHEMA public TO medpassadmin;
+
+# Exit PostgreSQL
+\q
+```
 
 
 
