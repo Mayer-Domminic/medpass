@@ -8,20 +8,16 @@ export default function Home() {
   const { isAuthenticated, isLoading, checkAuth } = useAuth();
   const router = useRouter();
 
+  // Run checkAuth only on mount
   useEffect(() => {
-    checkAuth(); // Ensure authentication is checked on mount
-  }, []); 
+    const authenticateUser = async () => {
+      await checkAuth();  // Check auth status after loading
+    };
+    
+    authenticateUser();
+  }, [checkAuth]);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.replace('/dashboard'); // Use replace() to avoid navigation history issues
-      } else {
-        router.replace('/auth/login');
-      }
-    }
-  }, [isAuthenticated, isLoading, router]);
-
+  // Render loading state while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -30,5 +26,13 @@ export default function Home() {
     );
   }
 
+  // If authenticated, navigate to the Dashboard
+  if (isAuthenticated) {
+    router.push('/dashboard');
+    return null;  // Optionally show a loading screen here
+  }
+
+  // If not authenticated, you could render a message or a redirect to login page
+  router.push('/auth/login');
   return null;
 }

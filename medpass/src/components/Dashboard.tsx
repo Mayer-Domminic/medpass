@@ -29,6 +29,7 @@ export function Dashboard() {
       fetchStudentData();
     }
   }, [user?.net_id]);
+  console.log(student)
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -41,7 +42,6 @@ export function Dashboard() {
             <LogoutButton />
           </div>
         </div>
-        
         <div className="mt-6 bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Student Details</h2>
           {loading ? (

@@ -13,12 +13,6 @@ export default function DashboardPage() {
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
