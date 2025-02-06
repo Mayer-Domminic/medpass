@@ -30,3 +30,77 @@ if __name__ == "__main__":
         'Grad.Year': 'grad_year',
         'Graduated': 'graduated'
     })
+    drop_year_map = {
+        '1st': 1,
+        '2nd': 2,
+        '3rd': 3,
+        '4th': 4,
+        '5th': 5,
+        np.nan: None,
+        'Dropped': None 
+    }
+
+    def clean_drop_year(value):
+        if pd.isna(value):
+            return None
+        value_str = str(value).strip()
+        return drop_year_map.get(value_str, None)
+
+    def clean_grad_year(value, has_drop_year):
+        if has_drop_year:
+            return None 
+        if pd.isna(value):
+            return None
+        try:
+            year = int(float(value))
+            if 2000 <= year <= 2030:
+                return year
+            return None
+        except (ValueError, TypeError):
+            return None
+
+    STUDENT['drop_year'] = STUDENT['drop_year'].apply(clean_drop_year)
+    STUDENT['grad_year'] = STUDENT.apply(
+        lambda row: clean_grad_year(row['grad_year'], row['drop_year'] is not None), 
+        axis=1
+    )
+    
+    STUDENT['graduated'] = STUDENT['grad_year'].notna()
+    STUDENT['random_id'] = STUDENT['random_id'].astype(str)
+
+    print("Sample of processed data:")
+    print(STUDENT.head())
+    print("\nChecking processed values:")
+    print("Drop year unique values:", sorted([x for x in STUDENT['drop_year'].unique() if x is not None]))
+    print("Grad year unique values:", sorted([x for x in STUDENT['grad_year'].unique() if x is not None]))
+    print("\nSample of dropped students:")
+    print(STUDENT[STUDENT['drop_year'].notna()][['random_id', 'drop_year', 'grad_year', 'graduated']].head())
+    
+    print("\nConverting data to SQLAlchemy models...")
+    student_data = STUDENT.replace({np.nan: None}).to_dict(orient='records')
+
+    students = [Student(**{
+        **data,
+        'net_id': None
+    }) for data in student_data]
+
+    def bulk_insert_students(students, reset=False):
+        db = next(get_db())
+        try:
+            if reset:
+                print("Clearing existing records from students table...")
+                db.query(Student).delete()
+                db.commit()
+                print("Table cleared successfully")
+
+            db.bulk_save_objects(students)
+            db.commit()
+            print(f"Successfully inserted {len(students)} students")
+        except Exception as e:
+            db.rollback()
+            print(f"Error during bulk insert: {str(e)}")
+            raise e
+        finally:
+            db.close()
+
+    bulk_insert_students(students, reset=False)
