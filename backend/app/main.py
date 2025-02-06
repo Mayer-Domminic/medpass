@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Security
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.v1.api import api_router
@@ -8,6 +9,8 @@ app = FastAPI(
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 app.add_middleware(
     CORSMiddleware,

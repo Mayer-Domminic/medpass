@@ -25,5 +25,14 @@ class StudentInDBBase(StudentBase):
     class Config:
         from_attributes = True
 
-class StudentResponse(StudentInDBBase):
-    pass
+class StudentResponse(BaseModel):
+    random_id: str
+    net_id: str
+    cum_total_gpa: Optional[float]
+    cum_bcpm_gpa: Optional[float]
+    drop_year: Optional[int]
+    grad_year: Optional[int]
+    graduated: bool
+
+    class Config:
+        orm_mode = True

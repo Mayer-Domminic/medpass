@@ -98,15 +98,12 @@ def login(
     }
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(
-    *,
+async def refresh_token(
     response: Response,
     db: Session = Depends(get_db),
     refresh_token: Optional[str] = Cookie(None)
 ) -> Any:
-    """
-    Refresh access token.
-    """
+    """Refresh access token."""
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -114,10 +111,21 @@ def refresh_token(
         )
     
     try:
-        user = get_current_user(db, refresh_token)
+        # Add some logging to debug
+        print(f"Attempting to refresh with token: {refresh_token[:10]}...")
+        
+        user = await get_current_user(db, refresh_token)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
+            )
+            
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.net_id}, expires_delta=access_token_expires
+            data={"sub": user.net_id}, 
+            expires_delta=access_token_expires
         )
         
         response.set_cookie(
@@ -134,7 +142,8 @@ def refresh_token(
             "access_token": access_token,
             "token_type": "bearer"
         }
-    except:
+    except Exception as e:
+        print(f"Refresh token error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"

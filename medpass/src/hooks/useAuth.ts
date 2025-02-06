@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { authApi } from '@/lib/api';
+import { authApi, api } from '@/lib/api';
 
 interface AuthState {
   user: any | null;
@@ -21,17 +21,36 @@ export const useAuth = create<AuthState>((set) => ({
   login: async (credentials) => {
     try {
       set({ isLoading: true, error: null });
+  
       const { access_token, refresh_token } = await authApi.login(credentials);
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
-
-      const user = await authApi.getCurrentUser();
-      set({ user, isAuthenticated: true, isLoading: false });
+      
+      if (!access_token) {
+        throw new Error("Login failed. No token received.");
+      }
+  
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
+  
+      const headers = { Authorization: `Bearer ${access_token}` };
+      const user = await api.get("/users/me", { headers });
+  
+      set({ user: user.data, isAuthenticated: true, isLoading: false });
     } catch (error) {
-      set({ isAuthenticated: false, error: error instanceof Error ? error.message : 'Login failed', isLoading: false });
-      throw error;
+      console.error("Login error:", error);
+      
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+  
+      set({
+        user: null,
+        isAuthenticated: false,
+        error: error instanceof Error ? error.message : "Login failed",
+        isLoading: false,
+      });
+  
+      return;
     }
-  },
+  },  
 
   logout: async () => {
     try {
@@ -70,18 +89,26 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   checkAuth: async () => {
-    try {
-      set({ isLoading: true });
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        set({ isAuthenticated: false, isLoading: false });
-        return;
-      }
+  try {
+    set({ isLoading: true });
+    const token = localStorage.getItem("access_token");
 
-      const user = await authApi.getCurrentUser();
-      set({ user, isAuthenticated: true, isLoading: false });
-    } catch (error) {
+    if (!token) {
       set({ isAuthenticated: false, isLoading: false });
+      return;
     }
-  },
+
+    // Avoid redundant calls
+    const currentUser = await authApi.getCurrentUser();
+    set((state) => {
+      if (state.user?.net_id === currentUser.net_id) {
+        return { isAuthenticated: true, isLoading: false };
+      }
+      return { user: currentUser, isAuthenticated: true, isLoading: false };
+    });
+  } catch (error) {
+    set({ isAuthenticated: false, isLoading: false });
+  }
+},
+
 }));

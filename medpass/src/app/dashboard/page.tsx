@@ -11,7 +11,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

@@ -28,3 +28,20 @@ def update_user_me(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/debug/all", response_model=None)
+def list_all_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Debug endpoint to list all users in database
+    """
+    users = db.query(User).all()
+    print(f"\nTotal users in database: {len(users)}")
+    print("\nAll users:")
+    for u in users:
+        print(f"net_id: {u.net_id}, email: {u.email}")
+    
+    return {"total_users": len(users)}

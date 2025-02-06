@@ -85,12 +85,23 @@ if __name__ == "__main__":
     }) for data in student_data]
 
     students[649].net_id = 'domminicm'
-    print("Mocked ID: 649 to domminicm")
+    print(f"Verifying student 649: {students[649].net_id}")
     #students[650].net_id = 'rinod'
     #students[651].net_id = 'nolanv'
     #students[652].net_id = 'jherweg'
 
-    def bulk_insert_students(students, reset=False):
+    print("Before inserting students:")
+    for s in students[:5]:
+        print(f"random_id: {s.random_id}, net_id: {s.net_id}")
+
+    target_student = next((s for s in students if s.random_id == "691"), None)
+    if target_student:
+        target_student.net_id = 'domminicm'
+        print(f"Set net_id for student with random_id 691: {target_student.net_id}")
+    else:
+        print("Could not find student with random_id 691")
+
+    def bulk_insert_students(students, reset=True):
         db = next(get_db())
         try:
             if reset:
@@ -102,6 +113,12 @@ if __name__ == "__main__":
             db.bulk_save_objects(students)
             db.commit()
             print(f"Successfully inserted {len(students)} students")
+            
+            # Add this debug statement
+            test_student = db.query(Student).filter(Student.net_id == 'domminicm').first()
+            print(f"Verification - Student with net_id 'domminicm': {test_student}")
+            if test_student:
+                print(f"Details: {test_student.random_id}, {test_student.net_id}")
         except Exception as e:
             db.rollback()
             print(f"Error during bulk insert: {str(e)}")
