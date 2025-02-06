@@ -18,8 +18,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8000",
         "https://medpass.unr.dev",
-        "https://api.medpass.unr.dev",
-        "http://api.medpass.unr.dev"
+        "https://api.medpass.unr.dev"
     ],
     allow_credentials=True,
     allow_methods=["*"],
