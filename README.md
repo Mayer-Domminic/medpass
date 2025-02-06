@@ -27,6 +27,8 @@ pm2 monit
 
 python -m app.scripts.init_db
 
+python -m app.scripts.student_ingest
+
 ```bash
 # Connect to PostgreSQL
 sudo -u postgres psql
