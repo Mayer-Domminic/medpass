@@ -17,13 +17,13 @@ module.exports = {
       name: 'medpass-backend',
       cwd: './backend',
       script: './venv/bin/python',
-      args: '-m gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --certfile /etc/ssl/certs/medpass.crt --keyfile /etc/ssl/private/medpass.key --bind 0.0.0.0:443',
+      args: '-m gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --certfile /etc/ssl/medpass.unr.dev.crt --keyfile /etc/ssl/medpass.unr.dev.key',
       watch: false,
       kill_timeout: 3000,
       env: {
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
         PYTHONUNBUFFERED: 'true'
       }
-    }
+    }    
   ]
 }
