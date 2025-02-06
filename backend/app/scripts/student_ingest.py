@@ -84,6 +84,12 @@ if __name__ == "__main__":
         'net_id': None
     }) for data in student_data]
 
+    students[649].net_id = 'domminicm'
+    print("Mocked ID: 649 to domminicm")
+    #students[650].net_id = 'rinod'
+    #students[651].net_id = 'nolanv'
+    #students[652].net_id = 'jherweg'
+
     def bulk_insert_students(students, reset=False):
         db = next(get_db())
         try:
@@ -103,4 +109,4 @@ if __name__ == "__main__":
         finally:
             db.close()
 
-    bulk_insert_students(students, reset=False)
+    bulk_insert_students(students, reset=True)
