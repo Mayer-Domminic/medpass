@@ -1,11 +1,11 @@
 'use client';
 
-import { Auth0ProviderWithNavigate } from '@/providers/auth0-provider';
+import { PropsWithChildren } from 'react';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: PropsWithChildren) {
   return (
-    <Auth0ProviderWithNavigate>
+    <>
       {children}
-    </Auth0ProviderWithNavigate>
+    </>
   );
 }

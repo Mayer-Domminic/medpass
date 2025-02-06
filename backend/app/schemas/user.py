@@ -1,22 +1,34 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
 
-class NetIDVerify(BaseModel):
-    net_id: str
+from pydantic import BaseModel, EmailStr, StringConstraints
+from typing import Optional, Annotated
+from datetime import datetime
+from .student import StudentResponse
 
 class UserBase(BaseModel):
+    net_id: Annotated[str, StringConstraints(max_length=50, min_length=3)]
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    net_id: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
 
 class UserCreate(UserBase):
-    auth0_id: str
+    password: Annotated[str, StringConstraints(min_length=8)]
 
-class User(UserBase):
-    id: int
-    auth0_id: str
-    is_active: bool
-    is_superuser: bool
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    password: Annotated[str, StringConstraints(min_length=8)] = None
+
+class UserInDBBase(UserBase):
+    created_at: datetime
+    updated_at: datetime
+    student: Optional[StudentResponse] = None
 
     class Config:
         from_attributes = True
+
+class UserInDB(UserInDBBase):
+    hashed_password: str
+
+class UserResponse(UserInDBBase):
+    pass

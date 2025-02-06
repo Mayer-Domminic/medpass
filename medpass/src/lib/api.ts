@@ -1,55 +1,73 @@
-export const API_URL = 'http://api.medpass.unr.dev';
+import axios from 'axios';
 
-export interface UserProfile {
-  auth0Id: string;
-  email: string;
-  netId?: string;
-  name?: string;
-  picture?: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-export const api = {
-  async verifyNetId(token: string, netId: string) {
-    const response = await fetch(`${API_URL}/api/v1/users/verify-netid`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ net_id: netId }), // Changed to match backend schema
-    });
-    
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.detail || 'Failed to verify NetID');
+const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true, // cookies
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        const response = await api.post('/auth/refresh', { token: refreshToken });
+        const { access_token } = response.data;
+        localStorage.setItem('access_token', access_token);
+        return api(originalRequest);
+      } catch (err) {
+        // Refresh token expired, redirect to login
+        window.location.href = '/auth/login';
+      }
     }
-    
-    // Set the cookie upon successful verification
-    document.cookie = "netid.verified=true; path=/";
-    
-    return response.json();
+    return Promise.reject(error);
+  }
+);
+
+export const authApi = {
+  async register(data: { net_id: string; email: string; password: string; full_name?: string }) {
+    const response = await api.post('/auth/register', data);
+    return response.data;
   },
 
-  async createOrUpdateUser(token: string, userData: UserProfile) {
-    const response = await fetch(`${API_URL}/api/v1/users`, {
-      method: 'POST',
+  async login(credentials: { username: string; password: string }) {
+    const formData = new URLSearchParams();
+    formData.append('username', credentials.username);
+    formData.append('password', credentials.password);
+
+    const response = await api.post('/auth/login', formData, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        auth0_id: userData.auth0Id,
-        email: userData.email,
-        full_name: userData.name,
-        net_id: userData.netId,
-      }),
     });
-    
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.detail || 'Failed to create/update user');
-    }
-    
-    return response.json();
+    return response.data;
+  },
+
+  async logout() {
+    await api.post('/auth/logout');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  },
+
+  async getCurrentUser() {
+    const response = await api.get('/users/me');
+    return response.data;
   },
 };
