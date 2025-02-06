@@ -18,8 +18,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ENVIRONMENT: str = "production"
 
-    API_URL: Optional[str] = "https://api.medpass.unr.dev" # TODO DEV "http://localhost:8000"
-
     class Config:
         env_file = ".env"
 

@@ -18,7 +18,7 @@ module.exports = {
       cwd: './backend',
       script: './venv/bin/python',
       args: '-m gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000',
-      watch: false,  // weird perma restart issues
+      watch: false,
       kill_timeout: 3000,
       env: {
         NODE_ENV: 'development',
