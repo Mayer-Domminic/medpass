@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { getApiUrl } from './config';
 
-const API_URL = 'http://api.medpass.unr.dev/api/v1';// TODO DEV CHANGE THIS TO LOCAL WHEN DEVELOPING 'http://localhost:8000/api/v1';
+const API_URL = getApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // cookies
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
