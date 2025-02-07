@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://api.medpass.unr.dev/api/v1';// TODO DEV CHANGE THIS TO LOCAL WHEN DEVELOPING 'http://localhost:8000/api/v1';
+const API_URL = 'http://api.medpass.unr.dev/api/v1';// TODO DEV CHANGE THIS TO LOCAL WHEN DEVELOPING 'http://localhost:8000/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
