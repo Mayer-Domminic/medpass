@@ -7,7 +7,8 @@ import ExampleProgress from "@/components/nolan-comp/ProgressComponents/Progress
 import ProgressArc from "@/components/nolan-comp/ProgressComponents/ProgressArc";
 import ProgressExamples from "@/components/nolan-comp/ProgressComponents/ProgressExamples";
 import TopicExample from "@/components/nolan-comp/Topic";
+import Sidebar from "@/components/navbar";
 
 export default function DevPage() {
-  return <TopicExample />;
+  return <Sidebar />;
 }
