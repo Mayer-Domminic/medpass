@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
+import { Dashboard } from "@/components/Dashboard"
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +45,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8 bg-gray-400">
-      <h1 className="text-2xl font-bold ">Welcome to your Dashboard</h1>
-      <p className="mt-4">You are logged in as {session?.user?.netId}</p>
-    </div>
+    <div><Dashboard ></Dashboard></div>
+
   );
 }
