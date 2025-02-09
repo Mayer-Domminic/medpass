@@ -6,23 +6,32 @@ import { RegisterForm } from "../auth/register-form";
 
 export function AuthTabs() {
   return (
-    <Tabs defaultValue="login" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-gray-800 text-white rounded-lg p-1">
-        <TabsTrigger value="login" data-tab="login" className="data-[state=active]:bg-gray-700 rounded-lg">
-          Login
-        </TabsTrigger>
-        <TabsTrigger value="register" className="data-[state=active]:bg-gray-700 rounded-lg">
-          Register
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="login">
-        <LoginForm />
-      </TabsContent>
-
-      <TabsContent value="register">
-        <RegisterForm />
-      </TabsContent>
-    </Tabs>
+    <div className="w-full max-w-md mx-auto">
+      <Tabs defaultValue="login" className="w-full">
+        <TabsList className="w-full grid grid-cols-2 bg-gray-900/50 backdrop-blur-sm rounded-xl p-1">
+          <TabsTrigger 
+            value="login" 
+            data-tab="login" 
+            className="data-[state=active]:bg-gray-800 text-gray-400 data-[state=active]:text-white rounded-lg transition-all duration-300"
+          >
+            Login
+          </TabsTrigger>
+          <TabsTrigger 
+            value="register" 
+            className="data-[state=active]:bg-gray-800 text-gray-400 data-[state=active]:text-white rounded-lg transition-all duration-300"
+          >
+            Register
+          </TabsTrigger>
+        </TabsList>
+        <div className="mt-6">
+          <TabsContent value="login">
+            <LoginForm />
+          </TabsContent>
+          <TabsContent value="register">
+            <RegisterForm />
+          </TabsContent>
+        </div>
+      </Tabs>
+    </div>
   );
 }

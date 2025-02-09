@@ -17,10 +17,54 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 const registerSchema = z.object({
-  netId: z.string().min(3, "NetID must be at least 3 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  fullName: z.string().min(2, "Full name is required"),
+  netId: z
+    .string()
+    .min(3, "NetID must be at least 3 characters")
+    .regex(/^[a-zA-Z0-9_]+$/, "NetID can only contain letters, numbers, and underscores"),
+
+  email: z
+    .string()
+    .email("Invalid email address")
+    .regex(
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      "Invalid email format"
+    ),
+
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(
+      /[!@#$%^&*(),.?":{}|<>]/,
+      "Password must contain at least one special character"
+    )
+    .refine(
+      (password) => {
+        const commonPatterns = [
+          /12345/,
+          /qwerty/,
+          /password/,
+          /admin/,
+          /letmein/
+        ];
+        return !commonPatterns.some((pattern) => 
+          pattern.test(password.toLowerCase())
+        );
+      },
+      {
+        message: "Password contains common patterns that are easily guessed"
+      }
+    ),
+
+  fullName: z
+    .string()
+    .min(2, "Full name is required")
+    .regex(
+      /^[a-zA-Z\s-']+$/,
+      "Full name can only contain letters, spaces, hyphens, and apostrophes"
+    ),
 });
 
 export function RegisterForm() {
