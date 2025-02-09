@@ -7,10 +7,10 @@ from .examquestionmodels import Exam
 class ClassRoster(Base):
     __tablename__ = 'classroster'
 
-    classRosterID = Column('classrosterid', Integer, Identity(start=1, increment=1), primary_key=True)
-    rosterYear = Column('rosteryear', Date, nullable=False)
-    initialRosterAmount = Column('intialrosteramount', Integer)
-    currentEnrollment = Column('currentenrollment', Integer)
+    classrosterid = Column('classrosterid', Integer, Identity(start=1, increment=1), primary_key=True)
+    rosteryear = Column('rosteryear', Integer, nullable=False)
+    initialrosteramount = Column('initialrosteramount', Integer)
+    currentenrollment = Column('currentenrollment', Integer)
     
     graduation = relationship('GraduationStatus', back_populates='roster')
     

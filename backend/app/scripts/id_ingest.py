@@ -18,31 +18,52 @@ if __name__ == "__main__":
         'Graduated.4yr', 'Graduated.5yr', 'Graduated.6yr','Graduated.>6yr'
         ], axis='columns')
     
+    #Creating Student List
     df_student = df_unrdata[[
         'Random Number ID', 'Cum.T.Gpa', 'Cum.Bcpm.Gpa', 
         'MMIcalc'
     ]]
     
-    db = next(get_db())
+    #Creating Class Roster List
+    df_classroster = df_unrdata[[
+        'Matric.year', 'Grad.Year'
+    ]]
     
+    df_initial_roster = (
+        df_classroster['Matric.year'].value_counts().sort_index().reset_index().rename(
+            columns={
+                'count': 'initialRosterAmount'
+            }))
+    
+    df_active = (df_classroster[df_classroster['Grad.Year'] == 'Active']
+                 ['Matric.year'].value_counts().sort_index().reset_index().rename(
+                     columns={
+                         'count': 'currentEnrollment'
+                     }))
+    
+    df_classroster = pd.merge(df_initial_roster, df_active, on= 'Matric.year', how='left').fillna(0)
+    df_classroster['currentEnrollment'] = df_classroster['currentEnrollment'].astype(int)
+    df_classroster['Matric.year'] = df_classroster['Matric.year'].astype(int)
+    print(df_classroster)
+
+    '''
+    #Adding Student Data
     try:
+        db = next(get_db())
         for _, row in df_student.iterrows():
             student_data = pydantic.StudentSchema(
                 StudentID = row['Random Number ID'],
                 CumGPA = row['Cum.T.Gpa'],
                 BcpmGPA = row['Cum.Bcpm.Gpa'],
                 MMICalc = row['MMIcalc']
-            )
-            
+            ) 
             db_student = studentmodel.Student(
                 studentid = student_data.StudentID,
                 cumgpa = student_data.CumGPA,
                 bcpmgpa = student_data.BcpmGPA,
                 mmicalc = student_data.MMICalc
             )
-            
             db.add(db_student)
-        
         db.commit()
         print('Data Loaded in Database')
         
@@ -53,8 +74,35 @@ if __name__ == "__main__":
     
     finally:
         db.close()     
+    '''
     
-    print(df_student)
+    #Ingesting ClassRoster List
+    try:
+        db = next(get_db())
+        for _, row in df_classroster.iterrows():
+            roster_data = pydantic.ClassRoster(
+                RosterYear = row['Matric.year'],
+                InitialRosterAmount = row['initialRosterAmount'],
+                CurrentEnrollment = row['currentEnrollment']
+            ) 
+            db_roster = studentmodel.ClassRoster(
+                rosteryear = roster_data.RosterYear,
+                initialrosteramount = roster_data.InitialRosterAmount,
+                currentenrollment = roster_data.CurrentEnrollment
+            )
+            db.add(db_roster)
+        db.commit()
+        print('Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    
+    finally:
+        db.close()   
+    
+    #print(df_student)
     
     
     

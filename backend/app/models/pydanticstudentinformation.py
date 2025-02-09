@@ -3,9 +3,9 @@ from typing import Optional
 from datetime import date
 
 class ClassRoster(BaseModel):
-    ClassRoserID: int
-    RosterYear: date
-    IntialRosterAmount: Optional[int]
+    ClassRosterID:Optional[int] = None
+    RosterYear: int
+    InitialRosterAmount: Optional[int]
     CurrentEnrollment: Optional[int]
     
     model_config = ConfigDict(from_attributes=True)
