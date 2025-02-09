@@ -9,6 +9,8 @@ import ProgressExamples from "@/components/nolan-comp/ProgressComponents/Progres
 import TopicExample from "@/components/nolan-comp/Topic";
 import Sidebar from "@/components/navbar";
 
+export const dynamic = 'force-dynamic';
+
 export default function DevPage() {
   return <Sidebar />;
 }

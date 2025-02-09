@@ -1,11 +1,20 @@
-
 from pydantic import BaseModel, EmailStr, StringConstraints
 from typing import Optional, Annotated
 from datetime import datetime
-from .student import StudentResponse
+
+class UserLogin(BaseModel):
+    net_id: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    net_id: Optional[str] = None
 
 class UserBase(BaseModel):
-    net_id: Annotated[str, StringConstraints(max_length=50, min_length=3)]
+    net_id: str
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     is_active: bool = True
@@ -14,21 +23,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: Annotated[str, StringConstraints(min_length=8)]
 
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    password: Annotated[str, StringConstraints(min_length=8)] = None
-
-class UserInDBBase(UserBase):
-    created_at: datetime
-    updated_at: datetime
-    student: Optional[StudentResponse] = None
+class UserInDB(UserBase):
+    hashed_password: str
 
     class Config:
         from_attributes = True
 
-class UserInDB(UserInDBBase):
-    hashed_password: str
-
-class UserResponse(UserInDBBase):
-    pass
+class UserResponse(UserBase):
+    class Config:
+        from_attributes = True

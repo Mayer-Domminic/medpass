@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from ..models import Student
-from ..api.deps import get_db
+from ..core.database import get_db
 import os
 
 if __name__ == "__main__":
