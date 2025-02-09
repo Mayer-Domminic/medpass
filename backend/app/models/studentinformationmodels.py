@@ -7,8 +7,7 @@ from .examquestionmodels import Exam
 class ClassRoster(Base):
     __tablename__ = 'classroster'
 
-    classrosterid = Column('classrosterid', Integer, Identity(start=1, increment=1), primary_key=True)
-    rosteryear = Column('rosteryear', Integer, nullable=False)
+    rosteryear = Column('rosteryear', Integer, primary_key=True)
     initialrosteramount = Column('initialrosteramount', Integer)
     currentenrollment = Column('currentenrollment', Integer)
     
@@ -103,12 +102,12 @@ class StudentQuestionPerformance(Base):
 class GraduationStatus(Base):
     __tablename__ = 'graduationstatus'
 
-    graduationStatusID = Column('graduationstatusid', Integer, Identity(start=1, increment=1), primary_key=True)
-    studentID = Column('studentid', Integer, ForeignKey('student.studentid'))
-    classRosterID = Column('classrosterid', Integer, ForeignKey('classroster.classrosterid'))
-    graduationYear = Column('graduationyear', Date)
+    graduationstatusid = Column('graduationstatusid', Integer, Identity(start=1, increment=1), primary_key=True)
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
+    rosteryear = Column('rosteryear', Integer, ForeignKey('classroster.rosteryear'))
+    graduationyear = Column('graduationyear', Integer)
     graduated = Column('graduated', Boolean)
-    graduationLength = Column('graduationlength', Integer)
+    graduationlength = Column('graduationlength', Integer)
     status = Column('status', String(255))
     
     student = relationship('Student', back_populates='graduationStatus')

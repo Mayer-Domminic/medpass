@@ -3,7 +3,6 @@ from typing import Optional
 from datetime import date
 
 class ClassRoster(BaseModel):
-    ClassRosterID:Optional[int] = None
     RosterYear: int
     InitialRosterAmount: Optional[int]
     CurrentEnrollment: Optional[int]
@@ -69,12 +68,12 @@ class StudentQuestPerformance(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class GraduationStatus(BaseModel):
-    GraduationStatusID: int
+    GraduationStatusID: Optional[int] = None
     StudentID: Optional[int]
-    ClassRosterID: Optional[int]
-    GraduationYear: Optional[date]
+    RosterYear: Optional[int]
+    GraduationYear: Optional[float]
     Graduated: Optional[bool]
-    GraduationLength: Optional[int]
+    GraduationLength: Optional[float]
     Status: Optional[str] = Field(None, max_length=255)
     
     model_config = ConfigDict(from_attributes=True)    
