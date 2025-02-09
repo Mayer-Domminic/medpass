@@ -9,6 +9,7 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    is_superuser: bool
 
 class TokenData(BaseModel):
     net_id: Optional[str] = None

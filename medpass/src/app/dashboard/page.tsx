@@ -16,7 +16,8 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (session?.user?.isSuperuser) {
+    if (session?.user?.is_superuser) {
+      console.log("ADMIN")
       redirect("/admin");
     }
 
@@ -28,14 +29,10 @@ export default function DashboardPage() {
           },
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch student info');
-        }
-
         const data = await response.json();
         console.log("Student Info:", data);
       } catch (error) {
-        console.error("Error fetching student info:", error);
+        console.log("None found!")
       }
     };
 

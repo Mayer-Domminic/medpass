@@ -45,10 +45,13 @@ async def login(
             )
         
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": user.net_id}, expires_delta=access_token_expires
-        )
-        return {"access_token": access_token, "token_type": "bearer"}
+        access_token = create_access_token(data={"sub": user.net_id}, expires_delta=access_token_expires)
+
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "is_superuser": bool(user.is_superuser),
+        }
     
     except Exception as e:
         raise HTTPException(

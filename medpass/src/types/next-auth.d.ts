@@ -3,16 +3,16 @@ import { JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   interface Session {
-    user?: {
+    user: {
       netId: string;
-      isSuperuser: boolean;
+      is_superuser: boolean;
     } & DefaultSession["user"];
     accessToken?: string;
   }
 
   interface User {
     netId: string;
-    isSuperuser: boolean;
+    is_superuser: boolean;
     accessToken?: string;
   }
 }
@@ -20,7 +20,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     netId: string;
-    isSuperuser: boolean;
+    is_superuser: boolean;
     accessToken?: string;
   }
 }

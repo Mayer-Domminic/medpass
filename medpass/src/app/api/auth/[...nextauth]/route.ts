@@ -11,6 +11,7 @@ interface User {
   name?: string | null;
   email?: string | null;
   accessToken?: string;
+  is_superuser: boolean;
 }
 
 const handler = NextAuth({
@@ -44,11 +45,12 @@ const handler = NextAuth({
             const data = await response.json();
     
             if (response.ok && data.access_token) {
-                return {
-                    id: credentials.netId,
-                    netId: credentials.netId,
-                    accessToken: data.access_token,
-                };
+              return {
+                  id: credentials.netId,
+                  netId: credentials.netId,
+                  accessToken: data.access_token,
+                  is_superuser: data.is_superuser,
+              };
             }
     
             return null;
@@ -63,7 +65,7 @@ const handler = NextAuth({
       if (user) {
         token.netId = user.netId;
         token.accessToken = user.accessToken;
-        token.isSuperuser = user.isSuperuser;
+        token.is_superuser = user.is_superuser;
       }
       return token;
     },
@@ -73,7 +75,7 @@ const handler = NextAuth({
         user: {
           ...session.user,
           netId: token.netId,
-          isSuperuser: token.isSuperuser,
+          is_superuser: token.is_superuser,
         },
         accessToken: token.accessToken,
       };
@@ -81,6 +83,10 @@ const handler = NextAuth({
   },
   pages: {
     signIn: "/auth/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 });
 
