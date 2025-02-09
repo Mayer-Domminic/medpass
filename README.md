@@ -40,8 +40,9 @@ GRANT ALL ON SCHEMA public TO medpassadmin;
 Create `.env.local` for frontend settings:
 ```bash
 cat <<EOF > .env.local
-NEXT_PUBLIC_USE_HTTPS=false
-NEXT_PUBLIC_API_DOMAIN=api.medpass.unr.dev
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXTAUTH_SECRET=your_secret_key
 EOF
 ```
 
