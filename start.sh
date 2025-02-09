@@ -1,6 +1,6 @@
 #!/bin/bash
 
-code . -r && echo "cd backend && source venv/bin/activate ** cd .." | clip.exe
+code . -r && echo "cd backend && source venv/bin/activate && cd .." | clip.exe
 git pull
 sudo service postgresql start
 
