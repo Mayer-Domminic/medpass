@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Dashboard } from "@/components/Dashboard"
+import { Dashboard } from "@/components/Dashboard";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,10 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    if (session?.user?.isSuperuser) {
+      redirect("/admin");
+    }
+
     const fetchStudentInfo = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/student/info`, {
@@ -45,7 +49,6 @@ export default function DashboardPage() {
   }
 
   return (
-    <div><Dashboard ></Dashboard></div>
-
+    <div className="bg-background"><Dashboard /></div>
   );
 }

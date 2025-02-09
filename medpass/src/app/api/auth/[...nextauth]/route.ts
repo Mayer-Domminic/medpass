@@ -21,7 +21,7 @@ const handler = NextAuth({
         netId: { label: "NetID", type: "text" },
         password: { label: "Password", type: "password" }
     },
-    async authorize(credentials): Promise<User | null> {
+    async authorize(credentials): Promise<User | null> { // TODO FIX ERRORs
         if (!credentials?.netId || !credentials?.password) {
             return null;
         }
@@ -63,6 +63,7 @@ const handler = NextAuth({
       if (user) {
         token.netId = user.netId;
         token.accessToken = user.accessToken;
+        token.isSuperuser = user.isSuperuser;
       }
       return token;
     },
@@ -72,6 +73,7 @@ const handler = NextAuth({
         user: {
           ...session.user,
           netId: token.netId,
+          isSuperuser: token.isSuperuser,
         },
         accessToken: token.accessToken,
       };

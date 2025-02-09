@@ -76,3 +76,20 @@ async def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return user
+
+@router.get("/details", response_model=UserResponse)
+async def get_user_details(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get details for the currently authenticated user.
+    """
+    user = db.query(User).filter(User.net_id == current_user.net_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    return user
+

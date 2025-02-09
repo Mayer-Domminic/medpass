@@ -5,12 +5,14 @@ declare module "next-auth" {
   interface Session {
     user?: {
       netId: string;
+      isSuperuser: boolean;
     } & DefaultSession["user"];
     accessToken?: string;
   }
 
   interface User {
     netId: string;
+    isSuperuser: boolean;
     accessToken?: string;
   }
 }
@@ -18,6 +20,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     netId: string;
+    isSuperuser: boolean;
     accessToken?: string;
   }
 }
