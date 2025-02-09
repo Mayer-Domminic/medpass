@@ -18,8 +18,19 @@ class LoginInfo(BaseModel):
     Email: Optional[EmailStr] = None
     
     model_config = ConfigDict(from_attributes=True)
+    
+class StudentSchema(BaseModel):
+    StudentID: int
+    LoginInfoID: Optional[int] = None
+    LastName: Optional[str] = Field(None, max_length=40)
+    FirstName: Optional[str] = Field(None, max_length=40)
+    CumGPA: Optional[float]
+    BcpmGPA: Optional[float]
+    MMICalc: Optional[float]
+    
+    model_config = ConfigDict(from_attributes=True)
 
-class Student(BaseModel):
+class Extracurriculars(BaseModel):
     ExtracurricularID: int
     StudentID: Optional[int]
     ActivityName: Optional[int] = Field(None, max_length=255) 

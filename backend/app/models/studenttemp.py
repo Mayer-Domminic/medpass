@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
-class Student(Base):
+class StudentTemp(Base):
     __tablename__ = "students"
 
     random_id = Column(String, primary_key=True)

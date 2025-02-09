@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
@@ -11,6 +11,9 @@ Base = declarative_base()
 def get_db():
     db = SessionLocal()
     try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        print(tables)
         yield db
     finally:
         db.close()

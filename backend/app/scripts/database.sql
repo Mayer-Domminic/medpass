@@ -75,6 +75,9 @@ CREATE TABLE Student (
     LoginInfoID INT,
     LastName VARCHAR(40),
     FirstName VARCHAR(40),
+    CumGPA FLOAT,
+    BcpmGPA FLOAT,
+    MMICalc FLOAT,
 	FOREIGN KEY (LoginInfoID) REFERENCES LoginInfo(LoginInfoID)
 );
 

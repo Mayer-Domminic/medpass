@@ -5,7 +5,7 @@ from sqlalchemy_utils import database_exists, create_database
 from ..core.config import settings
 from ..core.database import Base
 from ..models.user import User 
-from ..models.student import Student
+from ..models.studenttemp import Student
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -1,2 +1,11 @@
-from .user import User
-from .student import Student
+
+from .studentinformationmodels import (
+    Student,
+    LoginInfo,
+    ClassRoster,
+    Extracurricular,
+    Clerkship,
+    ExamResults,
+    StudentQuestionPerformance,
+    GraduationStatus
+)

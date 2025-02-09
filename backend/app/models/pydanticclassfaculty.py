@@ -47,6 +47,7 @@ class EnrollmentRecord(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
     
+    
 class StudentGrade(BaseModel):
     StudentGradeID: int
     StudentID: Optional[int]
