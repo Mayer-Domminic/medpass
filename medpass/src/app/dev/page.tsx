@@ -7,10 +7,17 @@ import ExampleProgress from "@/components/nolan-comp/ProgressComponents/Progress
 import ProgressArc from "@/components/nolan-comp/ProgressComponents/ProgressArc";
 import ProgressExamples from "@/components/nolan-comp/ProgressComponents/ProgressExamples";
 import TopicExample from "@/components/nolan-comp/Topic";
+<<<<<<< Updated upstream
 import Sidebar from "@/components/navbar";
 
 export const dynamic = 'force-dynamic';
 
 export default function DevPage() {
   return <Sidebar />;
+=======
+import SystemsViewer from "@/components/SystemsViewer";
+
+export default function DevPage() {
+  return <SystemsViewer />;
+>>>>>>> Stashed changes
 }
