@@ -8,6 +8,8 @@ import ProgressArc from "@/components/nolan-comp/ProgressComponents/ProgressArc"
 import ProgressExamples from "@/components/nolan-comp/ProgressComponents/ProgressExamples";
 import TopicExample from "@/components/nolan-comp/Topic";
 
+export const dynamic = 'force-dynamic';
+
 export default function DevPage() {
   return <TopicExample />;
 }
