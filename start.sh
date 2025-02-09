@@ -1,19 +1,18 @@
 #!/bin/bash
 
-code .
+code . -r && echo "cd backend && source venv/bin/activate ** cd .." | clip.exe
 git pull
+sudo service postgresql start
 
-# Backend setup in new terminal
-gnome-terminal --tab -- bash -c '
+gnome-terminal --geometry=132x43 -- bash -c '
 cd backend
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000; bash
 '
 
-# Frontend setup in new terminal
-gnome-terminal --tab -- bash -c '
+gnome-terminal --geometry=132x43 -- bash -c '
 cd medpass
 pnpm install
-pnpm dev
+pnpm dev; bash
 '
