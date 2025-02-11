@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 class Exam(BaseModel):
-    ExamID: int
+    ExamID: Optional[int] = None
     ExamName: str = Field(..., max_length=255)
     ExamDescription: Optional[str] = Field(None, max_length=255)
 

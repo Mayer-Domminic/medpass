@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 from ..models import pydanticstudentinformation as pydantic
+from ..models import pydanticexamquestion as pydanticexam
 from ..models import studentinformationmodels as studentmodel
+from ..models import examquestionmodels as exammodel
 from ..core.database import create_table, drop_table, get_db
 import os
 
@@ -61,15 +63,29 @@ if __name__ == "__main__":
             return int(string.split('.')[1].split('-')[0])
         except:
             return None
-        
-    df_graduationstatus['Grad.yrs'] = df_graduationstatus['Grad.yrs'].apply(convertGradYear).replace({float('nan'): None})
-    df_graduationstatus['Grad.Year'] = df_graduationstatus['Grad.Year'].replace(['Active', 'Dropped'], None)
-    df_graduationstatus['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
     
-    print(df_graduationstatus.dtypes)
+    #To Prevent Panda View/Copy Errors
+    df_graduationstatus = df_graduationstatus.copy()
+        
+    df_graduationstatus.loc['Grad.yrs'] = df_graduationstatus['Grad.yrs'].apply(convertGradYear).replace({float('nan'): None})
+    df_graduationstatus.loc['Grad.Year'] = df_graduationstatus['Grad.Year'].replace(['Active', 'Dropped'], None)
+    df_graduationstatus.loc['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
+    
+    #print(df_graduationstatus.dtypes)
     print(df_graduationstatus)
 
+    #Adding Base Exam Name Data
+    base_exam_data = {
+        'Exam Name': ['MCAT', 'CBSE', 'Step 1', 'Step 2'],
+        'Exam Description': ['Medical School Admission Exam', 'Step 1 Readiness Exam', 
+                             'Major Medical Exam for Pre-Pratical', 'Major Medical Exam Post-Pratical']
+    }
     
+    df_exam_data = pd.DataFrame(base_exam_data)
+    print(df_exam_data)
+    
+    #Adding Student Exam Data
+    '''
     #Adding Student Data
     try:
         db = next(get_db())
@@ -88,7 +104,7 @@ if __name__ == "__main__":
             )
             db.add(db_student)
         db.commit()
-        print('Data Loaded in Database')
+        print('Student Data Loaded in Database')
         
     except Exception as e:
         print(f"Error when adding data {e}")
@@ -116,7 +132,7 @@ if __name__ == "__main__":
             )
             db.add(db_roster)
         db.commit()
-        print('Data Loaded in Database')
+        print('Class Roster Data Loaded in Database')
         
     except Exception as e:
         print(f"Error when adding data {e}")
@@ -149,7 +165,7 @@ if __name__ == "__main__":
             )
             db.add(db_graduation)
         db.commit()
-        print('Data Loaded in Database')
+        print('Graduation Status Data Loaded in Database')
         
     except Exception as e:
         print(f"Error when adding data {e}")
@@ -158,7 +174,31 @@ if __name__ == "__main__":
     
     finally:
         db.close()  
+    '''
+    #Ingesting Exam Data
+    try:
+        db = next(get_db())
+        for _, row in df_exam_data.iterrows():
+            exam_data = pydanticexam.Exam(
+                ExamName = row['Exam Name'],
+                ExamDescription = row['Exam Description']
+            ) 
+            db_exam_data = exammodel.Exam(
+                examname = exam_data.ExamName,
+                examdescription = exam_data.ExamDescription
+            )
+            db.add(db_exam_data)
+        db.commit()
+        print('Exam Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
     
+    finally:
+        db.close()  
+        
     #print(df_student)
     
     
