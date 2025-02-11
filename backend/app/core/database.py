@@ -13,7 +13,6 @@ def get_db():
     try:
         inspector = inspect(engine)
         tables = inspector.get_table_names()
-        print(tables)
         yield db
     finally:
         db.close()

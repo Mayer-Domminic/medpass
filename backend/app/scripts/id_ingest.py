@@ -69,7 +69,7 @@ if __name__ == "__main__":
     df_graduationstatus['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
     
     #print(df_graduationstatus.dtypes)
-    print(df_graduationstatus)
+    #print(df_graduationstatus)
 
     #Adding Base Exam Name Data
     base_exam_data = {
@@ -79,14 +79,14 @@ if __name__ == "__main__":
     }
     
     df_exam_data = pd.DataFrame(base_exam_data)
-    print(df_exam_data)
+    #print(df_exam_data)
     
     #Adding Student Exam Data
     df_student_exam = df_unrdata[[
        'Random Number ID',  'MCATcalc', 'CBSE1 score', 'CBSE2 score', 'USMLE_Step1score', 'USMLE_STEP2score'
     ]]
     
-    print(df_student_exam)
+    #print(df_student_exam)
     
     
     #Adding Student Data
