@@ -76,12 +76,12 @@ class Clerkship(Base):
 class ExamResults(Base):
     __tablename__ = 'examresults'
 
-    examResultsID = Column('examresultsid', Integer, Identity(start=1, increment=1), primary_key=True)
-    studentID = Column('studentid', Integer, ForeignKey('student.studentid'))
-    examID = Column('examid', Integer, ForeignKey('exam.examid'))
-    clerkshipID = Column('clerkshipid', Integer, ForeignKey('clerkship.clerkshipid'))
+    examResultsid = Column('examresultsid', Integer, Identity(start=1, increment=1), primary_key=True)
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
+    examid = Column('examid', Integer, ForeignKey('exam.examid'))
+    clerkshipid = Column('clerkshipid', Integer, ForeignKey('clerkship.clerkshipid'))
     score = Column('score', Integer, nullable=False)
-    passOrFail = Column('passorfail', Boolean)
+    passorfail = Column('passorfail', Boolean)
     
     student = relationship('Student', back_populates='examResults')
     clerkship = relationship('Clerkship', back_populates='examResults')

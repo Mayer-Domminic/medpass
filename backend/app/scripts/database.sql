@@ -110,7 +110,7 @@ CREATE TABLE ExamResults (
     ExamID INT,
     ClerkshipID INT,
     Score INT NOT NULL,
-    PassOrFail BIT,
+    PassOrFail BOOLEAN,
 	FOREIGN KEY (StudentID) REFERENCES Student(StudentID),
 	FOREIGN KEY (ExamID) REFERENCES Exam(ExamID),
 	FOREIGN KEY (ClerkshipID) REFERENCES Clerkship(ClerkshipID)

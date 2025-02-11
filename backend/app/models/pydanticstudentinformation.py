@@ -50,12 +50,12 @@ class Clerkship(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class ExamResults(BaseModel):
-    ExamResultsID: int
+    ExamResultsID: Optional[int] = None
     StudentID: Optional[int]
     ExamID: Optional[int]
-    ClerkshipID: Optional[int]
+    ClerkshipID: Optional[int] = None
     Score: int
-    PassOrFail: bool
+    PassOrFail: Optional[bool] = None
     
     model_config = ConfigDict(from_attributes=True)
     

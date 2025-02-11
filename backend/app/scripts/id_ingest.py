@@ -63,13 +63,10 @@ if __name__ == "__main__":
             return int(string.split('.')[1].split('-')[0])
         except:
             return None
-    
-    #To Prevent Panda View/Copy Errors
-    df_graduationstatus = df_graduationstatus.copy()
         
-    df_graduationstatus.loc['Grad.yrs'] = df_graduationstatus['Grad.yrs'].apply(convertGradYear).replace({float('nan'): None})
-    df_graduationstatus.loc['Grad.Year'] = df_graduationstatus['Grad.Year'].replace(['Active', 'Dropped'], None)
-    df_graduationstatus.loc['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
+    df_graduationstatus['Grad.yrs'] = df_graduationstatus['Grad.yrs'].apply(convertGradYear).replace({float('nan'): None})
+    df_graduationstatus['Grad.Year'] = df_graduationstatus['Grad.Year'].replace(['Active', 'Dropped'], None)
+    df_graduationstatus['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
     
     #print(df_graduationstatus.dtypes)
     print(df_graduationstatus)
@@ -85,7 +82,13 @@ if __name__ == "__main__":
     print(df_exam_data)
     
     #Adding Student Exam Data
-    '''
+    df_student_exam = df_unrdata[[
+       'Random Number ID',  'MCATcalc', 'CBSE1 score', 'CBSE2 score', 'USMLE_Step1score', 'USMLE_STEP2score'
+    ]]
+    
+    print(df_student_exam)
+    
+    
     #Adding Student Data
     try:
         db = next(get_db())
@@ -174,7 +177,7 @@ if __name__ == "__main__":
     
     finally:
         db.close()  
-    '''
+    
     #Ingesting Exam Data
     try:
         db = next(get_db())
@@ -198,7 +201,78 @@ if __name__ == "__main__":
     
     finally:
         db.close()  
+    
+    
+    #Processing Exam Data
+    exam_id_dict = {
+        'MCATcalc': 1,
+        'CBSE1 score': 2,
+        'CBSE2 score': 2,
+        'USMLE_Step1score': 3,
+        'USMLE_STEP2score': 4
+    }
+    
+    exam_columns = ['MCATcalc', ('CBSE1 score', 'CBSE2 score'), 'USMLE_Step1score', 'USMLE_STEP2score']
+    processed_student_exam = []
+    
+    for _, row in df_student_exam.iterrows():
+        for exam_col in ['MCATcalc', 'USMLE_Step1score', 'USMLE_STEP2score']:
+            if pd.notna(row[exam_col]):
+                data = {
+                    'studentID': int(row['Random Number ID']),
+                    'examID': exam_id_dict[exam_col],
+                    'clerkshipID': None,
+                    'score': int(row[exam_col]),
+                    'passOrFail': None
+                }
+            processed_student_exam.append(data)
         
+        if pd.notna(row['CBSE1 score']):
+            data = {
+                'studentID': int(row['Random Number ID']),
+                'examID': exam_id_dict['CBSE1 score'],
+                'clerkshipID': None,
+                'score': int(row['CBSE1 score']),
+                'passOrFail': None
+            }
+        processed_student_exam.append(data)
+        
+        if pd.notna(row['CBSE2 score']):
+            data = {
+                'studentID': int(row['Random Number ID']),
+                'examID': exam_id_dict['CBSE2 score'],
+                'clerkshipID': None,
+                'score': int(row['CBSE2 score']),
+                'passOrFail': None
+            }
+        processed_student_exam.append(data)
+        
+    #Ingesting Processed Student Data
+    try:
+        db = next(get_db())
+        for row in processed_student_exam:
+            student_exam_data = pydantic.ExamResults(
+                StudentID = row['studentID'],
+                ExamID = row['examID'],
+                Score = row['score']
+            ) 
+            db_student_exam_data = studentmodel.ExamResults(
+                studentid = student_exam_data.StudentID,
+                examid = student_exam_data.ExamID,
+                score = student_exam_data.Score     
+            )
+            db.add(db_student_exam_data)
+        db.commit()
+        print('Student Exam Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    
+    finally:
+        db.close()  
+    
     #print(df_student)
     
     
