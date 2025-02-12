@@ -7,7 +7,9 @@ import {
   FlaskConical, 
   Stethoscope, 
   Activity,
-  X 
+  X,
+  ChevronLeft,
+  ChevronRight 
 } from 'lucide-react';
 
 interface BlockCardProps {
@@ -21,6 +23,81 @@ interface BlockCardProps {
   onExpand: () => void;
   onCollapse: () => void;
 }
+
+// Carousel component
+const Carousel = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slides = [
+    "Slide 1: Overview and key concepts",
+    "Slide 2: Important topics and learning objectives",
+    "Slide 3: Progress and achievements"
+  ];
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  return (
+    <div className="relative h-full bg-[#151926] rounded-lg">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <p className="text-gray-400 text-lg">{slides[currentSlide]}</p>
+      </div>
+      
+      <button 
+        onClick={prevSlide}
+        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
+      >
+        <ChevronLeft className="h-6 w-6 text-gray-400" />
+      </button>
+      
+      <button 
+        onClick={nextSlide}
+        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
+      >
+        <ChevronRight className="h-6 w-6 text-gray-400" />
+      </button>
+      
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        {slides.map((_, index) => (
+          <div 
+            key={index}
+            className={`h-2 w-2 rounded-full ${
+              currentSlide === index ? 'bg-blue-400' : 'bg-gray-600'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Action buttons component
+const ActionButtons = () => {
+  const buttons = [
+    { label: 'Study', onClick: () => console.log('Study clicked') },
+    { label: 'Plan', onClick: () => console.log('Plan clicked') },
+    { label: 'Review', onClick: () => console.log('Review clicked') },
+    { label: 'Resources', onClick: () => console.log('Resources clicked') },
+  ];
+
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {buttons.map((button) => (
+        <button
+          key={button.label}
+          onClick={button.onClick}
+          className="py-4 px-6 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors text-lg"
+        >
+          {button.label}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const BlockCard = ({ 
   id, 
@@ -37,7 +114,7 @@ const BlockCard = ({
     return (
       <div className="w-full">
         <div className="h-full w-full rounded-xl bg-gray-800 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={color}>
                 {icon}
@@ -51,11 +128,13 @@ const BlockCard = ({
               <X className="h-6 w-6" />
             </button>
           </div>
-          {/* Add your expanded view content here */}
-          <div className="mt-6 h-[500px]">
-            {/* Placeholder for expanded content */}
-            <div className="h-full w-full flex items-center justify-center text-gray-400">
-              Expanded view content will go here
+          
+          <div className="h-[calc(100vh-200px)] flex flex-col">
+            <div className="flex-1 mb-6">
+              <Carousel />
+            </div>
+            <div className="mb-2">
+              <ActionButtons />
             </div>
           </div>
         </div>
@@ -70,8 +149,7 @@ const BlockCard = ({
         className="group relative h-full w-full [perspective:1000px]"
       >
         <div className="absolute inset-0 h-full w-full duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-          {/* Front of card */}
-          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [backface-visibility:hidden] hover:bg-gray-800/90 transition-colors">
+          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [backface-visibility:hidden]">
             <div className="flex items-center gap-2">
               <div className={color}>
                 {icon}
@@ -80,8 +158,7 @@ const BlockCard = ({
             </div>
           </div>
 
-          {/* Back of card */}
-          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [transform:rotateY(180deg)] [backface-visibility:hidden] hover:bg-gray-800/90 transition-colors">
+          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [transform:rotateY(180deg)] [backface-visibility:hidden]">
             <div className="flex h-full flex-col">
               <div className="mb-2 flex items-end justify-between">
                 <div className="text-2xl font-bold text-white">{completion}%</div>
@@ -206,7 +283,7 @@ const StepOverview = () => {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-4 bg-gray-900">
       {blocks.map(block => (
         <BlockCard
           key={block.id}
