@@ -3,9 +3,8 @@ from typing import Optional
 from datetime import date
 
 class ClassRoster(BaseModel):
-    ClassRoserID: int
-    RosterYear: date
-    IntialRosterAmount: Optional[int]
+    RosterYear: int
+    InitialRosterAmount: Optional[int]
     CurrentEnrollment: Optional[int]
     
     model_config = ConfigDict(from_attributes=True)
@@ -18,8 +17,19 @@ class LoginInfo(BaseModel):
     Email: Optional[EmailStr] = None
     
     model_config = ConfigDict(from_attributes=True)
+    
+class StudentSchema(BaseModel):
+    StudentID: int
+    LoginInfoID: Optional[int] = None
+    LastName: Optional[str] = Field(None, max_length=40)
+    FirstName: Optional[str] = Field(None, max_length=40)
+    CumGPA: Optional[float]
+    BcpmGPA: Optional[float]
+    MMICalc: Optional[float]
+    
+    model_config = ConfigDict(from_attributes=True)
 
-class Student(BaseModel):
+class Extracurriculars(BaseModel):
     ExtracurricularID: int
     StudentID: Optional[int]
     ActivityName: Optional[int] = Field(None, max_length=255) 
@@ -40,12 +50,12 @@ class Clerkship(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class ExamResults(BaseModel):
-    ExamResultsID: int
+    ExamResultsID: Optional[int] = None
     StudentID: Optional[int]
     ExamID: Optional[int]
-    ClerkshipID: Optional[int]
+    ClerkshipID: Optional[int] = None
     Score: int
-    PassOrFail: bool
+    PassOrFail: Optional[bool] = None
     
     model_config = ConfigDict(from_attributes=True)
     
@@ -58,12 +68,12 @@ class StudentQuestPerformance(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class GraduationStatus(BaseModel):
-    GraduationStatusID: int
+    GraduationStatusID: Optional[int] = None
     StudentID: Optional[int]
-    ClassRosterID: Optional[int]
-    GraduationYear: Optional[date]
+    RosterYear: Optional[int]
+    GraduationYear: Optional[float]
     Graduated: Optional[bool]
-    GraduationLength: Optional[int]
+    GraduationLength: Optional[float]
     Status: Optional[str] = Field(None, max_length=255)
     
     model_config = ConfigDict(from_attributes=True)    

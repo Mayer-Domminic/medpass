@@ -67,7 +67,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg shadow-lg text-white">
+    <div className="bg-gray-900/30 backdrop-blur-sm p-8 rounded-2xl border border-gray-800">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -75,11 +75,17 @@ export function LoginForm() {
             name="netId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>NetID</FormLabel>
+                <FormLabel className="text-gray-300">NetID</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter your NetID" {...field} className="bg-gray-800 text-white" />
+                <Input 
+                    placeholder="Enter your NetID" 
+                    {...field} 
+                    className="h-12 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-500
+                             focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                             transition-all duration-300" 
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-sm" />
               </FormItem>
             )}
           />
@@ -88,16 +94,37 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="text-gray-300">Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="Enter your password" {...field} className="bg-gray-800 text-white" />
+                <Input 
+                    type="password" 
+                    placeholder="Enter your password" 
+                    {...field} 
+                    className="h-12 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-500
+                             focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                             transition-all duration-300" 
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-sm" />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-            {isLoading ? "Loading..." : "Login"}
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white
+                     transition-all duration-300 rounded-xl
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     focus:ring-2 focus:ring-blue-500/20"
+            disabled={isLoading}
+          >
+            {isLoading ? 
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span>Logging in...</span>
+              </div> 
+              : 
+              "Login"
+            }
           </Button>
         </form>
       </Form>
