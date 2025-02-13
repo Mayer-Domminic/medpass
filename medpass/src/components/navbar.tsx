@@ -67,7 +67,7 @@ const Sidebar = () => {
         <NavItem 
           icon={<Calendar />} 
           label="Calendar" 
-          href="/dashboard/calendar" 
+          href="/dev" 
         />
         <NavItem 
           icon={<Settings />} 

@@ -48,6 +48,7 @@ class Student(Base):
     #Found in classfacultymodels
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
+    user = relationship("User", back_populates="student")
     
     
 class Extracurricular(Base):

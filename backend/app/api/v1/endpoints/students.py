@@ -4,7 +4,7 @@ from typing import Optional
 from ....core.database import get_db
 from ....core.security import get_current_active_user
 from ....models.user import User
-from ....models.studentinformationmodels import Student
+from ....models import Student
 from ....schemas.student import StudentResponse
 
 router = APIRouter()
