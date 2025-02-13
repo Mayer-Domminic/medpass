@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Heart } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/navbar';
-import AnimatedProgressBar from '@/components/nolan-comp/ProgressComponents/AnimatedProgressBar';
+import AnimatedProgressBar from '@/components/ProgressComponents/AnimatedProgressBar';
 
 interface SubtopicListProps {
   isExpanded: boolean;

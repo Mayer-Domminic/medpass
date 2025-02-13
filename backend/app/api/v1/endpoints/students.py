@@ -4,7 +4,7 @@ from typing import Optional
 from ....core.database import get_db
 from ....core.security import get_current_active_user
 from ....models.user import User
-from ....models.student import Student
+from ....models.studenttemp import StudentTemp
 from ....schemas.student import StudentResponse
 
 router = APIRouter()
@@ -19,7 +19,7 @@ async def get_student_info(
     Ensures users can only access their own student data.
     """
 
-    student = db.query(Student).filter(Student.net_id == current_user.net_id).first()
+    student = db.query(StudentTemp).filter(StudentTemp.net_id == current_user.net_id).first()
     if not student:
         print(f"ERROR: No student record found for net_id: {current_user.net_id}")
         raise HTTPException(
@@ -49,11 +49,11 @@ async def get_student_by_id(
             detail="Not authorized to access this student's information"
         )
 
-    student = db.query(Student).filter(Student.net_id == net_id).first()
+    student = db.query(StudentTemp).filter(StudentTemp.net_id == net_id).first()
     
     if not student:
         # Try case-insensitive search as fallback
-        student = db.query(Student).filter(Student.net_id.ilike(f"%{net_id}%")).first()
+        student = db.query(StudentTemp).filter(StudentTemp.net_id.ilike(f"%{net_id}%")).first()
         
         if not student:
             raise HTTPException(

@@ -1,34 +1,41 @@
+'use client';
+
 import React from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { 
   Microscope, 
   Home,
   LineChart,
   User,
   Calendar, 
-  Clock, 
   Settings,
 } from "lucide-react";
 
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
-  active?: boolean;
-  onClick?: () => void;
+  href: string;
 }
 
-const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
-  <button
-    className={`w-full h-12 flex items-center justify-center
-      ${active ? 'hover:bg-gray-800/40' : 'hover:bg-gray-800/40'} 
-      rounded-lg transition-colors duration-200`}
-    onClick={onClick}
-    title={label}
-  >
-    {React.cloneElement(icon as React.ReactElement<any>, {
-      className: `w-5 h-5 ${active ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-white'}`
-    })}
-  </button>
-);
+const NavItem = ({ icon, label, href }: NavItemProps) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      className={`w-full h-12 flex items-center justify-center
+        ${isActive ? 'hover:bg-gray-800/40' : 'hover:bg-gray-800/40'} 
+        rounded-lg transition-colors duration-200`}
+      title={label}
+    >
+      {React.cloneElement(icon as React.ReactElement<any>, {
+        className: `w-5 h-5 ${isActive ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-white'}`
+      })}
+    </Link>
+  );
+};
 
 const Sidebar = () => {
   return (
@@ -42,11 +49,31 @@ const Sidebar = () => {
 
       {/* Main Navigation */}
       <div className="flex-1 flex flex-col items-center gap-2 px-3 py-3">
-        <NavItem icon={<Home />} label="Dashboard" active />
-        <NavItem icon={<LineChart />} label="Analytics" />
-        <NavItem icon={<User />} label="Student" />
-        <NavItem icon={<Calendar />} label="Calendar" />
-        <NavItem icon={<Settings />} label="Settings" />
+        <NavItem 
+          icon={<Home />} 
+          label="Dashboard" 
+          href="/dashboard" 
+        />
+        <NavItem 
+          icon={<LineChart />} 
+          label="Analytics" 
+          href="/dashboard/analytics" 
+        />
+        <NavItem 
+          icon={<User />} 
+          label="Student" 
+          href="/dashboard/block" 
+        />
+        <NavItem 
+          icon={<Calendar />} 
+          label="Calendar" 
+          href="/dashboard/calendar" 
+        />
+        <NavItem 
+          icon={<Settings />} 
+          label="Settings" 
+          href="/dashboard/settings" 
+        />
       </div>
     </div>
   );
