@@ -1,51 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { Dashboard } from "@/components/Dashboard";
 
-export const dynamic = 'force-dynamic';
-
+// Temporarily removed authentication for UI development
 export default function DashboardPage() {
-  const { data: session, status } = useSession({
-    required: true,
-    onUnauthenticated() {
-      redirect("/auth/login");
-    },
-  });
-
-  useEffect(() => {
-    if (session?.user?.is_superuser) {
-      console.log("ADMIN")
-      redirect("/admin");
-    }
-
-    const fetchStudentInfo = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/student/info`, {
-          headers: {
-            Authorization: `Bearer ${session?.accessToken}`,
-          },
-        });
-
-        const data = await response.json();
-        console.log("Student Info:", data);
-      } catch (error) {
-        console.log("None found!")
-      }
-    };
-
-    if (session?.accessToken && session) {
-      fetchStudentInfo();
-    }
-  }, [session]);
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
-  }
-
   return (
-    <div className="bg-background"><Dashboard /></div>
+    <div className="bg-background">
+      <Dashboard />
+    </div>
   );
 }

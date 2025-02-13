@@ -1,4 +1,4 @@
-import CircularProgress from './ProgressCircle';
+import CircularProgress from '../../ProgressCircle';
 import ProgressArc from './ProgressArc';
 
 const ProgressExamples = () => {
