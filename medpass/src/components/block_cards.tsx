@@ -8,72 +8,29 @@ import {
   Stethoscope, 
   Activity,
   X,
-  ChevronLeft,
-  ChevronRight 
+  LucideIcon,
+  CircleOff,
+  BookOpen
 } from 'lucide-react';
+import { default as CustomCarousel } from './Carousel';
 
 interface BlockCardProps {
   id: string;
   title: string;
+  subtitle: string;
   completion: number;
   color: string;
   icon: React.ReactElement;
   data: { name: string; value: number }[];
+  insight: {
+    type: 'progress' | 'time' | 'assignment';
+    value: string;
+    detail: string;
+  };
   isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
 }
-
-// Carousel component
-const Carousel = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const slides = [
-    "Slide 1: Overview and key concepts",
-    "Slide 2: Important topics and learning objectives",
-    "Slide 3: Progress and achievements"
-  ];
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  return (
-    <div className="relative h-full bg-[#151926] rounded-lg">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <p className="text-gray-400 text-lg">{slides[currentSlide]}</p>
-      </div>
-      
-      <button 
-        onClick={prevSlide}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
-      >
-        <ChevronLeft className="h-6 w-6 text-gray-400" />
-      </button>
-      
-      <button 
-        onClick={nextSlide}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
-      >
-        <ChevronRight className="h-6 w-6 text-gray-400" />
-      </button>
-      
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {slides.map((_, index) => (
-          <div 
-            key={index}
-            className={`h-2 w-2 rounded-full ${
-              currentSlide === index ? 'bg-blue-400' : 'bg-gray-600'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // Action buttons component
 const ActionButtons = () => {
@@ -102,10 +59,12 @@ const ActionButtons = () => {
 const BlockCard = ({ 
   id, 
   title, 
+  subtitle,
   completion, 
   color, 
   icon, 
-  data, 
+  data,
+  insight,
   isExpanded,
   onExpand,
   onCollapse 
@@ -119,7 +78,10 @@ const BlockCard = ({
               <div className={color}>
                 {icon}
               </div>
-              <span className="text-xl font-medium text-white">{title}</span>
+              <div>
+                <h3 className="text-2xl font-bold text-white">{title}</h3>
+                <p className="text-sm text-gray-400">{subtitle}</p>
+              </div>
             </div>
             <button 
               onClick={onCollapse}
@@ -131,7 +93,7 @@ const BlockCard = ({
           
           <div className="h-[calc(100vh-200px)] flex flex-col">
             <div className="flex-1 mb-6">
-              <Carousel />
+              <CustomCarousel />
             </div>
             <div className="mb-2">
               <ActionButtons />
@@ -143,67 +105,52 @@ const BlockCard = ({
   }
 
   return (
-    <div className="h-[180px] w-full">
-      <button 
-        onClick={onExpand}
-        className="group relative h-full w-full [perspective:1000px]"
-      >
-        <div className="absolute inset-0 h-full w-full duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [backface-visibility:hidden]">
-            <div className="flex items-center gap-2">
-              <div className={color}>
-                {icon}
-              </div>
-              <span className="text-lg font-medium text-white">{title}</span>
-            </div>
-          </div>
-
-          <div className="absolute inset-0 h-full w-full rounded-xl bg-gray-800 p-4 [transform:rotateY(180deg)] [backface-visibility:hidden]">
-            <div className="flex h-full flex-col">
-              <div className="mb-2 flex items-end justify-between">
-                <div className="text-2xl font-bold text-white">{completion}%</div>
-                <span className="text-sm text-gray-400">completion</span>
-              </div>
-              <div className="flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke={getStrokeColor(color)}
-                      fill={getStrokeColor(color)}
-                      fillOpacity={0.1}
-                    />
-                    <Line 
-                      type="monotone"
-                      dataKey="value"
-                      stroke={getStrokeColor(color)}
-                      strokeWidth={2}
-                      dot={{ strokeWidth: 1, r: 2, fill: getStrokeColor(color) }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+    <div 
+      onClick={onExpand}
+      className="h-[180px] w-full bg-gray-800 rounded-xl p-4 hover:bg-gray-800/90 transition-colors cursor-pointer flex flex-col"
+    >
+      {/* Header with Icon and Title */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className={`${color} p-2 rounded-lg bg-gray-700/50`}>
+          <div className="h-6 w-6">
+            {icon}
           </div>
         </div>
-      </button>
+        <div>
+          <h3 className="text-2xl font-bold text-white">{title}</h3>
+          <p className="text-sm text-gray-400">{subtitle}</p>
+        </div>
+      </div>
+  
+      {/* Progress Bar */}
+      <div className="mb-auto">
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-gray-400">Block Progress</span>
+          <span className="text-gray-300">{completion}%</span>
+        </div>
+        <div className="h-2 bg-gray-700 rounded-full">
+          <div 
+            className={`h-2 rounded-full ${
+              completion >= 80 ? 'bg-green-500' :
+              completion >= 60 ? 'bg-yellow-500' :
+              'bg-red-500'
+            }`}
+            style={{ width: `${completion}%` }}
+          />
+        </div>
+      </div>
+  
+      {/* Have to fix this
+      Block Insight
+      <div className="bg-gray-700/50 rounded-lg p-3 mt-4">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-300 text-sm">{insight.detail}</span>
+          <span className="text-white font-medium">{insight.value}</span>
+        </div>
+      </div> */}
     </div>
   );
-};
-
-// Helper function to get the correct stroke color
-const getStrokeColor = (colorClass: string) => {
-  const colorMap = {
-    'text-blue-400': '#60A5FA',
-    'text-rose-400': '#FB7185',
-    'text-teal-400': '#2DD4BF',
-    'text-purple-400': '#C084FC',
-    'text-amber-400': '#FCD34D',
-    'text-emerald-400': '#34D399'
-  };
-  return colorMap[colorClass as keyof typeof colorMap] || '#60A5FA';
-};
+}
 
 const blockData = {
   A: [
@@ -254,12 +201,84 @@ const StepOverview = () => {
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
 
   const blocks = [
-    { id: 'A', title: 'Block A', icon: <Brain className="h-5 w-5" />, color: 'text-blue-400', completion: 81 },
-    { id: 'B', title: 'Block B', icon: <Heart className="h-5 w-5" />, color: 'text-rose-400', completion: 83 },
-    { id: 'C', title: 'Block C', icon: <FlaskConical className="h-5 w-5" />, color: 'text-teal-400', completion: 75 },
-    { id: 'D', title: 'Block D', icon: <Activity className="h-5 w-5" />, color: 'text-purple-400', completion: 83 },
-    { id: 'E', title: 'Block E', icon: <Pill className="h-5 w-5" />, color: 'text-amber-400', completion: 89 },
-    { id: 'F', title: 'Block F', icon: <Stethoscope className="h-5 w-5" />, color: 'text-emerald-400', completion: 85 }
+    { 
+      id: 'A', 
+      title: 'Block 1', 
+      subtitle: 'Neuroscience',
+      icon: <Brain className="h-6 w-6" />, 
+      color: 'text-blue-400', 
+      completion: 81,
+      insight: {
+        type: 'progress' as const,
+        value: '36/42',
+        detail: 'Topics Mastered'
+      }
+    },
+    { 
+      id: 'B', 
+      title: 'Block 2', 
+      subtitle: 'Cardiovascular',
+      icon: <Heart className="h-6 w-6" />, 
+      color: 'text-rose-400', 
+      completion: 83,
+      insight: {
+        type: 'time' as const,
+        value: '2 weeks',
+        detail: 'Time Remaining'
+      }
+    },
+    { 
+      id: 'C', 
+      title: 'Block 3', 
+      subtitle: 'Respiratory',
+      icon: <Activity className="h-6 w-6" />, 
+      color: 'text-teal-400', 
+      completion: 75,
+      insight: {
+        type: 'assignment' as const,
+        value: 'Tomorrow',
+        detail: 'Quiz Due'
+      }
+    },
+    { 
+      id: 'D', 
+      title: 'Block 4', 
+      subtitle: 'Renal',
+      icon: <CircleOff className="h-6 w-6" />, 
+      color: 'text-purple-400', 
+      completion: 83,
+      insight: {
+        type: 'progress' as const,
+        value: '28/35',
+        detail: 'Topics Mastered'
+      }
+    },
+    { 
+      id: 'E', 
+      title: 'Block 5', 
+      subtitle: 'Clinical Sciences',
+      icon: <Stethoscope className="h-6 w-6" />, 
+      color: 'text-amber-400', 
+      completion: 89,
+      insight: {
+        type: 'time' as const,
+        value: '3 weeks',
+        detail: 'Time Remaining'
+      }
+    },
+    { 
+      id: 'F', 
+      title: 'Block 6', 
+      subtitle: 'Pathology',
+      icon: <BookOpen className="h-6 w-6" />, 
+      color: 'text-emerald-400', 
+      completion: 85,
+      insight: {
+        type: 'assignment' as const,
+        value: '2 days',
+        detail: 'Exam Due'
+      }
+    }
   ];
 
   if (expandedBlock) {
@@ -268,11 +287,7 @@ const StepOverview = () => {
       return (
         <BlockCard
           key={expandedBlockData.id}
-          id={expandedBlockData.id}
-          title={expandedBlockData.title}
-          completion={expandedBlockData.completion}
-          color={expandedBlockData.color}
-          icon={expandedBlockData.icon}
+          {...expandedBlockData}
           data={blockData[expandedBlockData.id as keyof typeof blockData]}
           isExpanded={true}
           onExpand={() => {}}
@@ -287,11 +302,7 @@ const StepOverview = () => {
       {blocks.map(block => (
         <BlockCard
           key={block.id}
-          id={block.id}
-          title={block.title}
-          completion={block.completion}
-          color={block.color}
-          icon={block.icon}
+          {...block}
           data={blockData[block.id as keyof typeof blockData]}
           isExpanded={false}
           onExpand={() => setExpandedBlock(block.id)}

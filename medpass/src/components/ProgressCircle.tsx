@@ -13,19 +13,23 @@ interface Segment {
   displayName: string;
 }
 
-interface CircularProgressProps {
-  score?: number;
-  segments?: Segment[];
-  topicName?: string;
-  questions?: TopicQuestion[];
+interface TopicQuestion {
+  id: string;
+  correct: boolean;
+  category: 'mastered' | 'learning' | 'needs_review';
 }
 
-const CircularProgress = ({
-  score = 0,
-  segments = [],
-  topicName = '',
-  questions = []
-}: CircularProgressProps) => {
+export interface CircularProgressProps {
+  score: number;
+  segments: Segment[];
+  questions: TopicQuestion[];
+}
+
+const CircularProgress: React.FC<CircularProgressProps> = ({
+  score,
+  segments,
+  questions
+}) => {
   const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
   const [mounted, setMounted] = useState(false);
   const radius = 85;
