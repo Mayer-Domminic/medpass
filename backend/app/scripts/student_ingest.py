@@ -19,17 +19,19 @@ if __name__ == "__main__":
         'Graduated.>6yr', 'Grad.yrs'
     ], axis=1)
 
+    # Updated column mappings to match the Student model
     STUDENT = UNR_FULL_DATA[[
         'Random Number ID', 'Cum.T.Gpa', 'Cum.Bcpm.Gpa', 
         'Drop.year', 'Grad.Year', 'Graduated'
     ]].rename(columns={
         'Random Number ID': 'random_id',
-        'Cum.T.Gpa': 'cum_total_gpa',
-        'Cum.Bcpm.Gpa': 'cum_bcpm_gpa',
+        'Cum.T.Gpa': 'cumgpa',         # Changed from cum_total_gpa
+        'Cum.Bcpm.Gpa': 'bcpmgpa',     # Changed from cum_bcpm_gpa
         'Drop.year': 'drop_year',
         'Grad.Year': 'grad_year',
         'Graduated': 'graduated'
     })
+
     drop_year_map = {
         '1st': 1,
         '2nd': 2,
@@ -67,6 +69,9 @@ if __name__ == "__main__":
     
     STUDENT['graduated'] = STUDENT['grad_year'].notna()
     STUDENT['random_id'] = STUDENT['random_id'].astype(str)
+    
+    # Initialize mmicalc as None since it's not in the input data
+    STUDENT['mmicalc'] = None
 
     print("Sample of processed data:")
     print(STUDENT.head())
@@ -81,14 +86,15 @@ if __name__ == "__main__":
 
     students = [Student(**{
         **data,
-        'net_id': None
+        'net_id': None,
+        'studentid': None,     # Added to match model
+        'logininfoid': None,   # Added to match model
+        'lastname': None,      # Added to match model
+        'firstname': None      # Added to match model
     }) for data in student_data]
 
     students[649].net_id = 'domminicm'
     print(f"Verifying student 649: {students[649].net_id}")
-    #students[650].net_id = 'rinod'
-    #students[651].net_id = 'nolanv'
-    #students[652].net_id = 'jherweg'
 
     print("Before inserting students:")
     for s in students[:5]:
@@ -114,7 +120,6 @@ if __name__ == "__main__":
             db.commit()
             print(f"Successfully inserted {len(students)} students")
             
-            # Add this debug statement
             test_student = db.query(Student).filter(Student.net_id == 'domminicm').first()
             print(f"Verification - Student with net_id 'domminicm': {test_student}")
             if test_student:
