@@ -23,7 +23,7 @@ if __name__ == "__main__":
         'Random Number ID', 'Cum.T.Gpa', 'Cum.Bcpm.Gpa', 
         'Drop.year', 'Grad.Year', 'Graduated'
     ]].rename(columns={
-        'Random Number ID': 'student_id',
+        'Random Number ID': 'random_id',
         'Cum.T.Gpa': 'cum_total_gpa',
         'Cum.Bcpm.Gpa': 'cum_bcpm_gpa',
         'Drop.year': 'drop_year',
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     )
     
     STUDENT['graduated'] = STUDENT['grad_year'].notna()
-    STUDENT['student_id'] = STUDENT['student_id'].astype(str)
+    STUDENT['random_id'] = STUDENT['random_id'].astype(str)
 
     print("Sample of processed data:")
     print(STUDENT.head())
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     print("Drop year unique values:", sorted([x for x in STUDENT['drop_year'].unique() if x is not None]))
     print("Grad year unique values:", sorted([x for x in STUDENT['grad_year'].unique() if x is not None]))
     print("\nSample of dropped students:")
-    print(STUDENT[STUDENT['drop_year'].notna()][['student_id', 'drop_year', 'grad_year', 'graduated']].head())
+    print(STUDENT[STUDENT['drop_year'].notna()][['random_id', 'drop_year', 'grad_year', 'graduated']].head())
     
     print("\nConverting data to SQLAlchemy models...")
     student_data = STUDENT.replace({np.nan: None}).to_dict(orient='records')
@@ -92,14 +92,14 @@ if __name__ == "__main__":
 
     print("Before inserting students:")
     for s in students[:5]:
-        print(f"student_id: {s.student_id}, net_id: {s.net_id}")
+        print(f"random_id: {s.random_id}, net_id: {s.net_id}")
 
-    target_student = next((s for s in students if s.student_id == "691"), None)
+    target_student = next((s for s in students if s.random_id == "691"), None)
     if target_student:
         target_student.net_id = 'domminicm'
-        print(f"Set net_id for student with student_id 691: {target_student.net_id}")
+        print(f"Set net_id for student with random_id 691: {target_student.net_id}")
     else:
-        print("Could not find student with student_id 691")
+        print("Could not find student with random_id 691")
 
     def bulk_insert_students(students, reset=True):
         db = next(get_db())
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             test_student = db.query(Student).filter(Student.net_id == 'domminicm').first()
             print(f"Verification - Student with net_id 'domminicm': {test_student}")
             if test_student:
-                print(f"Details: {test_student.student_id}, {test_student.net_id}")
+                print(f"Details: {test_student.random_id}, {test_student.net_id}")
         except Exception as e:
             db.rollback()
             print(f"Error during bulk insert: {str(e)}")

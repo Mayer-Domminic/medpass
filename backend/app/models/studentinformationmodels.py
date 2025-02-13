@@ -30,6 +30,8 @@ class Student(Base):
     __tablename__ = 'student'
 
     studentid = Column('studentid', Integer, primary_key=True)
+    random_id = Column(String, primary_key=True)
+    net_id = Column(String, ForeignKey("users.net_id"), unique=True)
     logininfoid = Column('logininfoid', Integer, ForeignKey('logininfo.logininfoid'))
     lastname = Column('lastname', String(40))
     firstname = Column('firstname', String(40))
