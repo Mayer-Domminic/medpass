@@ -1,16 +1,9 @@
 'use client';
 
-import AnatomyViewer from "@/components/nolan-comp/AnatomyViewer";
-import SearchBar from "@/components/nolan-comp/SearchBar";
-import Select from "@/components/nolan-comp/Select";
-import ExampleProgress from "@/components/ProgressCircle";
-import ProgressArc from "@/components/nolan-comp/ProgressComponents/ProgressArc";
-import ProgressExamples from "@/components/nolan-comp/ProgressComponents/ProgressExamples";
-import TopicExample from "@/components/nolan-comp/Topic";
-import Sidebar from "@/components/navbar";
-
-export const dynamic = 'force-dynamic';
+import SystemsViewer from "@/components/SystemsViewer";
+import Dashboard from "@/components/Dashboard";
+import { Sidebar } from "lucide-react";
 
 export default function DevPage() {
-  return <Sidebar />;
+  return <SystemsViewer />;
 }
