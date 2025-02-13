@@ -21,7 +21,7 @@ export default function DashboardPage() {
       redirect("/admin");
     }
 
-    const fetchStudentInfo = async () => {
+    /*const fetchStudentInfo = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/student/info`, {
           headers: {
@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
     if (session?.accessToken && session) {
       fetchStudentInfo();
-    }
+    }*/
   }, [session]);
 
   if (status === "loading") {
