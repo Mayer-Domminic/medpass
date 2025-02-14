@@ -11,7 +11,7 @@ class ClassRoster(BaseModel):
     
 #This class will most likely not exist in future developments
 class LoginInfo(BaseModel):
-    LoginInfoID: int
+    LoginInfoID: Optional[int] = None
     Username: str = Field(..., max_length=255)
     Password: str = Field(..., max_length=255)
     IsActive: bool

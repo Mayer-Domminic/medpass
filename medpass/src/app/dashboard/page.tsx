@@ -16,7 +16,7 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (session?.user?.is_superuser) {
+    if (session?.user?.issuperuser) {
       console.log("ADMIN")
       redirect("/admin");
     }
