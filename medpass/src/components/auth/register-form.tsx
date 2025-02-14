@@ -72,52 +72,51 @@ export function RegisterForm() {
     },
   });
 
-    const onSubmit = async (data: z.infer<typeof registerSchema>) => {
-        setIsLoading(true);
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username: data.username,
-                    email: data.email,
-                    password: data.password,
-                }),
-            });
+  const onSubmit = async (data: z.infer<typeof registerSchema>) => {
+      setIsLoading(true);
+      try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  username: data.username,
+                  email: data.email,
+                  password: data.password,
+              }),
+          });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || "Registration failed");
-            }
+          if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.detail || "Registration failed");
+          }
 
-            if (response.ok) {
-                console.log('Register success!')
-            }
+          if (response.ok) {
+              console.log('Register success!')
+          }
 
-            toast({
-                title: "Success",
-                description: "Registration successful! Please login.",
-            });
+          toast({
+              title: "Success",
+              description: "Registration successful! Please login.",
+          });
 
-            setTimeout(() => {
-                const loginTab = document.querySelector('[data-tab="login"]') as HTMLButtonElement | null;
-                loginTab?.click();
-            }, 500);
+          setTimeout(() => {
+              const loginTab = document.querySelector('[data-tab="login"]') as HTMLButtonElement | null;
+              loginTab?.click();
+          }, 500);
 
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "Registration failed",
-                variant: "destructive",
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+      } catch (error) {
+          toast({
+              title: "Error",
+              description: error instanceof Error ? error.message : "Registration failed",
+              variant: "destructive",
+          });
+      } finally {
+          setIsLoading(false);
+      }
+  };
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg shadow-lg text-white">
+    <div className="bg-gray-900/30 backdrop-blur-sm p-8 rounded-2xl border border-gray-800">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -125,11 +124,17 @@ export function RegisterForm() {
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>NetID</FormLabel>
+                <FormLabel className="text-gray-300">NetID</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter your NetID" {...field} className="bg-gray-800 text-white" />
+                  <Input 
+                    placeholder="Enter your NetID" 
+                    {...field} 
+                    className="h-12 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-500
+                             focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                             transition-all duration-300" 
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-sm" />
               </FormItem>
             )}
           />
@@ -138,11 +143,18 @@ export function RegisterForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="text-gray-300">Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="Enter your email" {...field} className="bg-gray-800 text-white" />
+                  <Input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    {...field} 
+                    className="h-12 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-500
+                             focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                             transition-all duration-300" 
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-sm" />
               </FormItem>
             )}
           />
@@ -151,16 +163,37 @@ export function RegisterForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="text-gray-300">Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="Enter your password" {...field} className="bg-gray-800 text-white" />
+                  <Input 
+                    type="password" 
+                    placeholder="Enter your password" 
+                    {...field} 
+                    className="h-12 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-500
+                             focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                             transition-all duration-300" 
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-sm" />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isLoading}>
-            {isLoading ? "Loading..." : "Register"}
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white
+                     transition-all duration-300 rounded-xl
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     focus:ring-2 focus:ring-blue-500/20"
+            disabled={isLoading}
+          >
+            {isLoading ? 
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span>Registering...</span>
+              </div> 
+              : 
+              "Register"
+            }
           </Button>
         </form>
       </Form>

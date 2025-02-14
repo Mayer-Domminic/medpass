@@ -5,6 +5,7 @@ from ..schemas import pydanticexamquestion as pydanticexam
 from ..models import studentinformationmodels as studentmodel
 from ..models import examquestionmodels as exammodel
 from ..core.database import get_db
+from ..core.security import get_password_hash
 import os
 
 
@@ -274,11 +275,13 @@ if __name__ == "__main__":
         db.close()  
     
     #Admin & User Testing Ingest
+    hashed_password = get_password_hash('Medpass#1')
+    
     login_data = {
     'username': ['mpadmin', 'mpuser'],
     'password': [
-        '$2b$12$9ols3h0DMeS/oXGlcxvr5O9B9jmvFe7qszfbD6RXoCpSkBpr.wwaq',
-        '$2b$12$9ols3h0DMeS/oXGlcxvr5O9B9jmvFe7qszfbD6RXoCpSkBpr.wwaq'
+        hashed_password,
+        hashed_password
     ],
     'isactive': [True, True],
     'issuperuser': [True, False],
