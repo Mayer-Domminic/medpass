@@ -3,8 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Microscope, 
+import {  
   Home,
   LineChart,
   User,
@@ -42,9 +41,7 @@ const Sidebar = () => {
     <div className="fixed inset-y-0 left-0 w-[72px] bg-gray-900 border-r border-gray-800 flex flex-col">
       {/* Logo */}
       <div className="h-[72px] flex items-center justify-center border-b border-gray-800">
-        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-          <Microscope className="w-6 h-6 text-blue-500" />
-        </div>
+        <img src="/medpass_white.png" alt="Logo" className="w-12 h-12" />
       </div>
 
       {/* Main Navigation */}

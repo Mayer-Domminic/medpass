@@ -18,6 +18,12 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Medpass",
   description: "UNR Medical School Dashboard",
+  icons: {
+    icon: [
+      { url: '/medpass_black.png', media: '(prefers-color-scheme: light)' },
+      { url: '/medpass_white.png', media: '(prefers-color-scheme: dark)' },
+    ],
+  },
 };
 
 export default function RootLayout({
