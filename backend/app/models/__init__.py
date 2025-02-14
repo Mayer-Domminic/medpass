@@ -1,11 +1,3 @@
+from sqlalchemy.ext.declarative import declarative_base
 
-from .studentinformationmodels import (
-    Student,
-    LoginInfo,
-    ClassRoster,
-    Extracurricular,
-    Clerkship,
-    ExamResults,
-    StudentQuestionPerformance,
-    GraduationStatus
-)
+Base = declarative_base()

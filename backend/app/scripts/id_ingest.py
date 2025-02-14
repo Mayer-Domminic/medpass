@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
-from ..models import pydanticstudentinformation as pydantic
-from ..models import pydanticexamquestion as pydanticexam
+from ..schemas import pydanticstudentinformation as pydantic
+from ..schemas import pydanticexamquestion as pydanticexam
 from ..models import studentinformationmodels as studentmodel
 from ..models import examquestionmodels as exammodel
-from ..core.database import create_table, drop_table, get_db
+from ..core.database import get_db
 import os
 
 

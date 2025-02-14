@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+'''from datetime import datetime, timedelta
 from typing import Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -6,7 +6,7 @@ from fastapi import HTTPException, Security, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from ..schemas.user import TokenData, UserInDB
-from ..models.user import User
+#from ..models.user import User
 from ..core.database import get_db
 from .config import settings
 
@@ -72,3 +72,4 @@ async def get_current_superuser(
             detail="Not enough privileges"
         )
     return current_user
+'''''''''

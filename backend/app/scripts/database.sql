@@ -65,6 +65,10 @@ CREATE TABLE LoginInfo (
     (START WITH 1 INCREMENT BY 10) PRIMARY KEY,
     Username VARCHAR(255) NOT NULL,
     Password VARCHAR(255) NOT NULL,
+    IsActive BOOLEAN,
+    IsSuperUser BOOLEAN,
+    CreatedAt DATE,
+    UpdatedAt DATE,
     Email VARCHAR(255)
 );
 

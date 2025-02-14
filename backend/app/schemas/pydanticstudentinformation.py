@@ -14,6 +14,10 @@ class LoginInfo(BaseModel):
     LoginInfoID: int
     Username: str = Field(..., max_length=255)
     Password: str = Field(..., max_length=255)
+    IsActive: bool
+    IsSuperUser: bool
+    CreatedAt: Optional[date] = None
+    UpdatedAt: Optional[date] = None
     Email: Optional[EmailStr] = None
     
     model_config = ConfigDict(from_attributes=True)

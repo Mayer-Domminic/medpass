@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Identity, Date, Float
 from sqlalchemy.orm import relationship
-from ..core.database import Base
+from . import Base
 from .classfacultymodels import Faculty
 from .examquestionmodels import Exam
 
@@ -12,15 +12,17 @@ class ClassRoster(Base):
     currentenrollment = Column('currentenrollment', Integer)
     
     graduation = relationship('GraduationStatus', back_populates='roster')
-    
-#Will Most likely be scraping this part of the SQLDatabase as storage of senstiive information 
-#Should not be stored on our database
+
 class LoginInfo(Base):
     __tablename__ = 'logininfo'
 
-    loginInfoID = Column('logininfoid', Integer, Identity(start=1, increment=10), primary_key=True)
+    logininfoid = Column('logininfoid', Integer, Identity(start=1, increment=10), primary_key=True)
     username = Column('username', String(255), nullable=False)
     password = Column('password', String(255), nullable=False)
+    isactive = Column('isactive', Boolean)
+    issuperuser = Column('issuperuser', Boolean)
+    createdat = Column('createdat', Date)
+    updatedat = Column('updatedat', Date)
     email = Column('email', String(255))
     
     student = relationship('Student', back_populates='loginInfo') 
@@ -30,8 +32,6 @@ class Student(Base):
     __tablename__ = 'student'
 
     studentid = Column('studentid', Integer, primary_key=True)
-    random_id = Column(String, primary_key=True)
-    net_id = Column(String, ForeignKey("users.net_id"), unique=True)
     logininfoid = Column('logininfoid', Integer, ForeignKey('logininfo.logininfoid'))
     lastname = Column('lastname', String(40))
     firstname = Column('firstname', String(40))
@@ -48,16 +48,15 @@ class Student(Base):
     #Found in classfacultymodels
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
-    user = relationship("User", back_populates="student")
     
     
 class Extracurricular(Base):
     __tablename__ = 'extracurriculars'
 
-    extracurricularID = Column('extracurricularid', Integer, Identity(start=1, increment=1), primary_key=True)
-    studentID = Column('studentid', Integer, ForeignKey('student.studentid'))
-    activityName = Column('activityname', String(255))
-    activityDescription = Column('activitydescription', String(255))
+    extracurricularid = Column('extracurricularid', Integer, Identity(start=1, increment=1), primary_key=True)
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
+    activityname = Column('activityname', String(255))
+    activitydescription = Column('activitydescription', String(255))
     weeklyHourCommitment = Column('weeklyhourcommitment', Integer)
     
     student = relationship('Student', back_populates='extracurriculars')
@@ -65,12 +64,12 @@ class Extracurricular(Base):
 class Clerkship(Base):
     __tablename__ = 'clerkship'
 
-    clerkshipID = Column('clerkshipid', Integer, Identity(start=1, increment=1), primary_key=True)
-    studentID = Column('studentid', Integer, ForeignKey('student.studentid'))
-    clerkshipName = Column('clerkshipname', String(255), nullable=False)
-    clerkshipDescription = Column('clerkshipdescription', String(255))
-    startDate = Column('startdate', Date)
-    endDate = Column('enddate', Date)
+    clerkshipid = Column('clerkshipid', Integer, Identity(start=1, increment=1), primary_key=True)
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
+    clerkshipname = Column('clerkshipname', String(255), nullable=False)
+    clerkshipdescription = Column('clerkshipdescription', String(255))
+    startdate = Column('startdate', Date)
+    enddate = Column('enddate', Date)
     company = Column('company', String(255))
     
     student = relationship('Student', back_populates='clerkships')
@@ -79,7 +78,7 @@ class Clerkship(Base):
 class ExamResults(Base):
     __tablename__ = 'examresults'
 
-    examResultsid = Column('examresultsid', Integer, Identity(start=1, increment=1), primary_key=True)
+    examresultsid = Column('examresultsid', Integer, Identity(start=1, increment=1), primary_key=True)
     studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
     examid = Column('examid', Integer, ForeignKey('exam.examid'))
     clerkshipid = Column('clerkshipid', Integer, ForeignKey('clerkship.clerkshipid'))
@@ -94,9 +93,9 @@ class ExamResults(Base):
 class StudentQuestionPerformance(Base):
     __tablename__ = 'studentquestionperformance'
 
-    performanceID = Column('studentquestionperformanceid', Integer, Identity(start=1, increment=1), primary_key=True)
-    examResultsID = Column('examresultsid', Integer, ForeignKey('examresults.examresultsid'))
-    questionID = Column('questionid', Integer, ForeignKey('question.questionid'))
+    studentquestionperformanceid = Column('studentquestionperformanceid', Integer, Identity(start=1, increment=1), primary_key=True)
+    examresultid = Column('examresultsid', Integer, ForeignKey('examresults.examresultsid'))
+    questionid = Column('questionid', Integer, ForeignKey('question.questionid'))
     result = Column('result', Boolean, nullable=False)
     
     examResults = relationship('ExamResults', back_populates='questionPerformance')
@@ -116,7 +115,3 @@ class GraduationStatus(Base):
     student = relationship('Student', back_populates='graduationStatus')
     roster = relationship('ClassRoster', back_populates='graduation')
     
-    
-    
-
-
