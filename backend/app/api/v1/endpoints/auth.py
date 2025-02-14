@@ -11,7 +11,7 @@ from ....core.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from ....schemas.user import UserLogin, Token, UserCreate, UserResponse
-from ....models.user import User
+from ....models.studentinformationmodels import LoginInfo as User
 from datetime import timedelta
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def login(
     db: Session = Depends(get_db)
 ):
     try:
-        user = db.query(User).filter(User.net_id == form_data.username).first()
+        user = db.query(User).filter(User.username == form_data.username).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -30,14 +30,14 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        if not user.is_active:
+        if not user.isactive:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User account is inactive",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        if not verify_password(form_data.password, user.hashed_password):
+        if not verify_password(form_data.password, user.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect netID or password",
@@ -45,12 +45,12 @@ async def login(
             )
         
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(data={"sub": user.net_id}, expires_delta=access_token_expires)
-
+        access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+        
         return {
             "access_token": access_token, 
             "token_type": "bearer",
-            "is_superuser": bool(user.is_superuser),
+            "issuperuser": bool(user.issuperuser),
         }
     
     except Exception as e:
@@ -62,19 +62,18 @@ async def login(
 
 @router.post("/register", response_model=UserResponse)
 async def register(user_in: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.net_id == user_in.net_id).first():
+    if db.query(User).filter(User.username == user_in.username).first():
         raise HTTPException(
             status_code=400,
             detail="User with this netID already exists"
         )
     # TODO handle registers
     user = User(
-        net_id=user_in.net_id,
+        username=user_in.username,
         email=user_in.email,
-        full_name=user_in.full_name,
-        hashed_password=get_password_hash(user_in.password),
-        is_active=True,
-        is_superuser=False
+        password=get_password_hash(user_in.password),
+        isactive=True,
+        issuperuser=False
     )
     db.add(user)
     db.commit()
@@ -89,7 +88,7 @@ async def get_user_details(
     """
     Get details for the currently authenticated user.
     """
-    user = db.query(User).filter(User.net_id == current_user.net_id).first()
+    user = db.query(User).filter(User.username == current_user.username).first()
     if not user:
         raise HTTPException(
             status_code=404,

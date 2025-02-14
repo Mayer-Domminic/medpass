@@ -7,23 +7,22 @@ export const dynamic = 'force-dynamic';
 
 interface User {
   id: string;
-  netId: string;
-  name?: string | null;
+  username: string;
   email?: string | null;
   accessToken?: string;
-  is_superuser: boolean;
+  issuperuser: boolean;
 }
 
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
-        name: "NetID",
+        name: "Username",
         credentials: {
-        netId: { label: "NetID", type: "text" },
+        username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" }
     },
     async authorize(credentials): Promise<User | null> { // TODO FIX ERRORs
-        if (!credentials?.netId || !credentials?.password) {
+        if (!credentials?.username || !credentials?.password) {
             return null;
         }
     
@@ -31,8 +30,10 @@ const handler = NextAuth({
             console.log("Sending credentials:", credentials);
     
             const formData = new URLSearchParams();
-            formData.append("username", credentials.netId);
+            formData.append("username", credentials.username);
             formData.append("password", credentials.password);
+
+            console.log(formData)
     
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
                 method: "POST",
@@ -46,10 +47,10 @@ const handler = NextAuth({
     
             if (response.ok && data.access_token) {
               return {
-                  id: credentials.netId,
-                  netId: credentials.netId,
+                  id: credentials.username,
+                  username: credentials.username,
                   accessToken: data.access_token,
-                  is_superuser: data.is_superuser,
+                  issuperuser: data.issuperuser,
               };
             }
     
@@ -63,9 +64,9 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.netId = user.netId;
+        token.username = user.username;
         token.accessToken = user.accessToken;
-        token.is_superuser = user.is_superuser;
+        token.issuperuser = user.issuperuser;
       }
       return token;
     },
@@ -74,8 +75,8 @@ const handler = NextAuth({
         ...session,
         user: {
           ...session.user,
-          netId: token.netId,
-          is_superuser: token.is_superuser,
+          username: token.username,
+          issuperuser: token.issuperuser,
         },
         accessToken: token.accessToken,
       };

@@ -1,13 +1,18 @@
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import inspect
 from .config import settings
+from ..models import Base
+from ..models.classfacultymodels import Class, Faculty, ClassOffering
+from ..models.studentinformationmodels import Student
+from ..models.examquestionmodels import Exam, Question
 import os
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
+# get a database session
 def get_db():
     db = SessionLocal()
     try:
@@ -16,53 +21,24 @@ def get_db():
         yield db
     finally:
         db.close()
-        
-#Run create tables
-def create_table():
-    
-    filePath = os.path.join(
-        "app", "scripts", "database.sql"
-    )
-    try:
-        with open(filePath, 'r') as file:
-            sqlCreate = file.read()
-            db = next(get_db())
-            db.execute(text(sqlCreate))
-            db.commit()
-            
-        print(f"Create Tables using {filePath}")
-        
-    except FileNotFoundError:
-        print(f"File not found at {filePath}")
-        raise
-    except Exception as e:
-        print(f"An error occured: {e}")
-        raise
-    finally:
-        db.close()
-        
-#Drop Tables
-def drop_table():
-    
-    filePath = os.path.join(
-        "app", "scripts", "drop.sql"
-    )
-    try:
-        with open(filePath, 'r') as file:
-            sqlCreate = file.read()
-            db = next(get_db())
-            db.execute(text(sqlCreate))
-            db.commit()
-            
-        print(f"Dropped Tables Using: {filePath}")
-        
-    except FileNotFoundError:
-        print(f"File not found at {filePath}")
-        raise
-    except Exception as e:
-        print(f"An error occured: {e}")
-        raise
-    finally:
-        db.close()
-        
-        
+
+# drop all tables
+def drop_all_tables():
+    Base.metadata.drop_all(bind=engine)
+    print("All tables dropped.")
+
+# create all tables
+def create_all_tables():
+    Base.metadata.create_all(bind=engine)
+    print("All tables created.")
+
+# (drop and recreate tables)
+def reset_database():
+    drop_all_tables()
+    create_all_tables()
+    print("Database reset complete.")
+
+def list_tables():
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    print("Existing tables:", tables)

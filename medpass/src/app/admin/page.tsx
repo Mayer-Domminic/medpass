@@ -19,7 +19,7 @@ export default function AdminPage() {
   }
 
   // Non-superuser view
-  if (session?.user && !session.user.is_superuser) {
+  if (session?.user && !session.user.issuperuser) {
     return (
       <div className="p-8 max-w-2xl mx-auto">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -45,7 +45,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
         <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
           <p className="text-green-800">
-            Logged in as administrator: {session?.user?.netId}
+            Logged in as administrator: {session?.user?.username}
           </p>
         </div>
         <pre>{JSON.stringify(session, null, 2)}</pre>

@@ -16,8 +16,8 @@ pm2 monit
 
 ### Database Initialization
 ```bash
-python -m app.scripts.init_db
-python -m app.scripts.student_ingest
+python -m app.scripts.reset_db
+python -m app.scripts.id_ingest
 ```
 
 ### PostgreSQL Setup

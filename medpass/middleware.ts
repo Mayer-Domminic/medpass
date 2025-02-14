@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
 
     // Fetch user details to check if the user is a superuser
     const user = await fetchUserDetails(session.value);
-    if (!user || !user.is_superuser) {
+    if (!user || !user.issuperuser) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

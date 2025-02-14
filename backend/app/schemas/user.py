@@ -3,23 +3,22 @@ from typing import Optional, Annotated
 from datetime import datetime
 
 class UserLogin(BaseModel):
-    net_id: str
+    username: str
     password: str
 
 class Token(BaseModel):
     access_token: str
     token_type: str
-    is_superuser: bool
+    issuperuser: bool
 
 class TokenData(BaseModel):
-    net_id: Optional[str] = None
+    username: Optional[str] = None
 
 class UserBase(BaseModel):
-    net_id: str
+    username: str
     email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    is_active: bool = True
-    is_superuser: bool = False
+    isactive: bool = True
+    issuperuser: bool = False
 
 class UserCreate(UserBase):
     password: Annotated[str, StringConstraints(min_length=8)]

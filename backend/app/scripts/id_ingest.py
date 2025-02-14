@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
-from ..models import pydanticstudentinformation as pydantic
-from ..models import pydanticexamquestion as pydanticexam
+from ..schemas import pydanticstudentinformation as pydantic
+from ..schemas import pydanticexamquestion as pydanticexam
 from ..models import studentinformationmodels as studentmodel
 from ..models import examquestionmodels as exammodel
-from ..core.database import create_table, drop_table, get_db
+from ..core.database import get_db
 import os
 
 
@@ -264,6 +264,48 @@ if __name__ == "__main__":
             db.add(db_student_exam_data)
         db.commit()
         print('Student Exam Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    
+    finally:
+        db.close()  
+    
+    #Admin & User Testing Ingest
+    login_data = {
+    'username': ['mpadmin', 'mpuser'],
+    'password': [
+        '$2b$12$9ols3h0DMeS/oXGlcxvr5O9B9jmvFe7qszfbD6RXoCpSkBpr.wwaq',
+        '$2b$12$9ols3h0DMeS/oXGlcxvr5O9B9jmvFe7qszfbD6RXoCpSkBpr.wwaq'
+    ],
+    'isactive': [True, True],
+    'issuperuser': [True, False],
+    'email': ['amongus@gmail.com', 'amongus@gmail.com']
+    }   
+    
+    df_login_data = pd.DataFrame(login_data)
+    try:
+        db = next(get_db())
+        for _, row in df_login_data.iterrows():
+            logininfo_data = pydantic.LoginInfo(
+                Username = row['username'],
+                Password = row['password'],
+                IsActive = row['isactive'],
+                IsSuperUser = row['issuperuser'],
+                Email = row['email']
+            ) 
+            db_logininfo_data = studentmodel.LoginInfo(
+                 username = logininfo_data.Username,
+                 password = logininfo_data.Password,
+                 isactive = logininfo_data.IsActive,
+                 issuperuser = logininfo_data.IsSuperUser,
+                 email = logininfo_data.Email
+            )
+            db.add(db_logininfo_data)
+        db.commit()
+        print('Mock Login Info Data Loaded in Database')
         
     except Exception as e:
         print(f"Error when adding data {e}")

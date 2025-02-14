@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
-  netId: z.string().min(3, "NetID must be at least 3 characters"),
+  username: z.string().min(3, "NetID must be at least 3 characters"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -31,7 +31,7 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      netId: "",
+      username: "",
       password: "",
     },
   });
@@ -40,7 +40,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const result = await signIn("credentials", {
-        netId: data.netId,
+        username: data.username,
         password: data.password,
         redirect: false,
       });
@@ -72,10 +72,10 @@ export function LoginForm() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="netId"
+            name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-gray-300">NetID</FormLabel>
+                <FormLabel className="text-gray-300">Username</FormLabel>
                 <FormControl>
                 <Input 
                     placeholder="Enter your NetID" 
