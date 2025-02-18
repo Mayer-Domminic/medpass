@@ -21,8 +21,8 @@ class Faculty(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class ClassOffering(BaseModel):
-    ClassOfferingID: int
-    FacultyID: Optional[int]
+    ClassOfferingID: int 
+    FacultyID: Optional[int] = None
     ClassID: Optional[int]
     DateTaught: Optional[date]
     Semester: Optional[str] = Field(None, max_length =40)
