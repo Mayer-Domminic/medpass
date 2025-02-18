@@ -96,7 +96,91 @@ if __name__ == "__main__":
             except (ValueError, TypeError) as e:
                 print(f"Can not process score for studentID: {row.iloc[0]} in subject {topic_name}: {e}")
                 continue
-            
+    #print(topics_data)
+    #print(student_scores)
+    #Ingesting GradeOffering with a Block Number temp hard coded
+    
+    try:
+        db = next(get_db())
+        block_num = 1
+        class_id = db.query(classmodel.Class.classid).filter(classmodel.Class.block == block_num).first()
+            #Temp Will Regex Date 
+        offering_data = pydanticclass.ClassOffering(
+            ClassID = int(class_id[0]),
+            DateTaught = 2024
+        ) 
+        db_offering_data = classmodel.ClassOffering(
+            classid = offering_data.ClassID,
+            datetaught = offering_data.DateTaught
+        )
+        db.add(db_offering_data)
+        db.commit()
+        print('Base Class Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()  
+        
+    #Temp Ingestion of Grade Classification
+    try:
+        db = next(get_db())
+        #Class offering is temp hard coded
+        for subject in topics_data:
+            classification_data = pydanticclass.GradeClassification(
+                ClassOfferingID = 1,
+                ClassificationName = subject['name'],
+                UnitType = 'Assessment'
+            ) 
+            db_classification_data = classmodel.GradeClassification(
+                classofferingid = classification_data.ClassOfferingID,
+                classificationname = classification_data.ClassificationName,
+                unittype = classification_data.UnitType
+            )
+            db.add(db_classification_data)
+        db.commit()
+        print('Grade Classification Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()  
+        
+    #Ingesting All Student Grades
+    try:
+        db = next(get_db())
+        for subject in topics_data:
+            classificationid = db.query(classmodel.GradeClassification.gradeclassificationid).filter(classmodel.GradeClassification.classificationname == subject['name']).first()
+            for row in student_scores:
+                #temp just hard coded grade classification id
+                student_data = pydanticclass.StudentGrade(
+                    StudentID = row['student id'],
+                    GradeClassificationID = int(classificationid[0]),
+                    PointsEarned = row['points achieved'],
+                    PointsAvailable = row['points available']
+                ) 
+                db_student_data = classmodel.StudentGrade(
+                    studentid = student_data.StudentID,
+                    gradeclassificationid = student_data.GradeClassificationID, 
+                    pointsearned = student_data.PointsEarned,
+                    pointsavailable = student_data.PointsAvailable
+                )
+                db.add(db_student_data)
+        db.commit()
+        print('Student Block Data Loaded in Database')
+        
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    
+    finally:
+        db.close()  
+
             
     #print(topics_data)
     #print(student_scores)

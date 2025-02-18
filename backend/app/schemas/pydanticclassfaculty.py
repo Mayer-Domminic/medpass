@@ -21,16 +21,16 @@ class Faculty(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class ClassOffering(BaseModel):
-    ClassOfferingID: int 
+    ClassOfferingID: Optional[int] = None
     FacultyID: Optional[int] = None
     ClassID: Optional[int]
-    DateTaught: Optional[date]
+    DateTaught: Optional[int] = None
     Semester: Optional[str] = Field(None, max_length =40)
     
     model_config = ConfigDict(from_attributes=True)
     
 class GradeClassification(BaseModel):
-    GradeClassificationID: int
+    GradeClassificationID: Optional[int] = None
     ClassOfferingID: Optional[int]
     ClassificationName: str = Field(..., max_length=255)
     UnitType: str = Field(...,max_length=50)
@@ -49,11 +49,11 @@ class EnrollmentRecord(BaseModel):
     
     
 class StudentGrade(BaseModel):
-    StudentGradeID: int
+    StudentGradeID: Optional[int] = None
     StudentID: Optional[int]
     GradeClassificationID: Optional[int]
     PointsEarned: Optional[float]
     PointsAvailable: Optional[float]
-    DateRecorded: Optional[date]
+    DateRecorded: Optional[date] = None
     
     model_config = ConfigDict(from_attributes=True)

@@ -27,10 +27,10 @@ class Faculty(Base):
 class ClassOffering(Base):
     __tablename__ = 'classoffering'
 
-    classofferingid = Column('classofferingid', Integer, primary_key=True)
+    classofferingid = Column('classofferingid', Integer, Identity(start=1, increment=1), primary_key=True)
     facultyid = Column('facultyid', Integer, ForeignKey('faculty.facultyid'))
     classid = Column('classid', Integer, ForeignKey('class.ClassID'))
-    datetaught = Column('datetaught', Date)
+    datetaught = Column('datetaught', Integer)
     semester = Column('semester', String(40))
     
     faculty = relationship('Faculty', back_populates='offering')
@@ -42,10 +42,10 @@ class ClassOffering(Base):
 class GradeClassification(Base):
     __tablename__ = 'gradeclassification'
 
-    gradeclassificationid = Column('gradeclassificationid', Integer, primary_key=True)
-    classfferingid = Column('classOfferingid', Integer, ForeignKey('classoffering.classofferingid'))
-    classificationmame = Column('classificationname', String(255), nullable=False)
-    unitType = Column('unittype', String(50), nullable=False)
+    gradeclassificationid = Column('gradeclassificationid', Integer, Identity(start=1, increment=1), primary_key=True)
+    classofferingid = Column('classofferingid', Integer, ForeignKey('classoffering.classofferingid'))
+    classificationname = Column('classificationname', String(255), nullable=False)
+    unittype = Column('unittype', String(50), nullable=False)
     
     offering = relationship('ClassOffering', back_populates='gradeClassification')
     studentGrades = relationship('StudentGrade', back_populates='gradeClassification')
