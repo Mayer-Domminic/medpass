@@ -7,6 +7,13 @@ MEDPASS is a predictive analytics platform designed to assess and enhance studen
 - **API:** [api.medpass.unr.dev](https://api.medpass.unr.dev)
 - **Web:** [medpass.unr.dev](https://medpass.unr.dev)
 
+
+python3 -m venv venv
+. venv/bin/activate
+
+
+
+
 ## Server Operations (SSH@MP)
 ```bash
 ./startmedpass.sh
