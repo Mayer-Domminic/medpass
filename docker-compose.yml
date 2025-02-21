@@ -9,11 +9,11 @@ services:
       - ./backend:/app
       - backend_venv:/app/venv
     environment:
-      - POSTGRES_SERVER=${POSTGRES_SERVER-localhost}
-      - POSTGRES_USER=${POSTGRES_USER-medpassadmin}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD-MPAdmin2025UNR}
-      - POSTGRES_DB=${POSTGRES_DB-medpass}
-      - SECRET_KEY=${SECRET_KEY-SUPERMOAGUSSUPERKEYMOGUS}
+      - POSTGRES_SERVER=${POSTGRES_SERVER}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
 
   frontend:
     build:
@@ -26,9 +26,9 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      - NEXTAUTH_URL=${NEXTAUTH_URL-http://localhost:3000}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL-http://localhost:8000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET-SUPERMOAGUSSUPERKEYMOGUS}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 
 volumes:
   backend_venv:
