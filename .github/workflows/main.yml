@@ -19,15 +19,15 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Install Docker Compose
+    - name: Set up frontend without Docker Compose
       run: |
-        sudo curl -L https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
+        cd medpass
 
-    - name: Set up Docker Compose
-      run: |
-        docker-compose -f docker-compose.prod.yml build
-        docker-compose -f docker-compose.prod.yml up -d
+        npm install -g pnpm
+
+        pnpm install
+        
+        pnpm run build
       env:
         POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
