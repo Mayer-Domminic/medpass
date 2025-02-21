@@ -1,13 +1,8 @@
 import pandas as pd
-import numpy as np
 import re
 from sqlalchemy.exc import IntegrityError
-from ..schemas import pydanticstudentinformation as pydantic
-from ..schemas import pydanticexamquestion as pydanticexam
 from ..schemas import pydanticclassfaculty as pydanticclass
-from ..models import studentinformationmodels as studentmodel
 from ..models import classfacultymodels as classmodel
-from ..models import examquestionmodels as exammodel
 from ..core.database import get_db
 import os
 
@@ -122,7 +117,7 @@ def insert_class_offering(db, block_num, year):
         )
         db.add(db_offering_data)
         db.commit()
-        print(f'Class Offering Data for ClassID: {class_id} for Year: {year} Loaded in Database')
+        print(f'Class Offering Data for ClassID: {int(class_id[0])} for Year: {year} Loaded in Database')
     except IntegrityError:
         print(f"Class Offering with ClassID: {class_id} already exists in the database!")
         db.rollback ()
@@ -167,7 +162,7 @@ def insert_student_grades(db, student_scores, classification_ids, block):
     for row in student_scores:
         try:
             classification_id = classification_ids.get(row['subject name'])
-                    #temp just hard coded grade classification id
+                    
             student_data = pydanticclass.StudentGrade(
                 StudentID = row['student id'],
                 GradeClassificationID = classification_id,
