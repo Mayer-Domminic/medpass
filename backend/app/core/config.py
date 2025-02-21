@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
+from pathlib import Path
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MEDPASS"
@@ -16,9 +18,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ENVIRONMENT: str = "production"
+    NEXTAUTH_URL: str
+    NEXT_PUBLIC_API_URL: str
+    NEXTAUTH_SECRET: str
 
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
 
     @property
     def sync_database_url(self) -> str:
