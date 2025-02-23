@@ -76,7 +76,8 @@ if __name__ == "__main__":
     base_exam_data = {
         'Exam Name': ['MCAT', 'CBSE', 'Step 1', 'Step 2'],
         'Exam Description': ['Medical School Admission Exam', 'Step 1 Readiness Exam', 
-                             'Major Medical Exam for Pre-Pratical', 'Major Medical Exam Post-Pratical']
+                             'Major Medical Exam for Pre-Pratical', 'Major Medical Exam Post-Pratical'],
+        'Pass Score': [510, 70, 196, 214]
     }
     
     df_exam_data = pd.DataFrame(base_exam_data)
@@ -185,11 +186,13 @@ if __name__ == "__main__":
         for _, row in df_exam_data.iterrows():
             exam_data = pydanticexam.Exam(
                 ExamName = row['Exam Name'],
-                ExamDescription = row['Exam Description']
+                ExamDescription = row['Exam Description'],
+                PassScore = row['Pass Score']
             ) 
             db_exam_data = exammodel.Exam(
                 examname = exam_data.ExamName,
-                examdescription = exam_data.ExamDescription
+                examdescription = exam_data.ExamDescription,
+                passscore = exam_data.PassScore
             )
             db.add(db_exam_data)
         db.commit()
@@ -213,38 +216,60 @@ if __name__ == "__main__":
         'USMLE_STEP2score': 4
     }
     
+    exam_name_mapping = {
+        'MCATcalc': 'MCAT',
+        'CBSE1 score': 'CBSE',
+        'CBSE2 score': 'CBSE',
+        'USMLE_Step1score': 'Step 1',
+        'USMLE_STEP2score': 'Step 2'
+    }
+    
     exam_columns = ['MCATcalc', ('CBSE1 score', 'CBSE2 score'), 'USMLE_Step1score', 'USMLE_STEP2score']
     processed_student_exam = []
+    exam_dict = dict(zip(base_exam_data['Exam Name'], base_exam_data['Pass Score']))
+    
+    def pass_calculate(score, passScore):
+                if score >= passScore:
+                    return True
+                elif score < passScore:
+                    return False
+                else:
+                    return None
+                
     
     for _, row in df_student_exam.iterrows():
         for exam_col in ['MCATcalc', 'USMLE_Step1score', 'USMLE_STEP2score']:
+            passScore = exam_dict.get(exam_name_mapping.get(exam_col), None)
+            
             if pd.notna(row[exam_col]):
                 data = {
                     'studentID': int(row['Random Number ID']),
                     'examID': exam_id_dict[exam_col],
                     'clerkshipID': None,
                     'score': int(row[exam_col]),
-                    'passOrFail': None
+                    'passOrFail': pass_calculate(int(row[exam_col]), passScore)
                 }
             processed_student_exam.append(data)
         
         if pd.notna(row['CBSE1 score']):
+            passScore = exam_dict.get(exam_name_mapping.get('CBSE1 score'), None)
             data = {
                 'studentID': int(row['Random Number ID']),
                 'examID': exam_id_dict['CBSE1 score'],
                 'clerkshipID': None,
                 'score': int(row['CBSE1 score']),
-                'passOrFail': None
+                'passOrFail': pass_calculate(int(row['CBSE1 score']), passScore)
             }
         processed_student_exam.append(data)
         
         if pd.notna(row['CBSE2 score']):
+            passScore = exam_dict.get(exam_name_mapping.get('CBSE2 score'), None)
             data = {
                 'studentID': int(row['Random Number ID']),
                 'examID': exam_id_dict['CBSE2 score'],
                 'clerkshipID': None,
                 'score': int(row['CBSE2 score']),
-                'passOrFail': None
+                'passOrFail': pass_calculate(int(row['CBSE2 score']), passScore)
             }
         processed_student_exam.append(data)
         
@@ -255,12 +280,14 @@ if __name__ == "__main__":
             student_exam_data = pydantic.ExamResults(
                 StudentID = row['studentID'],
                 ExamID = row['examID'],
-                Score = row['score']
+                Score = row['score'],
+                PassOrFail = row['passOrFail']
             ) 
             db_student_exam_data = studentmodel.ExamResults(
                 studentid = student_exam_data.StudentID,
                 examid = student_exam_data.ExamID,
-                score = student_exam_data.Score     
+                score = student_exam_data.Score,
+                passorfail = student_exam_data.PassOrFail     
             )
             db.add(db_student_exam_data)
         db.commit()

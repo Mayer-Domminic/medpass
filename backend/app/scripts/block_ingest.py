@@ -154,7 +154,7 @@ def insert_grade_classifications(db, topics_data, class_offering_id):
             print(f"Error when adding data {e}")
             db.rollback()
             raise
-    print(f'Grade Classification Data for: {class_offering_id} Loaded in Database')
+    print(f'Grade Classification Data for Class Offering: {class_offering_id} Loaded in Database')
         
     return classification_ids
 
