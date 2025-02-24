@@ -49,7 +49,6 @@ class Student(Base):
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
     
-    
 class Extracurricular(Base):
     __tablename__ = 'extracurriculars'
 

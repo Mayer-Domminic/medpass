@@ -37,7 +37,6 @@ class ClassOffering(Base):
     classInfo = relationship('Class', back_populates='offering')
     gradeClassification = relationship('GradeClassification', back_populates='offering')
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='offering')
-    
 
 class GradeClassification(Base):
     __tablename__ = 'gradeclassification'
