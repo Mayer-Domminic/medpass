@@ -5,6 +5,7 @@ class Exam(BaseModel):
     ExamID: Optional[int] = None
     ExamName: str = Field(..., max_length=255)
     ExamDescription: Optional[str] = Field(None, max_length=255)
+    PassScore: Optional[int] = None
 
     #Model_config represents "ORM Mode" so we can easily interact with SQLAlchemy
     #https://docs.pydantic.dev/latest/concepts/models/#arbitrary-class-instances
