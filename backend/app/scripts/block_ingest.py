@@ -1,8 +1,8 @@
 import pandas as pd
 import re
 from sqlalchemy.exc import IntegrityError
-from ..schemas import pydanticclassfaculty as pydanticclass
-from ..models import classfacultymodels as classmodel
+from ..schemas.pydantic_base_models import pydanticclassfaculty as pydanticclass
+from app.models import Class, ClassOffering, GradeClassification, StudentGrade
 from ..core.database import get_db
 import os
 
@@ -40,7 +40,7 @@ def ingest_class():
                     ClassDescription = row['Description'],
                     Block = row['Block']
                 ) 
-                db_class_data = classmodel.Class(
+                db_class_data = Class(
                     classid = class_data.ClassID,
                     classname = class_data.ClassName,
                     classdescription = class_data.ClassDescription,
@@ -105,13 +105,13 @@ def process_sheet_data(data):
 
 def insert_class_offering(db, block_num, year):
     try:
-        class_id = db.query(classmodel.Class.classid).filter(classmodel.Class.block == block_num).first()
+        class_id = db.query(Class.classid).filter(Class.block == block_num).first()
 
         offering_data = pydanticclass.ClassOffering(
             ClassID = int(class_id[0]),
             DateTaught = year
         ) 
-        db_offering_data = classmodel.ClassOffering(
+        db_offering_data = ClassOffering(
             classid = offering_data.ClassID,
             datetaught = offering_data.DateTaught
         )
@@ -137,7 +137,7 @@ def insert_grade_classifications(db, topics_data, class_offering_id):
                 ClassificationName = subject['name'],
                 UnitType = 'Assessment'
             ) 
-            db_classification_data = classmodel.GradeClassification(
+            db_classification_data = GradeClassification(
                 classofferingid = classification_data.ClassOfferingID,
                 classificationname = classification_data.ClassificationName,
                 unittype = classification_data.UnitType
@@ -169,7 +169,7 @@ def insert_student_grades(db, student_scores, classification_ids, block):
                 PointsEarned = row['points achieved'],
                 PointsAvailable = row['points available']
             ) 
-            db_student_data = classmodel.StudentGrade(
+            db_student_data = StudentGrade(
                 studentid = student_data.StudentID,
                 gradeclassificationid = student_data.GradeClassificationID, 
                 pointsearned = student_data.PointsEarned,

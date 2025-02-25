@@ -11,7 +11,7 @@ from ....core.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from ....schemas.user import UserLogin, Token, UserCreate, UserResponse
-from ....models.studentinformationmodels import LoginInfo as User
+from app.models import LoginInfo as User
 from datetime import timedelta
 
 router = APIRouter()

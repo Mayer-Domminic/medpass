@@ -6,7 +6,7 @@ from fastapi import HTTPException, Security, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from ..schemas.user import TokenData, UserInDB
-from ..models.studentinformationmodels import LoginInfo as User
+from app.models import LoginInfo as User
 from ..core.database import get_db
 from .config import settings
 

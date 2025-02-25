@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from ..schemas import pydanticstudentinformation as pydantic
-from ..schemas import pydanticexamquestion as pydanticexam
-from ..models import studentinformationmodels as studentmodel
-from ..models import examquestionmodels as exammodel
+from ..schemas.pydantic_base_models import pydanticstudentinformation as pydantic
+from ..schemas.pydantic_base_models import pydanticexamquestion as pydanticexam
+from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
 from ..core.database import get_db
 from ..core.security import get_password_hash
 import os
@@ -101,7 +100,7 @@ if __name__ == "__main__":
                 BcpmGPA = row['Cum.Bcpm.Gpa'],
                 MMICalc = row['MMIcalc']
             ) 
-            db_student = studentmodel.Student(
+            db_student = Student(
                 studentid = student_data.StudentID,
                 cumgpa = student_data.CumGPA,
                 bcpmgpa = student_data.BcpmGPA,
@@ -130,7 +129,7 @@ if __name__ == "__main__":
                 InitialRosterAmount = row['initialRosterAmount'],
                 CurrentEnrollment = row['currentEnrollment']
             ) 
-            db_roster = studentmodel.ClassRoster(
+            db_roster = ClassRoster(
                 rosteryear = roster_data.RosterYear,
                 initialrosteramount = roster_data.InitialRosterAmount,
                 currentenrollment = roster_data.CurrentEnrollment
@@ -160,7 +159,7 @@ if __name__ == "__main__":
                 GraduationLength = row['Grad.yrs'],
                 Status = row['Status2024Jan']
             ) 
-            db_graduation = studentmodel.GraduationStatus(
+            db_graduation = GraduationStatus(
                 studentid = graduation_data.StudentID,
                 rosteryear = graduation_data.RosterYear,
                 graduationyear = graduation_data.GraduationYear,
@@ -189,7 +188,7 @@ if __name__ == "__main__":
                 ExamDescription = row['Exam Description'],
                 PassScore = row['Pass Score']
             ) 
-            db_exam_data = exammodel.Exam(
+            db_exam_data = Exam(
                 examname = exam_data.ExamName,
                 examdescription = exam_data.ExamDescription,
                 passscore = exam_data.PassScore
@@ -283,7 +282,7 @@ if __name__ == "__main__":
                 Score = row['score'],
                 PassOrFail = row['passOrFail']
             ) 
-            db_student_exam_data = studentmodel.ExamResults(
+            db_student_exam_data = ExamResults(
                 studentid = student_exam_data.StudentID,
                 examid = student_exam_data.ExamID,
                 score = student_exam_data.Score,
@@ -326,7 +325,7 @@ if __name__ == "__main__":
                 IsSuperUser = row['issuperuser'],
                 Email = row['email']
             ) 
-            db_logininfo_data = studentmodel.LoginInfo(
+            db_logininfo_data = LoginInfo(
                  username = logininfo_data.Username,
                  password = logininfo_data.Password,
                  isactive = logininfo_data.IsActive,

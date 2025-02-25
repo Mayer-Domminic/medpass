@@ -1,44 +1,79 @@
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine, inspect, MetaData, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import inspect
 from .config import settings
-from ..models import Base
-from ..models.classfacultymodels import Class, Faculty, ClassOffering
-from ..models.studentinformationmodels import Student
-from ..models.examquestionmodels import Exam, Question
-import os
+from .base import Base
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# get a database session
 def get_db():
+    """Dependency to get a DB session."""
     db = SessionLocal()
     try:
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
         yield db
     finally:
         db.close()
 
-# drop all tables
 def drop_all_tables():
-    Base.metadata.drop_all(bind=engine)
+    """Drop all tables in the database."""
+    Base.metadata.drop_all(engine)
     print("All tables dropped.")
 
-# create all tables
 def create_all_tables():
-    Base.metadata.create_all(bind=engine)
+    """Create all tables defined in models."""
+    Base.metadata.create_all(engine)
     print("All tables created.")
 
-# (drop and recreate tables)
-def reset_database():
-    drop_all_tables()
-    create_all_tables()
-    print("Database reset complete.")
-
 def list_tables():
+    """List all existing tables."""
     inspector = inspect(engine)
     tables = inspector.get_table_names()
     print("Existing tables:", tables)
+
+def get_table_schemas():
+    """Return table schemas with columns and types."""
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    return {
+        table.name: {
+            "columns": {col.name: str(col.type) for col in table.columns},
+            "primary_key": [key.name for key in table.primary_key]
+        }
+        for table in metadata.tables.values()
+    }
+
+def print_table_schemas():
+    """Print formatted table schemas."""
+    schemas = get_table_schemas()
+    for name, schema in schemas.items():
+        print(f"\n=== {name.upper()} ===")
+        print(f"Columns ({len(schema['columns'])}) | Primary Key: {', '.join(schema['primary_key']) or 'None'}")
+        for col, type_ in schema['columns'].items():
+            print(f"  → {col}: {type_}")
+
+def nuclear_clean():
+    """Drop all tables regardless of model registration"""
+    metadata = MetaData()
+    
+    with engine.begin() as conn:
+        # Reflect all existing tables
+        metadata.reflect(bind=engine)
+        
+        # Drop all known tables first
+        metadata.drop_all(bind=engine)
+        
+        # Drop any remaining tables (including those not in models)
+        inspector = inspect(engine)
+        remaining = inspector.get_table_names()
+        
+        if remaining:
+            tables = ', '.join([f'"{table}"' for table in remaining])
+            conn.execute(text(f'DROP TABLE IF EXISTS {tables} CASCADE'))
+            
+        # Drop all sequences
+        sequences = inspector.get_sequence_names()
+        if sequences:
+            seqs = ', '.join([f'"{seq}"' for seq in sequences])
+            conn.execute(text(f'DROP SEQUENCE IF EXISTS {seqs} CASCADE'))
+    
+    print("Complete database wipe performed")

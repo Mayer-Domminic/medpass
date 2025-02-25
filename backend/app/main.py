@@ -4,6 +4,8 @@ from .core.config import settings
 from .api.v1.api import api_router
 import logging
 
+from app.models import *
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,

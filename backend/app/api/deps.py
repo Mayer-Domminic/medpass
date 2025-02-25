@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from ..core.security import get_current_user
-from ..models.studentinformationmodels import LoginInfo as User
+from app.models import LoginInfo as User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Identity
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity
 from sqlalchemy.orm import relationship
-from . import Base
+from app.core.base import Base
+
 
 class Exam(Base):
     __tablename__ = 'exam'
@@ -12,7 +13,7 @@ class Exam(Base):
 
     questions = relationship('Question', back_populates='exam')
     examResults = relationship('ExamResults', back_populates='exam')
-    
+
 class ContentArea(Base):
     __tablename__ = 'contentarea'
 
@@ -22,7 +23,7 @@ class ContentArea(Base):
     discipline = Column('discipline', String(40))
 
     classification = relationship('QuestionClassification', back_populates = 'contentArea')
-    
+
 class Option(Base):
     __tablename__ = 'option'
 
@@ -65,4 +66,3 @@ class QuestionOption(Base):
     
     question = relationship('Question', back_populates='questionOptions')
     option = relationship('Option', back_populates='questionOptions')
-    
