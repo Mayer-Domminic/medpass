@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, List, Tuple
 from ....schemas.wrisks import RiskAssessmentResponse, StrengthWeakness
 from ....core.database import get_db
-from ....models.classfacultymodels import GradeClassification, StudentGrade
+from app.models import GradeClassification, StudentGrade
 
 router = APIRouter()
 
