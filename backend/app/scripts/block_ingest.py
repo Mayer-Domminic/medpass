@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from sqlalchemy.exc import IntegrityError
-from ..schemas.pydantic_base_models import pydanticclassfaculty as pydanticclass
+from ..schemas.pydantic_base_models import result_schemas, class_schemas
 from app.models import Class, ClassOffering, GradeClassification, StudentGrade
 from ..core.database import get_db
 import os
@@ -34,7 +34,7 @@ def ingest_class():
     try:
         for _, row in df_class.iterrows():
             try:
-                class_data = pydanticclass.ClassModel(
+                class_data = class_schemas.ClassModel(
                     ClassID = row['Class ID'],
                     ClassName = row['Class Name'],
                     ClassDescription = row['Description'],
@@ -107,7 +107,7 @@ def insert_class_offering(db, block_num, year):
     try:
         class_id = db.query(Class.classid).filter(Class.block == block_num).first()
 
-        offering_data = pydanticclass.ClassOffering(
+        offering_data = class_schemas.ClassOffering(
             ClassID = int(class_id[0]),
             DateTaught = year
         ) 
@@ -132,7 +132,7 @@ def insert_grade_classifications(db, topics_data, class_offering_id):
     classification_ids = {}
     for subject in topics_data:
         try:
-            classification_data = pydanticclass.GradeClassification(
+            classification_data = result_schemas.GradeClassification(
                 ClassOfferingID = class_offering_id,
                 ClassificationName = subject['name'],
                 UnitType = 'Assessment'
@@ -163,7 +163,7 @@ def insert_student_grades(db, student_scores, classification_ids, block):
         try:
             classification_id = classification_ids.get(row['subject name'])
                     
-            student_data = pydanticclass.StudentGrade(
+            student_data = result_schemas.StudentGrade(
                 StudentID = row['student id'],
                 GradeClassificationID = classification_id,
                 PointsEarned = row['points achieved'],

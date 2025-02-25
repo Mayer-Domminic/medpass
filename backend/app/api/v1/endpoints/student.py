@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import json
 import numpy as np
 from typing import Dict, List, Tuple
-from ....schemas.pydantic_base_models.pydanticstudentinformation import StudentSchema
+from ....schemas.pydantic_base_models.user_schemas import StudentSchema
 from ....core.database import get_db
 from app.models import Student
 401

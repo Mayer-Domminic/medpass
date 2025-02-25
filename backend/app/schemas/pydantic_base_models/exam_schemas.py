@@ -47,5 +47,3 @@ class QuestionOptions(BaseModel):
     CorrectAnswer: bool
     
     model_config = ConfigDict(from_attributes=True)
-    
-    
