@@ -23,15 +23,15 @@ class LoginInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
 class StudentSchema(BaseModel):
-    StudentID: int
-    LoginInfoID: Optional[int] = None
-    LastName: Optional[str] = Field(None, max_length=40)
-    FirstName: Optional[str] = Field(None, max_length=40)
-    CumGPA: Optional[float]
-    BcpmGPA: Optional[float]
-    MMICalc: Optional[float]
+    StudentID: int = Field(..., alias="studentid")
+    LoginInfoID: Optional[int] = Field(None, alias="logininfoid")
+    LastName: Optional[str] = Field(None, alias="lastname", max_length=40)
+    FirstName: Optional[str] = Field(None, alias="firstname", max_length=40)
+    CumGPA: Optional[float] = Field(None, alias="cumgpa")
+    BcpmGPA: Optional[float] = Field(None, alias="bcpmgpa")
+    MMICalc: Optional[float] = Field(None, alias="mmicalc")
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class Extracurriculars(BaseModel):
     ExtracurricularID: int
