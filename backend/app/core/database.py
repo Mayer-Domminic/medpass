@@ -82,6 +82,12 @@ def nuclear_clean():
 def link_logininfo(studentid, logininfoid):
     db = next(get_db())
     
+    #Removes old link
+    other_users = db.query(Student).filter(Student.logininfoid == logininfoid).all()
+    for user in other_users:
+        user.logininfoid = None
+        db.commit()
+    
     student = db.query(Student).filter(Student.studentid == studentid).first()
     
     if student:
