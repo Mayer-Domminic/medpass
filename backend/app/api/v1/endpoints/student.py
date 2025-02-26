@@ -21,6 +21,6 @@ def get_student(student_id: int, db: Session = Depends(get_db)):
     for key, value in student_dict.items():
         if isinstance(value, float) and np.isnan(value):
             student_dict[key] = None
-            
+             
     return student_dict
     
