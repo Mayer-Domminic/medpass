@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import json
 import numpy as np
 from typing import Dict, List, Tuple
 from ....schemas.pydantic_base_models.user_schemas import StudentSchema
-from ....core.database import get_db
-from app.models import Student
-401
+from ....core.database import get_db, link_logininfo
+from app.models import Student, LoginInfo as User
+from app.core.security import (
+    get_current_active_user
+)
+
 router = APIRouter()
 
 @router.get("/student/{student_id}", response_model=StudentSchema)
@@ -23,4 +26,25 @@ def get_student(student_id: int, db: Session = Depends(get_db)):
             student_dict[key] = None
              
     return student_dict
+
+@router.post("/updatelogin")
+async def updatelogin(
+    student_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
+    try:
+        if current_user.issuperuser:
+            raise HTTPException(
+                status_code=400,
+                detail="You can't be an admin, you must be a student."
+            )
+
+        link_logininfo(student_id, current_user.logininfoid)
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
     

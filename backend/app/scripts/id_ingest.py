@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from ..schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
 from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
-from ..core.database import get_db
+from ..core.database import get_db, link_logininfo
 from ..core.security import get_password_hash
 import os
 
@@ -333,6 +333,7 @@ if __name__ == "__main__":
             )
             db.add(db_logininfo_data)
         db.commit()
+        link_logininfo(298, 11)
         print('Mock Login Info Data Loaded in Database')
         
     except Exception as e:

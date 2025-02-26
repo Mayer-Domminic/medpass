@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, inspect, MetaData, text
 from sqlalchemy.orm import sessionmaker
+from app.models import Student, LoginInfo
 from .config import settings
 from .base import Base
 
@@ -77,3 +78,15 @@ def nuclear_clean():
             conn.execute(text(f'DROP SEQUENCE IF EXISTS {seqs} CASCADE'))
     
     print("Complete database wipe performed")
+    
+def link_logininfo(studentid, logininfoid):
+    db = next(get_db())
+    
+    student = db.query(Student).filter(Student.studentid == studentid).first()
+    
+    if student:
+        student.logininfoid = logininfoid
+        db.commit()
+        
+    db.close()
+    
