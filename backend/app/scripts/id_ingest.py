@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-from ..schemas.pydantic_base_models import pydanticstudentinformation as pydantic
-from ..schemas.pydantic_base_models import pydanticexamquestion as pydanticexam
+from ..schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
 from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
 from ..core.database import get_db
 from ..core.security import get_password_hash
@@ -94,7 +93,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for _, row in df_student.iterrows():
-            student_data = pydantic.StudentSchema(
+            student_data = user_schemas.StudentSchema(
                 StudentID = row['Random Number ID'],
                 CumGPA = row['Cum.T.Gpa'],
                 BcpmGPA = row['Cum.Bcpm.Gpa'],
@@ -124,7 +123,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for _, row in df_classroster.iterrows():
-            roster_data = pydantic.ClassRoster(
+            roster_data = misc_schemas.ClassRoster(
                 RosterYear = row['Matric.year'],
                 InitialRosterAmount = row['initialRosterAmount'],
                 CurrentEnrollment = row['currentEnrollment']
@@ -151,7 +150,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for _, row in df_graduationstatus.iterrows():
-            graduation_data = pydantic.GraduationStatus(
+            graduation_data = result_schemas.GraduationStatus(
                 StudentID = row['Random Number ID'],
                 RosterYear = row['Matric.year'],
                 GraduationYear = row['Grad.Year'],
@@ -183,7 +182,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for _, row in df_exam_data.iterrows():
-            exam_data = pydanticexam.Exam(
+            exam_data = exam_schemas.Exam(
                 ExamName = row['Exam Name'],
                 ExamDescription = row['Exam Description'],
                 PassScore = row['Pass Score']
@@ -276,7 +275,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for row in processed_student_exam:
-            student_exam_data = pydantic.ExamResults(
+            student_exam_data = result_schemas.ExamResults(
                 StudentID = row['studentID'],
                 ExamID = row['examID'],
                 Score = row['score'],
@@ -318,7 +317,7 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for _, row in df_login_data.iterrows():
-            logininfo_data = pydantic.LoginInfo(
+            logininfo_data = user_schemas.LoginInfo(
                 Username = row['username'],
                 Password = row['password'],
                 IsActive = row['isactive'],
