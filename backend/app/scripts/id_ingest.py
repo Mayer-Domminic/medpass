@@ -247,7 +247,7 @@ if __name__ == "__main__":
                     'score': int(row[exam_col]),
                     'passOrFail': pass_calculate(int(row[exam_col]), passScore)
                 }
-            processed_student_exam.append(data)
+                processed_student_exam.append(data)
         
         if pd.notna(row['CBSE1 score']):
             passScore = exam_dict.get(exam_name_mapping.get('CBSE1 score'), None)
@@ -258,7 +258,7 @@ if __name__ == "__main__":
                 'score': int(row['CBSE1 score']),
                 'passOrFail': pass_calculate(int(row['CBSE1 score']), passScore)
             }
-        processed_student_exam.append(data)
+            processed_student_exam.append(data)
         
         if pd.notna(row['CBSE2 score']):
             passScore = exam_dict.get(exam_name_mapping.get('CBSE2 score'), None)
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                 'score': int(row['CBSE2 score']),
                 'passOrFail': pass_calculate(int(row['CBSE2 score']), passScore)
             }
-        processed_student_exam.append(data)
+            processed_student_exam.append(data)
         
     #Ingesting Processed Student Data
     try:

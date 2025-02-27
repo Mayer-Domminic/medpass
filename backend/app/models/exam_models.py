@@ -9,7 +9,7 @@ class Exam(Base):
     examid = Column('examid', Integer, Identity(start=1, increment=1), primary_key=True, index=True)
     examname = Column('examname', String(255), nullable=False)
     examdescription = Column('examdescription', String(255))
-    passscore = Column('pssscore', Integer)
+    passscore = Column('passscore', Integer)
 
     questions = relationship('Question', back_populates='exam')
     examResults = relationship('ExamResults', back_populates='exam')
