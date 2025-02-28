@@ -12,6 +12,8 @@ from app.core.security import (
 
 router = APIRouter()
 
+#Temp-route for learning, will be removed and eventually
+'''
 @router.get("/student/{student_id}", response_model=StudentSchema)
 def get_student(student_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.studentid == student_id).first()
@@ -26,9 +28,11 @@ def get_student(student_id: int, db: Session = Depends(get_db)):
             student_dict[key] = None
              
     return student_dict
+'''
 
+#API Route to Change an association of a Login Info to another Student
 @router.post("/updatelogin")
-async def updatelogin(
+async def update_login(
     student_id: int,
     current_user: User = Depends(get_current_active_user),
 ):

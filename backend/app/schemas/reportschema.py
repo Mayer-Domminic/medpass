@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
-#Alot of optional statements as dataset is incomplete or students are in progress
+#optional statements are present as dataset is incomplete or students are in progress
 class StudentReport(BaseModel):
     StudentID: int
     LastName: Optional[str] = Field(None, max_length=40)

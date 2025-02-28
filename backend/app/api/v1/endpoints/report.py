@@ -113,7 +113,7 @@ def generateGradeReport(student_id, db):
     
 #Generates a student report based on a student's information, total exams, and grades
 @router.get("/report", response_model=StudentCompleteReport)
-async def login(
+async def generate_report(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -121,11 +121,16 @@ async def login(
         print(current_user.username)
         if current_user.issuperuser:
             raise HTTPException(
-                status_code=400,
-                detail="You can't be an admin, you must be a student."
+                status_code=403,
+                detail="Admins accounts can not access student reports route"
             )
 
         studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
+        if not studentid:
+            raise HTTPException(
+                status_code=404,
+                detail="Login Info is not Attached to a Student"
+            )
         
         studentinfo = generateStudentInformationReport(studentid, db)
         if not studentinfo:
@@ -133,20 +138,12 @@ async def login(
                 status_code=404,
                 detail="No Student Info Found"
             )
-            
-        exams = generateExamReport(studentid, db)
-        if not exams:
-            raise HTTPException(
-                status_code=404,
-                detail="No Exam Info Found"
-            )
         
-        grades = generateGradeReport(studentid, db)
-        if not grades:
-            raise HTTPException(
-                status_code=404,
-                detail="No Grade Info Found"
-            )
+        #Exams and Grades can be empty if they have no exams/grades on records
+        exams = generateExamReport(studentid, db) or []
+        
+        grades = generateGradeReport(studentid, db) or []
+        
         
         return StudentCompleteReport(
             StudentInfo = studentinfo,
