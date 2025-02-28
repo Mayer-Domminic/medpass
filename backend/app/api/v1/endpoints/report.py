@@ -7,9 +7,14 @@ from app.core.security import (
 from app.models import LoginInfo as User
 from app.models import (
     Student,
-    GraduationStatus
+    GraduationStatus,
+    Exam,
+    ExamResults,
+    GradeClassification,
+    StudentGrade,
+    ClassOffering
 )
-from ....schemas.reportschema import StudentReport
+from ....schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
 router = APIRouter()
 
 def generateStudentInformationReport(student_id, db):
@@ -31,7 +36,10 @@ def generateStudentInformationReport(student_id, db):
         Student.studentid == student_id
     ).first()
     
-    #Pydantic modeling handeling NaN to None conversion
+    '''
+    Pydantic handeling Float(NaN) to None conversion will not need to handle
+    multiple rows as a student will only have a singular student report
+    '''
     studentinformation = StudentReport(
         StudentID = data.studentid,
         LastName = data.lastname,
@@ -46,9 +54,65 @@ def generateStudentInformationReport(student_id, db):
     )
     
     return studentinformation
-    
 
-@router.get("/report")
+def generateExamReport(student_id, db):
+    data = db.query(
+        Exam.examname,
+        ExamResults.score,
+        Exam.passscore,
+        ExamResults.passorfail
+    ).join(
+        Exam, ExamResults.examid == Exam.examid
+    ).filter(
+        ExamResults.studentid == student_id
+    ).all()
+    
+    exams = []
+    #Converting to a dictionary as there can be multiple records of exams
+    for row in data:
+        exam_dict = {
+            "ExamName": row[0],
+            "Score": row[1],
+            "PassScore": row[2],
+            "PassOrFail": row[3]
+        }
+        pydanticData = ExamReport(**exam_dict)
+        exams.append(pydanticData)
+        
+    return exams
+
+def generateGradeReport(student_id, db):
+    data = db.query(
+        GradeClassification.classificationname,
+        StudentGrade.pointsearned,
+        StudentGrade.pointsavailable,
+        ClassOffering.classid,
+        ClassOffering.datetaught
+    ).join(
+        GradeClassification, StudentGrade.gradeclassificationid == GradeClassification.gradeclassificationid
+    ).join(
+        ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid
+    ).filter(
+        StudentGrade.studentid == student_id
+    ).all()
+    
+    grades = []
+    #Converting to dictionary as there can be multiple records of grades
+    for row in data:
+        grade_dict = {
+            "ClassificationName": row[0],
+            "PointsEarned": row[1],
+            "PointsAvailable": row[2],
+            "ClassID": row[3],
+            "DateTaught": row[4]
+        }
+        pydanticData = GradeReport(**grade_dict)
+        grades.append(pydanticData)
+        
+    return grades
+    
+#Generates a student report based on a student's information, total exams, and grades
+@router.get("/report", response_model=StudentCompleteReport)
 async def login(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -64,8 +128,31 @@ async def login(
         studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
         
         studentinfo = generateStudentInformationReport(studentid, db)
+        if not studentinfo:
+            raise HTTPException(
+                status_code=404,
+                detail="No Student Info Found"
+            )
+            
+        exams = generateExamReport(studentid, db)
+        if not exams:
+            raise HTTPException(
+                status_code=404,
+                detail="No Exam Info Found"
+            )
         
-        return studentinfo.json()
+        grades = generateGradeReport(studentid, db)
+        if not grades:
+            raise HTTPException(
+                status_code=404,
+                detail="No Grade Info Found"
+            )
+        
+        return StudentCompleteReport(
+            StudentInfo = studentinfo,
+            Exams = exams,
+            Grades = grades
+        )
     
     except Exception as e:
         print(f"Login error: {str(e)}")
