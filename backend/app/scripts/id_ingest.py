@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from ..schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
 from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
-from ..core.database import get_db
+from ..core.database import get_db, link_logininfo
 from ..core.security import get_password_hash
 import os
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
                     'score': int(row[exam_col]),
                     'passOrFail': pass_calculate(int(row[exam_col]), passScore)
                 }
-            processed_student_exam.append(data)
+                processed_student_exam.append(data)
         
         if pd.notna(row['CBSE1 score']):
             passScore = exam_dict.get(exam_name_mapping.get('CBSE1 score'), None)
@@ -258,7 +258,7 @@ if __name__ == "__main__":
                 'score': int(row['CBSE1 score']),
                 'passOrFail': pass_calculate(int(row['CBSE1 score']), passScore)
             }
-        processed_student_exam.append(data)
+            processed_student_exam.append(data)
         
         if pd.notna(row['CBSE2 score']):
             passScore = exam_dict.get(exam_name_mapping.get('CBSE2 score'), None)
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                 'score': int(row['CBSE2 score']),
                 'passOrFail': pass_calculate(int(row['CBSE2 score']), passScore)
             }
-        processed_student_exam.append(data)
+            processed_student_exam.append(data)
         
     #Ingesting Processed Student Data
     try:
@@ -333,6 +333,7 @@ if __name__ == "__main__":
             )
             db.add(db_logininfo_data)
         db.commit()
+        link_logininfo(298, 11)
         print('Mock Login Info Data Loaded in Database')
         
     except Exception as e:
