@@ -7,8 +7,46 @@ from app.core.security import (
 from app.models import LoginInfo as User
 from app.models import (
     Student,
+    GraduationStatus
 )
+from ....schemas.reportschema import StudentReport
 router = APIRouter()
+
+def generateStudentInformationReport(student_id, db):
+    data = db.query(
+        Student.studentid,
+        Student.lastname,
+        Student.firstname,
+        Student.cumgpa,
+        Student.bcpmgpa,
+        Student.mmicalc,
+        GraduationStatus.rosteryear,
+        GraduationStatus.graduationyear,
+        GraduationStatus.graduated,
+        GraduationStatus.graduationlength,
+        GraduationStatus.status
+    ).join(
+        GraduationStatus, Student.studentid == GraduationStatus.studentid
+    ).filter(
+        Student.studentid == student_id
+    ).first()
+    
+    #Pydantic modeling handeling NaN to None conversion
+    studentinformation = StudentReport(
+        StudentID = data.studentid,
+        LastName = data.lastname,
+        FirstName = data.firstname,
+        CumGPA = data.bcpmgpa,
+        MMICalc = data.mmicalc,
+        RosterYear = data.rosteryear,
+        GraduationYear = data.graduationyear,
+        Graduated = data.graduated,
+        GraduationLength = data.graduationlength,
+        Status = data.status
+    )
+    
+    return studentinformation
+    
 
 @router.get("/report")
 async def login(
@@ -23,10 +61,11 @@ async def login(
                 detail="You can't be an admin, you must be a student."
             )
 
-        sid = current_user.username
-        stud = db.query(User).filter(User.username == current_user.username).first()
+        studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
         
-        print(stud)
+        studentinfo = generateStudentInformationReport(studentid, db)
+        
+        return studentinfo.json()
     
     except Exception as e:
         print(f"Login error: {str(e)}")

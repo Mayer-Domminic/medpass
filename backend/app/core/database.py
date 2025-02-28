@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models import Student, LoginInfo
 from .config import settings
 from .base import Base
+import math
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -95,4 +96,5 @@ def link_logininfo(studentid, logininfoid):
         db.commit()
         
     db.close()
+    
     

@@ -35,7 +35,7 @@ class GraduationStatus(BaseModel):
     GraduationStatusID: Optional[int] = None
     StudentID: Optional[int]
     RosterYear: Optional[int]
-    GraduationYear: Optional[float]
+    GraduationYear: Optional[int]
     Graduated: Optional[bool]
     GraduationLength: Optional[float]
     Status: Optional[str] = Field(None, max_length=255)
