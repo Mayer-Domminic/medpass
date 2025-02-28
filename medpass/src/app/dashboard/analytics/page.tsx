@@ -6,7 +6,7 @@ import StudyAnalytics from '@/components/analytics';
 import Sidebar from '@/components/navbar';
 import MiniMetric from '@/components/TrendCard';
 
-const MedalliaAnalytics: React.FC = () => {
+const AnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<string>('Last 7 Days');
   
   
@@ -98,4 +98,4 @@ const MedalliaAnalytics: React.FC = () => {
   );
 };
 
-export default MedalliaAnalytics;
+export default AnalyticsPage;

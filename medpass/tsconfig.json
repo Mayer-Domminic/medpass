@@ -34,7 +34,7 @@
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "out/types/**/*.ts"
-  ],
+, "src/app/dashboard/systems"  ],
   "exclude": [
     "node_modules"
   ]
