@@ -25,3 +25,4 @@ else
 
     # Frontend terminal
     open_terminal "Frontend" "cd medpass && pnpm install && pnpm dev"
+fi
