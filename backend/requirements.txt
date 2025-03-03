@@ -1,6 +1,7 @@
 annotated-types==0.7.0
 anyio==4.8.0
 bcrypt==4.2.1
+certifi==2025.1.31
 click==8.1.8
 dnspython==2.7.0
 ecdsa==0.19.0
@@ -10,6 +11,8 @@ exceptiongroup==1.2.2
 fastapi==0.115.8
 greenlet==3.1.1
 h11==0.14.0
+httpcore==1.0.7
+httpx==0.28.1
 idna==3.10
 imbalanced-learn==0.13.0
 imblearn==0.0

@@ -34,4 +34,3 @@ class StudentCompleteReport(BaseModel):
     StudentInfo: StudentReport
     Exams: List[ExamReport] = []
     Grades: List[GradeReport] = []
-    

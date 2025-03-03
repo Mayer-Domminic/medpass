@@ -15,7 +15,7 @@ from app.models import (
     StudentGrade,
     ClassOffering
 )
-from ....schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
+from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
 
 import pandas as pd
 import io
