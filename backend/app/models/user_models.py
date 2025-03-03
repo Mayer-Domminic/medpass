@@ -42,7 +42,7 @@ class Faculty(Base):
     __tablename__ = 'faculty'
 
     facultyid = Column('facultyid', Integer, primary_key=True)
-    loginInfoid = Column('logininfoid', Integer, ForeignKey('logininfo.logininfoid'))
+    logininfoid = Column('logininfoid', Integer, ForeignKey('logininfo.logininfoid'))
     firstname = Column('firstname', String(255))
     lastname = Column('lastname', String(255))
     position = Column('position', String(255))
