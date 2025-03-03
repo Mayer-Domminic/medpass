@@ -151,6 +151,9 @@ async def generate_report(
             Grades = grades
         )
     
+    except HTTPException:
+        raise
+    
     except Exception as e:
         print(f"Login error: {str(e)}")
         raise HTTPException(
