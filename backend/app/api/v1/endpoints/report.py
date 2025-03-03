@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import (
@@ -15,6 +16,13 @@ from app.models import (
     ClassOffering
 )
 from ....schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
+
+import pandas as pd
+import io
+import json
+from datetime import datetime
+
+
 router = APIRouter()
 
 def generateStudentInformationReport(student_id, db):
