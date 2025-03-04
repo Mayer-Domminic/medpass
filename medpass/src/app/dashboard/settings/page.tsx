@@ -1,4 +1,10 @@
+"use client";
+
 import React from 'react';
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+export const dynamic = 'force-dynamic';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +14,21 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Sidebar from '@/components/navbar';
+   
+
+interface StudentInfo {
+  StudentID: number;
+  LastName: string;
+  FirstName: string;
+  CumGPA: number;
+  BcpmGPA: number;
+  MMICalc: number;
+  RosterYear: number;
+  GraduationYear: number;
+  Graduated: boolean;
+  GraduationLength: number;
+  Status: string;
+}
 
 const SettingsNavItem = ({ icon, label, active = false }: { icon: React.ReactNode; label: string; active?: boolean }) => (
   <Button 
@@ -19,7 +40,66 @@ const SettingsNavItem = ({ icon, label, active = false }: { icon: React.ReactNod
   </Button>
 );
 
-const SettingsPage = () => {
+export default function SettingsPage() {
+  
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      redirect("/auth/login");
+    },
+  });
+
+  const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session?.user?.issuperuser) {
+      console.log("ADMIN")
+      redirect("/admin");
+    }
+
+    const fetchStudentInfo = async () => {
+      try {
+        
+        setLoading(true);
+
+        const API_URL =
+            typeof window === "undefined"
+              ? "http://backend:8000"
+              : "http://localhost:8000";
+          const response = await fetch(`${API_URL}/api/v1/report`, {
+            headers: {
+              Authorization: `Bearer ${session?.accessToken}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+          }
+
+
+        const data = await response.json();
+        console.log("Student Info:", data);
+        setStudentInfo(data.StudentInfo);
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching student info:", error);
+        setError("Failed to load student information");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (session?.accessToken && !session.user.issuperuser) {
+      fetchStudentInfo();
+    }
+  }, [session]);
+
+  if (status === "loading" || loading) {
+    return <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>;
+  }
+ 
   return (
     <div className="min-h-screen bg-gray-900">
       <Sidebar />
@@ -94,10 +174,10 @@ const SettingsPage = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="firstName" className="text-gray-300 font-semibold">First name</Label>
+                          <Label htmlFor="firstName" className="text-gray-300 font-semibold">First Name</Label>
                           <Input 
                             id="firstName" 
-                            placeholder="Enter your first name" 
+                            placeholder={studentInfo?.FirstName || ""}
                             className="bg-gray-900 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:ring-gray-700 focus:border-gray-600"
                           />
                         </div>
@@ -157,5 +237,3 @@ const SettingsPage = () => {
     </div>
   );
 };
-
-export default SettingsPage;
