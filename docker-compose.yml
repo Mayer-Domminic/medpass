@@ -1,5 +1,7 @@
 services:
   backend:
+    container_name: medpass-backend
+    image: medpass-backend
     build: 
       context: ./backend
       dockerfile: Dockerfile
@@ -19,6 +21,8 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 
   frontend:
+    container_name: medpass-frontend
+    image: medpass-frontend
     build:
       context: ./medpass
       dockerfile: Dockerfile

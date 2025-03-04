@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class ClassRoster(BaseModel):
@@ -6,7 +6,8 @@ class ClassRoster(BaseModel):
     InitialRosterAmount: Optional[int]
     CurrentEnrollment: Optional[int]
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class Extracurriculars(BaseModel):
     ExtracurricularID: int
@@ -15,4 +16,5 @@ class Extracurriculars(BaseModel):
     ActivityDescription: Optional[str] = Field(None, max_length=255)
     WeeklyHourCommitment: Optional[int]
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

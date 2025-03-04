@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class ClassModel(BaseModel):
@@ -7,7 +7,8 @@ class ClassModel(BaseModel):
     ClassDescription: Optional[str] = Field(None, max_length=255)
     Block: Optional[int]
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class ClassOffering(BaseModel):
     ClassOfferingID: Optional[int] = None
@@ -16,4 +17,5 @@ class ClassOffering(BaseModel):
     DateTaught: Optional[int] = None
     Semester: Optional[str] = Field(None, max_length =40)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

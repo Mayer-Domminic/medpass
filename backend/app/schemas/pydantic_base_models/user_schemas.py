@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import date
 
@@ -12,7 +12,8 @@ class LoginInfo(BaseModel):
     UpdatedAt: Optional[date] = None
     Email: Optional[EmailStr] = None
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class StudentSchema(BaseModel):
     StudentID: int = Field(..., alias="studentid")
@@ -23,7 +24,9 @@ class StudentSchema(BaseModel):
     BcpmGPA: Optional[float] = Field(None, alias="bcpmgpa")
     MMICalc: Optional[float] = Field(None, alias="mmicalc")
     
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    class Config:
+        from_attributes = True
+        populate_by_name = True
     
 class Faculty(BaseModel):
     FacultyID: int
@@ -32,7 +35,8 @@ class Faculty(BaseModel):
     LastName: Optional[str] = Field(None, max_length=255)
     Position: Optional[str] = Field(None, max_length=255)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class EnrollmentRecord(BaseModel):
     EnrollmentRecord: int
@@ -42,4 +46,5 @@ class EnrollmentRecord(BaseModel):
     PassFailStatus: Optional[bool]
     AttendancePercentage: Optional[float]
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

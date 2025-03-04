@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class Exam(BaseModel):
@@ -9,7 +9,8 @@ class Exam(BaseModel):
 
     #Model_config represents "ORM Mode" so we can easily interact with SQLAlchemy
     #https://docs.pydantic.dev/latest/concepts/models/#arbitrary-class-instances
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class ContentArea(BaseModel):
     ContentAreaID: int
@@ -17,13 +18,15 @@ class ContentArea(BaseModel):
     Description: Optional[str] = Field(None, max_length=255)
     Discipline: Optional[str] = Field(None, max_length=40)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class Option(BaseModel):
     OptionID: int
     OptionDescription: str = Field(..., max_length=255)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class Question(BaseModel):
     QuestionID: int
@@ -31,14 +34,16 @@ class Question(BaseModel):
     Prompt: str = Field(..., max_length=255)
     QuestionDifficulty: Optional[str] = Field(None, max_length=40)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class QuestionClassification(BaseModel):
     QuestionClassID: int
     QuestionID: int
     ContentAreaID: int
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class QuestionOptions(BaseModel):
     QuestionOptionID: int
@@ -46,4 +51,5 @@ class QuestionOptions(BaseModel):
     OptionID: int
     CorrectAnswer: bool
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

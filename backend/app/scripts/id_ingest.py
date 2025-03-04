@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-from ..schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
+from app.schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
 from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
-from ..core.database import get_db, link_logininfo
-from ..core.security import get_password_hash
+from app.core.database import get_db, link_logininfo
+from app.core.security import get_password_hash
 import os
 
 

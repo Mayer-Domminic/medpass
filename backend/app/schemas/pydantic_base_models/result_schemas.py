@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
 
@@ -11,7 +11,8 @@ class Clerkship(BaseModel):
     EndDate: Optional[date]
     Company: Optional[str] = Field(None, max_length=255)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class ExamResults(BaseModel):
     ExamResultsID: Optional[int] = None
@@ -21,7 +22,8 @@ class ExamResults(BaseModel):
     Score: int
     PassOrFail: Optional[bool] = None
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class StudentQuestPerformance(BaseModel):
     StudentQuestPerformanceID: int
@@ -29,7 +31,8 @@ class StudentQuestPerformance(BaseModel):
     QuestionID: Optional[int]
     Result: bool
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class GraduationStatus(BaseModel):
     GraduationStatusID: Optional[int] = None
@@ -40,7 +43,8 @@ class GraduationStatus(BaseModel):
     GraduationLength: Optional[float]
     Status: Optional[str] = Field(None, max_length=255)
     
-    model_config = ConfigDict(from_attributes=True)    
+    class Config:
+        from_attributes = True
     
 class StudentGrade(BaseModel):
     StudentGradeID: Optional[int] = None
@@ -50,7 +54,8 @@ class StudentGrade(BaseModel):
     PointsAvailable: Optional[float]
     DateRecorded: Optional[date] = None
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class GradeClassification(BaseModel):
     GradeClassificationID: Optional[int] = None
@@ -58,4 +63,5 @@ class GradeClassification(BaseModel):
     ClassificationName: str = Field(..., max_length=255)
     UnitType: str = Field(...,max_length=50)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

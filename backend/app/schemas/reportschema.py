@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 #optional statements are present as dataset is incomplete or students are in progress
@@ -15,7 +15,8 @@ class StudentReport(BaseModel):
     GraduationLength: Optional[float] = None
     Status: Optional[str] = Field(None, max_length=255)
     
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
     
 class ExamReport(BaseModel):
     ExamName: str

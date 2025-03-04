@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.v1.api import api_router
-import logging
 
 from app.models import *
 
@@ -12,14 +11,13 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:8000",
+        "http://127.0.0.1:8000"
         "https://medpass.unr.dev",
         "https://medpass-api.unr.dev",
         "http://medpass-api.unr.dev"
