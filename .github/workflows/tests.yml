@@ -28,38 +28,10 @@ jobs:
         pip install pytest
         pip install -r requirements.txt
 
-    - name: Run database tests
+    - name: Run all tests
       run: |
         cd backend
-        python -m pytest app/tests/test_database.py -v
-      env:
-        POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-
-    - name: Run report tests
-      run: |
-        cd backend
-        python -m pytest app/tests/test_report.py -v
-      env:
-        POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-
-    - name: Run risk tests
-      run: |
-        cd backend
-        python -m pytest app/tests/test_risk.py -v
+        python -m pytest app/tests/ -v
       env:
         POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
