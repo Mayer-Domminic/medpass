@@ -16,7 +16,9 @@ from .exam_models import (
 
 from .class_models import (
     Class,
-    ClassOffering
+    ClassOffering,
+    Domain,
+    ClassDomain
 )
 
 from .misc_models import (
