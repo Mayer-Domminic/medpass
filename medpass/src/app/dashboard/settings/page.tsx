@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import Sidebar from '@/components/navbar';
-import EditableField from '@/components/EditableText'; // Import the EditableField component
+import EditableText from '@/components/EditableText';
 import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 
 // interfaces for studentInfo and user update request/response
@@ -321,7 +321,7 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstname" className="text-gray-400 font-semibold">First Name</Label>
-                      <EditableField 
+                      <EditableText 
                         defaultValue={formData.firstname || ""}
                         onUpdate={(value) => handleUpdate('firstname', value)}
                         placeholder={studentInfo?.FirstName || "Enter your first name"}
@@ -329,7 +329,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="lastname" className="text-gray-400 font-semibold">Last name</Label>
-                      <EditableField 
+                      <EditableText 
                         defaultValue={formData.lastname || ""} 
                         onUpdate={(value) => handleUpdate('lastname', value)}
                         placeholder={studentInfo?.LastName || "Enter your last name"}
@@ -358,7 +358,7 @@ export default function SettingsPage() {
                 {/* Email Section */} 
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-400 font-semibold">Email address</Label>
-                  <EditableField 
+                  <EditableText 
                     defaultValue={formData.email || ""}
                     onUpdate={(value) => handleUpdate('email', value)}
                     placeholder={studentInfo?.Email || "Enter your email address"}
@@ -412,7 +412,7 @@ export default function SettingsPage() {
                 {/* Username Section */}
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-gray-400 font-semibold">Username</Label>
-                  <EditableField 
+                  <EditableText 
                     defaultValue={formData.username || ""}
                     onUpdate={(value) => handleUpdate('username', value)}
                     placeholder="Enter your username"
