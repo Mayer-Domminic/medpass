@@ -93,8 +93,8 @@ def link_logininfo(studentid, logininfoid):
     
     if student:
         student.logininfoid = logininfoid
-        student.firstname = "lebron"
-        student.lastname = "james"
+        student.firstname = "LeBron"
+        student.lastname = "James"
         db.commit()
         
     db.close()
