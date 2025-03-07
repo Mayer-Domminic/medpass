@@ -1,0 +1,8 @@
+{
+    "model": "llama3:8b",
+    "parameters": {
+      "context_length": 16384,
+      "num_gpu": 1,
+      "batch_size": 16
+    }
+  }
