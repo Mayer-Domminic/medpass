@@ -10,22 +10,18 @@ MEDPASS is a predictive analytics platform designed to assess and enhance studen
 
 python3 -m venv venv
 . venv/bin/activate
+source backend/venv/bin/activate
+
+
+python -m app.scripts.tables.printer
+python -m app.scripts.init_db
+
+docker compose up --build
 
 
 
 
-## Server Operations (SSH@MP)
-```bash
-./startmedpass.sh
-pm2 logs
-pm2 monit
-```
 
-### Database Initialization
-```bash
-python -m app.scripts.reset_db
-python -m app.scripts.id_ingest
-```
 
 ### PostgreSQL Setup
 ```bash
@@ -40,55 +36,14 @@ GRANT ALL ON SCHEMA public TO medpassadmin;
 \q
 ```
 
-### Environment Configuration
 
-#### Find and replace passwords
 
-Create `.env.local` for frontend settings:
-```bash
-cat <<EOF > .env.local
-NEXTAUTH_URL=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXTAUTH_SECRET=your_secret_key
-EOF
-```
 
-Create `.env` for backend settings:
-```bash
-cat <<EOF > .env
-POSTGRES_SERVER=localhost
-POSTGRES_USER=medpassadmin
-POSTGRES_PASSWORD=your_secure_password
-POSTGRES_DB=medpass
-SECRET_KEY=your_secret_key
-EOF
-```
 
-## Frontend Setup
-```bash
-# Navigate to frontend directory
-cd medpass
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-```
-
-## Backend Setup
-```bash
-# Navigate to backend directory
-cd backend
-
-# Set up virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start FastAPI server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+### Docker Compose Checks:
+docker-compose exec postgres psql -U medpassadmin -d medpass -c "\dt"
+docker-compose exec postgres psql -U medpassadmin -d medpass -c "ALTER USER medpassadmin WITH PASSWORD 'password';"
+docker exec -ti medpass-postgres psql -d medpass -U medpassadmin
+docker-compose up -d
+docker-compose down
 

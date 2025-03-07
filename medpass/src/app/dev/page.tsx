@@ -6,5 +6,5 @@ import { Sidebar } from "lucide-react";
 import EditableField from "@/components/EditableText";
 
 export default function DevPage() {
-  return <EditableField defaultValue="Initial Value" onUpdate={(newValue) => console.log(newValue)} />;
+  return <SystemsViewer></SystemsViewer>;
 }

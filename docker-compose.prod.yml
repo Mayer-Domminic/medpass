@@ -6,3 +6,6 @@ services:
   frontend:
     command: ["pnpm", "start"]
     restart: unless-stopped
+    
+  postgres:
+    restart: unless-stopped
