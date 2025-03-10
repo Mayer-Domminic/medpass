@@ -1,0 +1,40 @@
+Analyze this medical case study PDF and structure the information according to this JSON schema:
+{
+"type": "object",
+"properties": {
+"Question": {
+"type": "string"
+},
+"Answers": {
+"type": "object",
+"properties": {
+"A": { "type": "string" },
+"B": { "type": "string" },
+"C": { "type": "string" },
+"D": { "type": "string" },
+"E": { "type": "string" }
+}
+},
+"correct_option": {
+"type": "string",
+"enum": ["A", "B", "C", "D", "E"]
+},
+"Image_Description": {
+"type": "string"
+},
+"Explanation": {
+"type": "string"
+},
+"Image_Dependent": {
+"type": "boolean"
+}
+},
+"required": [
+"Question",
+"Answers",
+"correct_option",
+"Explanation",
+"Image_Description"
+]
+}
+Extract all 10 questions, all possible answers (A through E), the explanation for the correct answer, if the question requires and image, and a description of the image included in the document if necessary.

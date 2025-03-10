@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     NEXTAUTH_URL: str
     NEXT_PUBLIC_API_URL: str
     NEXTAUTH_SECRET: str
+    
+    JAKE_GEMINI_API_KEY: str
+    RINO_GEMINI_API_KEY: str
+    NOLAN_GEMINI_API_KEY: str
+    DOM_GEMINI_API_KEY: str
 
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
