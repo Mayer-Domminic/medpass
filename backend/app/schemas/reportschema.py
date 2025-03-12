@@ -35,3 +35,11 @@ class StudentCompleteReport(BaseModel):
     StudentInfo: StudentReport
     Exams: List[ExamReport] = []
     Grades: List[GradeReport] = []
+    
+class DomainReport(BaseModel):
+    DomainName: str
+    ClassificationName: str
+    PointsEarned: float
+    PointsAvailable: float
+    ClassID: int
+    DateTaught: int
