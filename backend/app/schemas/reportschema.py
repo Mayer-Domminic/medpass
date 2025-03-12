@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 #optional statements are present as dataset is incomplete or students are in progress
 class StudentReport(BaseModel):
@@ -43,3 +43,6 @@ class DomainReport(BaseModel):
     PointsAvailable: float
     ClassID: int
     DateTaught: int
+    
+class DomainGrouping(BaseModel):
+    Domains: Dict[str, List[DomainReport]]

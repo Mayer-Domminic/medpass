@@ -14,7 +14,7 @@ from app.models import LoginInfo as User
 from app.models import (
     Student
 )
-from app.schemas.reportschema import StudentCompleteReport, DomainReport
+from app.schemas.reportschema import StudentCompleteReport, DomainReport, DomainGrouping
 
 import pandas as pd
 from typing import Optional, List
@@ -73,14 +73,13 @@ async def generate_report(
             detail="An error occurred while processing your request"
         )
         
-@router.get("/domainreport", response_model=List[DomainReport])
+@router.get("/domainreport", response_model=DomainGrouping)
 async def generate_domain_report(
     current_user: User = Depends(get_current_active_user),
     domain_id: Optional[int] = None, #Optional Allows to Query a single report if needed
     db: Session = Depends(get_db)
 ):
     try:
-        print(current_user.username)
         if current_user.issuperuser:
             raise HTTPException(
                 status_code=403,
@@ -98,8 +97,15 @@ async def generate_domain_report(
             domain_grades = generateDomainReport(studentid, db, domain_id)
         else:
             domain_grades = generateDomainReport(studentid, db)
-        
-        return domain_grades
+            
+        domain_reports = {}
+        for grades in domain_grades:
+            domain_name = grades.DomainName
+            if domain_name not in domain_reports:
+                domain_reports[domain_name] = []
+            domain_reports[domain_name].append(grades)
+            
+        return {"Domains": domain_reports}
     
     except HTTPException:
         raise
