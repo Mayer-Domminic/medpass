@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import (get_db, 
     generateStudentInformationReport, 
     generateGradeReport, 
-    generateExamReport
+    generateExamReport,
+    generateDomainReport
 )
 from app.core.security import (
     get_current_active_user
@@ -13,11 +14,10 @@ from app.models import LoginInfo as User
 from app.models import (
     Student
 )
-from app.schemas.reportschema import StudentCompleteReport
+from app.schemas.reportschema import StudentCompleteReport, DomainReport
 
 import pandas as pd
-import io
-import json
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -73,3 +73,40 @@ async def generate_report(
             detail="An error occurred while processing your request"
         )
         
+@router.get("/domainreport", response_model=List[DomainReport])
+async def generate_domain_report(
+    current_user: User = Depends(get_current_active_user),
+    domain_id: Optional[int] = None, #Optional Allows to Query a single report if needed
+    db: Session = Depends(get_db)
+):
+    try:
+        print(current_user.username)
+        if current_user.issuperuser:
+            raise HTTPException(
+                status_code=403,
+                detail="Admins accounts can not access student reports route"
+            )
+
+        studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
+        if not studentid:
+            raise HTTPException(
+                status_code=404,
+                detail="Login Info is not Attached to a Student"
+            )
+            
+        if domain_id:
+            domain_grades = generateDomainReport(studentid, db, domain_id)
+        else:
+            domain_grades = generateDomainReport(studentid, db)
+        
+        return domain_grades
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )

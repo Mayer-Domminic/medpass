@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, inspect, MetaData, text
 from sqlalchemy.orm import sessionmaker
+from typing import Optional
 from app.models import Student, LoginInfo
 from .config import settings
 from .base import Base
@@ -11,9 +12,11 @@ from app.models import (
     ExamResults,
     GradeClassification,
     StudentGrade,
-    ClassOffering
+    ClassOffering,
+    Domain,
+    ClassDomain
 )
-from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
+from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -200,3 +203,46 @@ def generateGradeReport(student_id, db):
         grades.append(pydanticData)
         
     return grades
+
+def generateDomainReport(student_id, db, domain_id: Optional[int] = None):
+    query = db.query(
+        Domain.domainname,
+        GradeClassification.classificationname,
+        StudentGrade.pointsearned,
+        StudentGrade.pointsavailable,
+        ClassOffering.classid,
+        ClassOffering.datetaught
+    ).join(
+        GradeClassification, StudentGrade.gradeclassificationid == GradeClassification.gradeclassificationid
+    ).join(
+        ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid
+    ).join(
+        ClassDomain, ClassDomain.classid == ClassOffering.classid
+    ).join(
+        Domain, ClassDomain.domainid == Domain.domainid
+    ).filter(
+        StudentGrade.studentid == student_id
+    )
+    
+    #Handles if domain_id is provided otherwise will provide all
+    
+    if domain_id:
+        query = query.filter(Domain.domainid == domain_id)
+    print(str(query.statement))
+    data = query.all()
+    domain_grades = []
+    #Converting to dictionary as there can be multiple records of grades
+    for row in data:
+        grade_dict = {
+            "DomainName": row[0],
+            "ClassificationName": row[1],
+            "PointsEarned": row[2],
+            "PointsAvailable": row[3],
+            "ClassID": row[4],
+            "DateTaught": row[5]
+        }
+        pydanticData = DomainReport(**grade_dict)
+        domain_grades.append(pydanticData)
+    print(data)
+    return domain_grades
+
