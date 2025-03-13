@@ -109,7 +109,8 @@ def link_logininfo(studentid, logininfoid):
         db.commit()
         
     db.close()
-    
+
+#Pulls All the Information Relevant to Student 
 def generateStudentInformationReport(student_id, db):
     data = db.query(
         Student.studentid,
@@ -148,6 +149,7 @@ def generateStudentInformationReport(student_id, db):
     
     return studentinformation  
 
+#Pulls All Exams related to a specific student id
 def generateExamReport(student_id, db):
     data = db.query(
         Exam.examname,
@@ -174,6 +176,7 @@ def generateExamReport(student_id, db):
         
     return exams
 
+#Pull all grades, from all blocks (classes) that is related to a student
 def generateGradeReport(student_id, db):
     data = db.query(
         GradeClassification.classificationname,
@@ -204,6 +207,7 @@ def generateGradeReport(student_id, db):
         
     return grades
 
+#Special Case: Pulls all grades of a student with the NBME classificaiton attached.
 def generateDomainReport(student_id, db, domain_id: Optional[int] = None):
     query = db.query(
         Domain.domainname,

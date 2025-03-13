@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 from app.main import app
 from app.models import LoginInfo as User
 from app.core.database import get_db
-from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, StudentCompleteReport
+from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport, StudentCompleteReport
 from app.core.security import (
     get_current_active_user
 )
@@ -108,6 +108,27 @@ def mock_gradesdata():
             DateTaught = 2022
         )
     ]
+    
+@pytest.fixture
+def mock_domaindata():
+    return [
+        DomainReport(
+            DomainName = "Blood & Lymphoreticular/Immune Systems",
+            ClassificationName = "IMMUNO",
+            PointsEarned = 6.0,
+            PointsAvailable = 8.0,
+            ClassID = 636,
+            DateTaught = 2022
+        ),
+        DomainReport(
+            DomainName = "Blood & Lymphoreticular/Immune Systems",
+            ClassificationName = "MICRO",
+            PointsEarned = 1.0,
+            PointsAvailable = 1.0,
+            ClassID = 636,
+            DateTaught = 2022
+        )
+    ]
 
 class TestReport:
     
@@ -198,6 +219,39 @@ class TestReport:
         assert grades[0]["ClassificationName"] == mock_gradesdata[0].ClassificationName  
         assert grades[1]["PointsEarned"] == mock_gradesdata[1].PointsEarned
     
+    #Domains Report Testing
+    def test_domain_report_complete(self, test_student, mock_db, mock_domaindata):
+        
+        query_mock = MagicMock()
+        filter_mock = MagicMock()
+        
+        filter_mock.scalar.return_value = 1
+        mock_db.query.return_value = query_mock
+        query_mock.filter.return_value = filter_mock
+        
+        with patch("app.api.v1.endpoints.report.generateDomainReport", return_value=mock_domaindata):
+                 
+            response = test_student.get("/api/v1/domainreport")
+            
+        #Checking for a 200 OK response from the API Call
+        assert response.status_code == 200
+        
+        #Checking Student Info Returns the correctly
+        domain_info = response.json()["Domains"]
+        assert domain_info is not None
+        domain_name = list(domain_info.keys())[0]
+        domain_data = domain_info[domain_name]
+        print("HERE HERE HERE")
+        # First Domain
+        assert domain_data[0]["DomainName"] == mock_domaindata[0].DomainName
+        assert domain_data[0]["ClassificationName"] == mock_domaindata[0].ClassificationName
+        assert domain_data[0]["PointsEarned"] == mock_domaindata[0].PointsEarned
+        
+        #Second Domain
+        assert domain_data[1]["DomainName"] == mock_domaindata[1].DomainName
+        assert domain_data[1]["ClassificationName"] == mock_domaindata[1].ClassificationName
+        assert domain_data[1]["PointsEarned"] == mock_domaindata[1].PointsEarned
+        
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
     

@@ -72,7 +72,9 @@ async def generate_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request"
         )
-        
+
+# Generates a domain report about a student, does not contain exams or student informaiton 
+# Only contains grades mapped to a specific domain    
 @router.get("/domainreport", response_model=DomainGrouping)
 async def generate_domain_report(
     current_user: User = Depends(get_current_active_user),

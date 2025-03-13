@@ -58,7 +58,6 @@ async def generate_report(
     db: Session = Depends(get_db)
 ):
     try:
-        print(current_user.username)
         if current_user.issuperuser:
             raise HTTPException(
                 status_code=403,
