@@ -2,7 +2,7 @@ import pandas as pd
 import re
 from sqlalchemy.exc import IntegrityError
 from ..schemas.pydantic_base_models import result_schemas, class_schemas
-from app.models import Class, ClassOffering, GradeClassification, StudentGrade
+from app.models import Class, ClassOffering, GradeClassification, StudentGrade, Domain, ClassDomain
 from ..core.database import get_db
 import os
 
@@ -187,6 +187,68 @@ def insert_student_grades(db, student_scores, classification_ids, block):
             raise
     print(f'Student Grade Data for Block: {block} Loaded in Database')
     
+def ingest_domain():
+    
+    db = next(get_db())
+    
+    base_domain_data = {
+        'domainname': ['Human Development', 'Blood & Lymphoreticular/Immune Systems', 'Behavioral Health & Nervous Systems/Special Senses',
+                       'Musculoskeletal, Skin & Subcutaneous Tissue', 'Cardiovascular System', 'Respiratory & Renal/Urinary Systems',
+                       'Gastrointestinal System', 'Reproductive & Endocrine Systems', 'Multisystem Processes & Disorders',
+                       'Biostatistics & Epidemiology/Population Health', 'Social Sciences: Communication and Interpersonal Skills'],
+        'weight': [2, 11, 12, 10, 9, 13, 8, 14, 10, 5, 6]
+    }
+    
+    df_domain_data = pd.DataFrame(base_domain_data)
+    
+    try:
+        for _, row in df_domain_data.iterrows():
+            try:
+                db_domain_data = Domain(
+                domainname = row['domainname'],
+                weight = row['weight']
+                )
+                db.add(db_domain_data)
+                db.commit()
+            except IntegrityError:
+                print(f"Domain {row['domainname']} already exists in the database!")
+                db.rollback()
+            except Exception as e:
+                print(f"Error when adding data {e}")
+                db.rollback()
+                raise
+        print('Base Domain Data Loaded in Database')    
+    except Exception as e:
+        print(f"Unexpected Error {e}")
+    finally:
+        db.close()
+
+def ingest_classdomain():
+    class_filePath = os.path.join(
+        "app", "scripts", "data", "ClassDomainMap.csv"
+    )
+    
+    df_classdomainmapping = pd.read_csv(class_filePath)
+
+    db = next(get_db())
+    try:
+        for _, row in df_classdomainmapping.iterrows():
+            try:
+                db_classdomain_data = ClassDomain(
+                    classid = row['classid'],
+                    domainid = row['domainid']
+                )
+                db.add(db_classdomain_data)
+                db.commit()
+            except Exception as e:
+                print(f"Error when adding data {e}")
+                db.rollback()
+                raise
+        print('Base Class Domain Mapping Data Loaded in Database')    
+    except Exception as e:
+        print(f"Unexpected Error {e}")
+    finally:
+        db.close()    
 
 if __name__ == "__main__":
     
@@ -201,8 +263,15 @@ if __name__ == "__main__":
     ]
     df_unrdata = {name: df for name, df in df_unrdata.items() if name not in dropped_sheets}
     sheet_names = df_unrdata.keys()
+    
+    #Ingesting Base Domain Information
+    ingest_domain()
+      
     #Ingesting Base Class Information
     ingest_class()
+    
+    #Ingesting Base Class Domain Mappings
+    ingest_classdomain()
     
     
     #Ingestion Process Begins
