@@ -39,6 +39,8 @@ class Student(Base):
     # Calendar relationships
     calendar_events = relationship('CalendarEvent', back_populates='student')
     study_plans = relationship('StudyPlan', back_populates='student')
+    
+    facultyAccess = relationship('FacultyAccess', back_populates='student')
 
 class Faculty(Base):
     __tablename__ = 'faculty'
@@ -51,6 +53,19 @@ class Faculty(Base):
     
     loginInfo = relationship('LoginInfo', back_populates='faculty')
     offering = relationship('ClassOffering', back_populates='faculty')
+    facultyAccess = relationship('FacultyAccess', back_populates='faculty')
+    
+class FacultyAccess(Base):
+    __tablename__ = 'facultyaccess'
+    
+    facultyaccessid = Column('facultyaccessid', Integer, Identity(start=1, increment=1), primary_key=True)
+    facultyid = Column('facultyid', Integer, ForeignKey('faculty.facultyid'))
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
+    rosteryear = Column('rosteryear', Integer, ForeignKey('classroster.rosteryear'))
+    
+    faculty = relationship('Faculty', back_populates='facultyAccess')
+    student = relationship('Student', back_populates='facultyAccess') 
+    roster = relationship('ClassRoster', back_populates='facultyAccess')
 
 class EnrollmentRecord(Base):
     __tablename__ = 'enrollmentrecord'

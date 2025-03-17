@@ -43,7 +43,7 @@ async def update_login(
                 detail="You can't be an admin, you must be a student."
             )
 
-        link_logininfo(student_id, current_user.logininfoid)
+        link_logininfo(student_id, current_user.logininfoid, "student")
     
     except Exception as e:
         print(f"Login error: {str(e)}")
