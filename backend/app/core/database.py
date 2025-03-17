@@ -14,7 +14,8 @@ from app.models import (
     StudentGrade,
     ClassOffering,
     Domain,
-    ClassDomain
+    ClassDomain,
+    Faculty
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
 
@@ -93,21 +94,32 @@ def nuclear_clean():
     
     print("Complete database wipe performed")
     
-def link_logininfo(studentid, logininfoid):
+def link_logininfo(id, logininfoid, usertype):
     db = next(get_db())
     
     #Removes old link
-    other_users = db.query(Student).filter(Student.logininfoid == logininfoid).all()
-    for user in other_users:
-        user.logininfoid = None
-        db.commit()
+    other_students = db.query(Student).filter(Student.logininfoid == logininfoid).all()
+    for students in other_students:
+        students.logininfoid = None
+        
+        
+    other_faculty = db.query(Student).filter(Student.logininfoid == logininfoid).all()
+    for faculty in other_faculty:
+        faculty.logininfoid = None
+
+    db.commit()
     
-    student = db.query(Student).filter(Student.studentid == studentid).first()
+    if usertype.lower() == "student":
+        user = db.query(Student).filter(Student.studentid == id).first()
+    elif usertype.lower() == "faculty":
+        user = db.query(Faculty).filter(Faculty.facultyid == id).first()
+    else:
+        raise ValueError("Invalid user type")
     
-    if student:
-        student.logininfoid = logininfoid
-        student.firstname = "LeBron"
-        student.lastname = "James"
+    if user:
+        user.logininfoid = logininfoid
+        user.firstname = "LeBron"
+        user.lastname = "James"
         db.commit()
         
     db.close()
