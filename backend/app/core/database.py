@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, MetaData, text
 from sqlalchemy.orm import sessionmaker
-from typing import Optional
+from typing import Optional, List
 from app.models import Student, LoginInfo
 from .config import settings
 from .base import Base
@@ -15,9 +15,11 @@ from app.models import (
     ClassOffering,
     Domain,
     ClassDomain,
-    Faculty
+    Faculty,
+    FacultyAccess
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
+from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -263,4 +265,32 @@ def generateDomainReport(student_id, db, domain_id: Optional[int] = None):
         domain_grades.append(pydanticData)
     print(data)
     return domain_grades
+
+#Updates Faculty Access
+def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Optional[List[int]] = None):
+    
+    try:
+        faculty = db.query(Faculty).filter(Faculty.facultyid == id).first()
+        
+        if faculty is None:
+            raise print("Error: No Faculty Member with this ID Found")
+        
+        if year:
+            db_access = FacultyAccess(
+                facultyid = id,
+                rosteryear = year
+            )
+            db.add(db_access)
+            
+        if students_ids:
+            for student in students_ids:
+                db_access = FacultyAccess(
+                    facultyid = id,
+                    studentid = student
+                )
+                db.add(db_access)
+        
+        db.commit()
+    except Exception as e:
+        print(f'Unexpected Error: {e}')
 
