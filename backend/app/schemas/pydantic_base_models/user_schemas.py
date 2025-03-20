@@ -39,10 +39,10 @@ class Faculty(BaseModel):
         from_attributes = True
         
 class FacultyAccess(BaseModel):
-    FacultyAccessID = int
-    FacultyID = Optional[int]
-    StudentID = Optional[int]
-    RosterYear = Optional[int]
+    FacultyAccessID: Optional[int] = None
+    FacultyID:int
+    StudentID:Optional[int] = None
+    RosterYear: Optional[int] = None
     
     class Config:
         from_attributes = True
