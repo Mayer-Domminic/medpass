@@ -36,6 +36,9 @@ async def update_login(
 
         link_logininfo(faculty_id, current_user.logininfoid, "faculty")
     
+    except HTTPException:
+        raise
+    
     except Exception as e:
         print(f"Login error: {str(e)}")
         raise HTTPException(
@@ -58,14 +61,33 @@ async def update_permissions(
                 detail="Error, you must be an admin to change faculty permissions"
             )
         
+        if year is None and (student_ids is None or len(student_ids) == 0):
+            raise HTTPException(
+                status_code=400,
+                detail="Error: At least one parameter is required, [year or student ids]"
+            )
+        
         if year:
-            update_faculty_access(faculty_id, db, year)
+            result, message = update_faculty_access(faculty_id, db, year)
+            if not result:
+                raise HTTPException(
+                    status_code=400,
+                    detail=message
+                )
             
         if student_ids:
-            update_faculty_access(faculty_id, db, None, student_ids)
+            result, message = update_faculty_access(faculty_id, db, None, student_ids)
+            if not result:
+                raise HTTPException(
+                    status_code=400,
+                    detail=message
+                )
+                
+    except HTTPException:
+        raise
     
     except Exception as e:
-        print(f"Login error: {str(e)}")
+        print(f"Unexepected Error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request"
