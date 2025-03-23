@@ -273,7 +273,7 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
         faculty = db.query(Faculty).filter(Faculty.facultyid == id).first()
         
         if faculty is None:
-            raise print("Error: No Faculty Member with this ID Found")
+            raise ValueError(f"Error: No Faculty Member with ID {id} Found")
         
         if year:
             db_access = FacultyAccess(
@@ -291,6 +291,11 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
                 db.add(db_access)
         
         db.commit()
+        return True, "Access Updated Successfully"
+    except ValueError as e:
+        db.rollback()
+        return False, str(e)
     except Exception as e:
-        print(f'Unexpected Error: {e}')
+        db.rollback()
+        return False, f"Database Error: {str(e)}"
 
