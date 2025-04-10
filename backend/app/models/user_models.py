@@ -37,6 +37,9 @@ class Student(Base):
     #Found in classfacultymodels
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
+    # calendar integration
+    calendar_events = relationship('CalendarEvent', back_populates='student')
+    study_plans = relationship('StudyPlan', back_populates='student')
 
 class Faculty(Base):
     __tablename__ = 'faculty'

@@ -35,10 +35,17 @@ from .result_models import (
     GradeClassification
 )
 
+from .calendar_models import (
+    CalendarEvent,
+    StudyPlan,
+    StudyPlanEvent
+)
+
 __all__ = [
     'LoginInfo', 'Student', 'Faculty', 'GraduationStatus', 'EnrollmentRecord',
     'Exam', 'ContentArea', 'Option', 'Question', 'QuestionClassification', 'QuestionOption',
     'Class', 'ClassOffering', 'GradeClassification', 'StudentGrade',
     'ClassRoster', 'Extracurricular',
-    'Clerkship', 'ExamResults', 'StudentQuestionPerformance'
+    'Clerkship', 'ExamResults', 'StudentQuestionPerformance',
+    'CalendarEvent', 'StudyPlan', 'StudyPlanEvent'
 ]
