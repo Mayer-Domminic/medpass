@@ -35,11 +35,10 @@ class Student(Base):
     graduationStatus = relationship('GraduationStatus', back_populates='student')
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
-    
-    # Calendar relationships
+        # calendar integration
     calendar_events = relationship('CalendarEvent', back_populates='student')
     study_plans = relationship('StudyPlan', back_populates='student')
-    
+
     facultyAccess = relationship('FacultyAccess', back_populates='student')
 
 class Faculty(Base):
