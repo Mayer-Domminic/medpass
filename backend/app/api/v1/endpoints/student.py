@@ -44,6 +44,9 @@ async def update_login(
             )
 
         link_logininfo(student_id, current_user.logininfoid, "student")
+        
+    except HTTPException:
+        raise
     
     except Exception as e:
         print(f"Login error: {str(e)}")
@@ -79,6 +82,9 @@ async def generate_report(
             )
         
         return studentinfo
+    
+    except HTTPException:
+        raise
     
     except Exception as e:
         print(f"Login error: {str(e)}")

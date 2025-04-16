@@ -46,3 +46,11 @@ class DomainReport(BaseModel):
     
 class DomainGrouping(BaseModel):
     Domains: Dict[str, List[DomainReport]]
+    
+class AccessibleStudentInfo(BaseModel):
+    studentid: int
+    name: str
+    rosteryear: int
+    
+    class Config:
+        from_attributes = True
