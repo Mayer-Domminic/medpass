@@ -24,6 +24,7 @@ from app.schemas.reportschema import StudentCompleteReport, DomainReport, Domain
 import pandas as pd
 from typing import Optional, List
 from datetime import datetime
+import json
 
 
 router = APIRouter()
@@ -150,9 +151,13 @@ async def generate_faculty_report(
 ):
     try:
         
+        print("Type of current_user.logininfoid:", type(current_user.logininfoid))
+        print("Value of current_user.logininfoid:", current_user.logininfoid)
+        
         is_student = db.query(Student.studentid).filter(
             Student.logininfoid == current_user.logininfoid
         ).first()
+        
         
         if is_student:
             raise HTTPException(
@@ -188,7 +193,21 @@ async def generate_faculty_report(
         
         grades = generateGradeReport(student_id, db) or []
         
-        
+        try:
+            json.dumps(studentinfo)
+        except Exception as e:
+            print("Failed serializing studentinfo:", e)
+
+        try:
+            json.dumps(exams)
+        except Exception as e:
+            print("Failed serializing exams:", e)
+
+        try:
+            json.dumps(grades)
+        except Exception as e:
+            print("Failed serializing grades:", e)
+            
         return StudentCompleteReport(
             StudentInfo = studentinfo,
             Exams = exams,
@@ -236,7 +255,7 @@ async def generate_faculty_class_report(
         year_access = db.query(FacultyAccess).filter_by(
             facultyid=faculty.facultyid,
             rosteryear=rosteryear
-        ).first
+        ).first()
         
         if not year_access:
             raise HTTPException(
@@ -245,8 +264,8 @@ async def generate_faculty_class_report(
             )
         
         
-        student_ids = db.query(Student.studentid).join(ClassRoster).filter(
-            ClassRoster.rosteryear == rosteryear
+        student_ids = db.query(Student.studentid).join(GraduationStatus).filter(
+            GraduationStatus.rosteryear == rosteryear
         ).all()
         
         reports = []
@@ -308,7 +327,7 @@ async def get_accessible_students(
             Student.studentid,
             Student.firstname,
             Student.lastname,
-            ClassRoster.rosteryear
+            GraduationStatus.rosteryear
         ).join(
             FacultyAccess, FacultyAccess.studentid == Student.studentid
         ).join(
@@ -321,18 +340,16 @@ async def get_accessible_students(
             Student.studentid,
             Student.firstname,
             Student.lastname,
-            ClassRoster.rosteryear
+            GraduationStatus.rosteryear
         ).join(
             GraduationStatus, GraduationStatus.studentid == Student.studentid
         ).join(
             FacultyAccess, FacultyAccess.rosteryear == GraduationStatus.rosteryear
         ).filter(
             FacultyAccess.facultyid == faculty.facultyid
-        ).filter(
-            FacultyAccess.facultyid == faculty.facultyid
         )
         
-        all_students = student_access.union(year_access).distinct.all()
+        all_students = student_access.union(year_access).distinct().all()
         
         return [
             AccessibleStudentInfo(
