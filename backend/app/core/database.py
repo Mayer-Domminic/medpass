@@ -16,9 +16,15 @@ from app.models import (
     Domain,
     ClassDomain,
     Faculty,
-    FacultyAccess
+    FacultyAccess,
+    Question,
+    QuestionOption,
+    QuestionClassification,
+    Option,
+    ContentArea
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
+from app.schemas.question import (QuestionResponse)
 from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
@@ -299,3 +305,88 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
         db.rollback()
         return False, f"Database Error: {str(e)}"
 
+def get_content_areas(db, content_area_names: List[str]):
+    """Get only existing content area IDs from names"""
+    content_area_ids = []
+    
+    for name in content_area_names:
+        # Check if content area exists
+        content_area = db.query(ContentArea).filter(ContentArea.contentname == name).first()
+        
+        if content_area:
+            content_area_ids.append(content_area.contentareaid)
+    
+    return content_area_ids
+
+def get_question(db, question_id: int,):
+    """Get basic question information by ID"""
+    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+    
+    # Map SQLAlchemy model to Pydantic response model
+    return QuestionResponse(
+        QuestionID=db_question.questionid,
+        ExamID=db_question.examid,
+        Prompt=db_question.prompt,
+        QuestionDifficulty=db_question.questionDifficulty,
+        ImageUrl=db_question.image_url,
+        ImageDependent=db_question.image_dependent,
+        ImageDescription=db_question.image_description
+    )
+
+def get_question_with_details(db, question_id: int):
+    """
+    Get detailed question information by ID including options and content areas
+    """
+    # Get the question
+    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+    
+    
+    # Get question options with their correctness
+    question_options = db.query(
+        QuestionOption, Option
+    ).join(
+        Option, Option.optionid == QuestionOption.optionid
+    ).filter(
+        QuestionOption.questionid == question_id
+    ).all()
+    
+    options = []
+    for q_option, option in question_options:
+        options.append({
+            "optionId": option.optionid,
+            "description": option.optiondescription,
+            "isCorrect": q_option.correctanswer,
+            "explanation": q_option.explanation
+        })
+    
+    # Get content areas
+    content_areas = db.query(
+        ContentArea
+    ).join(
+        QuestionClassification, ContentArea.contentareaid == QuestionClassification.contentareaid
+    ).filter(
+        QuestionClassification.questionid == question_id
+    ).all()
+    
+    content_area_list = [{
+        "contentAreaId": area.contentareaid,
+        "name": area.contentname,
+        "discipline": area.discipline
+    } for area in content_areas]
+    
+    # Create response
+    response = {
+        "question": {
+            "QuestionID": db_question.questionid,
+            "ExamID": db_question.examid,
+            "Prompt": db_question.prompt,
+            "QuestionDifficulty": db_question.questionDifficulty,
+            "ImageUrl": db_question.image_url,
+            "ImageDependent": db_question.image_dependent,
+            "ImageDescription": db_question.image_description
+        },
+        "options": options,
+        "contentAreas": content_area_list
+    }
+    
+    return response

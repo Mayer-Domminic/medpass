@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Identity, Float
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Identity, Float
 from sqlalchemy.orm import relationship
 from app.core.base import Base
 
@@ -26,6 +26,7 @@ class ExamResults(Base):
     clerkshipid = Column('clerkshipid', Integer, ForeignKey('clerkship.clerkshipid'))
     score = Column('score', Integer, nullable=False)
     passorfail = Column('passorfail', Boolean)
+    timestamp = Column('timestamp', DateTime)
     
     student = relationship('Student', back_populates='examResults')
     clerkship = relationship('Clerkship', back_populates='examResults')
@@ -39,6 +40,7 @@ class StudentQuestionPerformance(Base):
     examresultid = Column('examresultsid', Integer, ForeignKey('examresults.examresultsid'))
     questionid = Column('questionid', Integer, ForeignKey('question.questionid'))
     result = Column('result', Boolean, nullable=False)
+    confidence = Column('confidence', Integer)
     
     examResults = relationship('ExamResults', back_populates='questionPerformance')
     question = relationship('Question', back_populates='questionPerformance')

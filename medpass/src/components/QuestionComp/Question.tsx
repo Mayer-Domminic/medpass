@@ -98,11 +98,11 @@ const Question = ({
   };
   
   //gets abbreviation from domain
-  const getDomainAbbreviation = (domain) => {
+  const getDomainAbbreviation = (domain: string) => {
     if (!domain) return "";
     
     //returns abbreviation if exists, otherwise returns "OTHER"
-    return domainAbbreviations[domain] || "OTHER";
+    return domainAbbreviations[domain as keyof typeof domainAbbreviations] || "OTHER";
   };
   
   return (
