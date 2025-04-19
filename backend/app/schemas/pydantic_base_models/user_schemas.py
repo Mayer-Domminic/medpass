@@ -37,6 +37,15 @@ class Faculty(BaseModel):
     
     class Config:
         from_attributes = True
+        
+class FacultyAccess(BaseModel):
+    FacultyAccessID: Optional[int] = None
+    FacultyID:int
+    StudentID:Optional[int] = None
+    RosterYear: Optional[int] = None
+    
+    class Config:
+        from_attributes = True
     
 class EnrollmentRecord(BaseModel):
     EnrollmentRecord: int

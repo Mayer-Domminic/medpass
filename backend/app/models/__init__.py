@@ -2,7 +2,8 @@ from .user_models import (
     LoginInfo,
     Student,
     Faculty,
-    EnrollmentRecord
+    EnrollmentRecord,
+    FacultyAccess
 )
 
 from .exam_models import (

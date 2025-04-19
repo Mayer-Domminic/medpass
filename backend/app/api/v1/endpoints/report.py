@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import or_
 from app.core.database import (get_db, 
     generateStudentInformationReport, 
     generateGradeReport, 
@@ -12,16 +13,40 @@ from app.core.security import (
 )
 from app.models import LoginInfo as User
 from app.models import (
-    Student
+    Student,
+    ClassRoster,
+    FacultyAccess,
+    Faculty,
+    GraduationStatus
 )
-from app.schemas.reportschema import StudentCompleteReport, DomainReport, DomainGrouping
+from app.schemas.reportschema import StudentCompleteReport, DomainReport, DomainGrouping, AccessibleStudentInfo
 
 import pandas as pd
 from typing import Optional, List
 from datetime import datetime
+import json
 
 
 router = APIRouter()
+
+#Checks if a faculty member has access to a specific student (either by year or month)
+def check_faculty_access(faculty_id, student_id, db):
+
+    student_year = db.query(GraduationStatus.rosteryear).filter(
+        GraduationStatus.studentid == student_id
+    ).scalar()
+    
+    if student_year is None:
+        return False
+    
+    # Returns a true or false
+    return db.query(FacultyAccess).filter(
+        FacultyAccess.facultyid == faculty_id,
+        or_(
+            FacultyAccess.studentid == student_id,
+            FacultyAccess.rosteryear == student_year
+        )
+    ).first() is not None
 
 #Generates a student report based on a student's information, total exams, and grades
 @router.get("/report", response_model=StudentCompleteReport)
@@ -30,7 +55,6 @@ async def generate_report(
     db: Session = Depends(get_db)
 ):
     try:
-        print(current_user.username)
         if current_user.issuperuser:
             raise HTTPException(
                 status_code=403,
@@ -109,6 +133,233 @@ async def generate_domain_report(
             
         return {"Domains": domain_reports}
     
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+        
+@router.get("/faculty_report", response_model=StudentCompleteReport)
+async def generate_faculty_report(
+    student_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        
+        print("Type of current_user.logininfoid:", type(current_user.logininfoid))
+        print("Value of current_user.logininfoid:", current_user.logininfoid)
+        
+        is_student = db.query(Student.studentid).filter(
+            Student.logininfoid == current_user.logininfoid
+        ).first()
+        
+        
+        if is_student:
+            raise HTTPException(
+                status_code=403,
+                detail="Only faculty members can access this route"
+            )
+            
+        faculty = db.query(Faculty).filter(
+            Faculty.logininfoid == current_user.logininfoid
+        ).first()
+        
+        if not faculty:
+            raise HTTPException(
+                status_code=404,
+                detail="No faculty Info Found"
+            )
+        
+        if not check_faculty_access(faculty.facultyid, student_id, db):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to access this student's report"
+            )
+        
+        studentinfo = generateStudentInformationReport(student_id, db)
+        if not studentinfo:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to acces this student's report"
+            )
+            
+        #Exams and Grades can be empty if they have no exams/grades on records
+        exams = generateExamReport(student_id, db) or []
+        
+        grades = generateGradeReport(student_id, db) or []
+        
+        try:
+            json.dumps(studentinfo)
+        except Exception as e:
+            print("Failed serializing studentinfo:", e)
+
+        try:
+            json.dumps(exams)
+        except Exception as e:
+            print("Failed serializing exams:", e)
+
+        try:
+            json.dumps(grades)
+        except Exception as e:
+            print("Failed serializing grades:", e)
+            
+        return StudentCompleteReport(
+            StudentInfo = studentinfo,
+            Exams = exams,
+            Grades = grades
+        )
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+        
+@router.get("/faculty_class_report", response_model=List[StudentCompleteReport])
+async def generate_faculty_class_report(
+    rosteryear: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        
+        is_student = db.query(Student.studentid).filter(
+            Student.logininfoid == current_user.logininfoid
+        ).first()
+        
+        if is_student:
+            raise HTTPException(
+                status_code=403,
+                detail="Only faculty members can access this route"
+            )
+            
+        faculty = db.query(Faculty).filter(
+            Faculty.logininfoid == current_user.logininfoid
+        ).first()
+        
+        if not faculty:
+            raise HTTPException(
+                status_code=404,
+                detail="No faculty Info Found"
+            )
+        
+        year_access = db.query(FacultyAccess).filter_by(
+            facultyid=faculty.facultyid,
+            rosteryear=rosteryear
+        ).first()
+        
+        if not year_access:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to access this class year"
+            )
+        
+        
+        student_ids = db.query(Student.studentid).join(GraduationStatus).filter(
+            GraduationStatus.rosteryear == rosteryear
+        ).all()
+        
+        reports = []
+        
+        for (student_id,) in student_ids:
+            studentinfo = generateStudentInformationReport(student_id, db)
+            if not studentinfo:
+                continue
+            #Exams and Grades can be empty if they have no exams/grades on records
+            exams = generateExamReport(student_id, db) or []
+            grades = generateGradeReport(student_id, db) or []
+            
+            reports.append(StudentCompleteReport(
+                StudentInfo=studentinfo,
+                Exams=exams,
+                Grades=grades
+            ))
+            
+        return reports
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+        
+@router.get("/faculty_access", response_model=List[AccessibleStudentInfo])
+async def get_accessible_students(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db) 
+):
+    try:
+        
+        is_student = db.query(Student.studentid).filter(
+            Student.logininfoid == current_user.logininfoid
+        ).first()
+        
+        if is_student:
+            raise HTTPException(
+                status_code=403,
+                detail="Only faculty members can access this route"
+            )
+            
+        faculty = db.query(Faculty).filter(
+            Faculty.logininfoid == current_user.logininfoid
+        ).first()
+        
+        if not faculty:
+            raise HTTPException(
+                status_code=404,
+                detail="No faculty Info Found"
+            )
+        
+        student_access = db.query(
+            Student.studentid,
+            Student.firstname,
+            Student.lastname,
+            GraduationStatus.rosteryear
+        ).join(
+            FacultyAccess, FacultyAccess.studentid == Student.studentid
+        ).join(
+            GraduationStatus, GraduationStatus.studentid == Student.studentid
+        ).filter(
+            FacultyAccess.facultyid == faculty.facultyid
+        )
+        
+        year_access = db.query(
+            Student.studentid,
+            Student.firstname,
+            Student.lastname,
+            GraduationStatus.rosteryear
+        ).join(
+            GraduationStatus, GraduationStatus.studentid == Student.studentid
+        ).join(
+            FacultyAccess, FacultyAccess.rosteryear == GraduationStatus.rosteryear
+        ).filter(
+            FacultyAccess.facultyid == faculty.facultyid
+        )
+        
+        all_students = student_access.union(year_access).distinct().all()
+        
+        return [
+            AccessibleStudentInfo(
+                studentid=s.studentid,
+                name=f"{s.lastname}, {s.firstname}",
+                rosteryear=s.rosteryear
+            )
+            for s in all_students
+        ]
+        
     except HTTPException:
         raise
     

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
+import math
 
 #optional statements are present as dataset is incomplete or students are in progress
 class StudentReport(BaseModel):
@@ -17,6 +18,10 @@ class StudentReport(BaseModel):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+        float: lambda x: None if math.isnan(x) else x
+    }
+        
     
 class ExamReport(BaseModel):
     ExamName: str
@@ -24,12 +29,22 @@ class ExamReport(BaseModel):
     PassScore: int
     PassOrFail: bool
     
+    class Config:
+        json_encoders = {
+        float: lambda x: None if math.isnan(x) else x
+    }
+    
 class GradeReport(BaseModel):
     ClassificationName: str
     PointsEarned: float
     PointsAvailable: float
     ClassID: int
     DateTaught: int
+    
+    class Config:
+        json_encoders = {
+        float: lambda x: None if math.isnan(x) else x
+    }
     
 class StudentCompleteReport(BaseModel):
     StudentInfo: StudentReport
@@ -46,3 +61,11 @@ class DomainReport(BaseModel):
     
 class DomainGrouping(BaseModel):
     Domains: Dict[str, List[DomainReport]]
+    
+class AccessibleStudentInfo(BaseModel):
+    studentid: int
+    name: str
+    rosteryear: int
+    
+    class Config:
+        from_attributes = True
