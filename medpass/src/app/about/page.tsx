@@ -57,6 +57,7 @@ const AboutPage: React.FC = () => {
   ];
 
   const instructors: Instructor[] = [
+    { name: 'Dave Feil-Seifer'},
     { name: 'Sara Davis' },
     { name: 'Vinh Le' },
     { name: 'Levi Scully' }
