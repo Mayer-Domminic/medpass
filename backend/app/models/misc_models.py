@@ -11,6 +11,7 @@ class ClassRoster(Base):
     currentenrollment = Column('currentenrollment', Integer)
     
     graduation = relationship('GraduationStatus', back_populates='roster')
+    facultyAccess = relationship('FacultyAccess', back_populates='roster')
 
 class Extracurricular(Base):
     __tablename__ = 'extracurriculars'

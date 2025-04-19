@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auth, risk, settings, student, report, settings, faculty, about 
+from .endpoints import auth, risk, settings, student, report, settings, faculty , about 
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])

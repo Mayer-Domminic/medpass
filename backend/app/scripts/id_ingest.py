@@ -66,9 +66,6 @@ if __name__ == "__main__":
     df_graduationstatus['Grad.yrs'] = df_graduationstatus['Grad.yrs'].apply(convertGradYear).replace({float('nan'): None})
     df_graduationstatus['Grad.Year'] = df_graduationstatus['Grad.Year'].replace(['Active', 'Dropped'], None)
     df_graduationstatus['Graduated'] = df_graduationstatus['Graduated'].fillna(0).astype(bool)
-    
-    #print(df_graduationstatus.dtypes)
-    #print(df_graduationstatus)
 
     #Adding Base Exam Name Data
     base_exam_data = {
@@ -79,15 +76,11 @@ if __name__ == "__main__":
     }
     
     df_exam_data = pd.DataFrame(base_exam_data)
-    #print(df_exam_data)
     
     #Adding Student Exam Data
     df_student_exam = df_unrdata[[
        'Random Number ID',  'MCATcalc', 'CBSE1 score', 'CBSE2 score', 'USMLE_Step1score', 'USMLE_STEP2score'
-    ]]
-    
-    #print(df_student_exam)
-    
+    ]] 
     
     #Adding Student Data
     try:
@@ -344,7 +337,6 @@ if __name__ == "__main__":
     finally:
         db.close()  
     
-    #print(df_student)
     
     
     
