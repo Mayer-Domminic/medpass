@@ -333,60 +333,77 @@ def get_question(db, question_id: int,):
         ImageDescription=db_question.image_description
     )
 
-def get_question_with_details(db, question_id: int):
-    """
-    Get detailed question information by ID including options and content areas
-    """
-    # Get the question
-    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+def get_question_with_details(question_id, db):
     
+    question_data = db.query(
+        Question.questionid,
+        Question.examid,
+        Question.prompt,
+        Question.questionDifficulty,
+        Question.imageUrl,
+        Question.imageDependent,
+        Question.imageDescription
+    ).filter(
+        Question.questionid == question_id
+    ).first()
     
-    # Get question options with their correctness
-    question_options = db.query(
-        QuestionOption, Option
+    if not question_data:
+        return None
+    
+    options_data = db.query(
+        QuestionOption.optionid,
+        QuestionOption.correctanswer,
+        QuestionOption.explanation,
+        Option.optiondescription
     ).join(
         Option, Option.optionid == QuestionOption.optionid
     ).filter(
         QuestionOption.questionid == question_id
     ).all()
     
-    options = []
-    for q_option, option in question_options:
-        options.append({
-            "optionId": option.optionid,
-            "description": option.optiondescription,
-            "isCorrect": q_option.correctanswer,
-            "explanation": q_option.explanation
-        })
-    
-    # Get content areas
-    content_areas = db.query(
-        ContentArea
+    content_area_data = db.query(
+        ContentArea.contentareaid,
+        ContentArea.contentname,
+        ContentArea.description,
+        ContentArea.discipline
     ).join(
         QuestionClassification, ContentArea.contentareaid == QuestionClassification.contentareaid
     ).filter(
         QuestionClassification.questionid == question_id
     ).all()
     
-    content_area_list = [{
-        "contentAreaId": area.contentareaid,
-        "name": area.contentname,
-        "discipline": area.discipline
-    } for area in content_areas]
-    
-    # Create response
-    response = {
-        "question": {
-            "QuestionID": db_question.questionid,
-            "ExamID": db_question.examid,
-            "Prompt": db_question.prompt,
-            "QuestionDifficulty": db_question.questionDifficulty,
-            "ImageUrl": db_question.image_url,
-            "ImageDependent": db_question.image_dependent,
-            "ImageDescription": db_question.image_description
-        },
-        "options": options,
-        "contentAreas": content_area_list
+    question_dict = {
+        "QuestionID": question_data[0],
+        "ExamID": question_data[1],
+        "Prompt": question_data[2],
+        "QuestionDifficulty": question_data[3],
+        "ImageUrl": question_data[4],
+        "ImageDependent": question_data[5],
+        "ImageDescription": question_data[6]
     }
     
-    return response
+    options = []
+    for option in options_data:
+        options.append({
+            "OptionID": option[0],
+            "CorrectAnswer": option[1],
+            "Explanation": option[2],
+            "OptionDescription": option[3]
+        })
+        
+    content_areas = []
+    for area in content_area_data:
+        content_areas.append({
+            "ContentAreaID": area[0],
+            "ContentName": area[1],
+            "Description": area[2],
+            "Discipline": area[3]
+        })
+        
+    result = {
+        "Question": question_dict,
+        "Options": options,
+        "ContentAreas": content_areas
+    }
+    
+    return result
