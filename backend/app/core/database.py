@@ -30,6 +30,10 @@ from app.schemas.pydantic_base_models import user_schemas
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-mpnet-base-v2')
+
 def get_db():
     """Dependency to get a DB session."""
     db = SessionLocal()
@@ -37,6 +41,16 @@ def get_db():
         yield db
     finally:
         db.close()
+        
+def ensure_pgvector_extension():
+    db = next(get_db())
+    
+    try:
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        db.commit()
+    finally:
+        db.close()
+        
 
 def drop_all_tables():
     """Drop all tables in the database."""
@@ -436,3 +450,47 @@ def get_question_with_details(question_id, db):
     }
     
     return result
+
+#Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
+def convert_question_to_text(question_response: dict) -> str:
+    
+    question = question_response['Question']
+    option = question_response['Options']
+    content_areas = question_response['ContentAreas']
+    
+    prompt = question['Prompt']
+    
+    # This is for a way to format our options for context in a A, B, C, D format (chr 65 is a + 1 is each letter after)
+    option_lines = [
+        f"{chr(65 + i)}. {opt['OptionDescription']}" for i, opt in enumerate(option)
+    ]
+    
+    difficulty = question.get('QuestionDifficulty', 'Unknown')
+    content_names = [ca["ContentName"] for ca in content_areas]
+    # If multiple content areas combine them into a single string
+    content_area_line = ', '.join(content_names) if content_names else "Uncatergorized"
+    
+    context_lines = [
+        f"Difficulty: {difficulty}",
+        f"Content Areas: {content_area_line}",
+        ""
+    ]
+    
+    text = "\n".join(context_lines + [prompt] + option_lines)
+    
+    return text
+
+def generate_question_embedding(question_id, db):
+    
+    question_data = get_question_with_details(question_id, db)
+    
+    if not question_data:
+        return None
+    
+    question_text = convert_question_to_text(question_data)
+    embedding = model.encode(question_text).tolist()
+    
+    question = db.query(Question).filter(Question.questionid == question_id).first()
+    if question:
+        question.embedding = embedding
+        db.commit()

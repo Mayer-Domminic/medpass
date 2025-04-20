@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 from app.core.base import Base
 
 
@@ -44,6 +45,8 @@ class Question(Base):
     imageUrl = Column('imageurl', String(255))
     imageDependent = Column('imagedependent', Boolean)
     imageDescription = Column('imagedescription', String(255))
+    
+    embedding = Column(Vector(768), nullable=True)
 
     exam = relationship('Exam', back_populates='questions')
     classification = relationship('QuestionClassification', back_populates='question')

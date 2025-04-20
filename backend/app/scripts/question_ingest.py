@@ -1,6 +1,6 @@
 from ..schemas.pydantic_base_models import exam_schemas
 from app.models import ContentArea, Option, Question, QuestionClassification, QuestionOption
-from ..core.database import get_db
+from ..core.database import get_db, generate_question_embedding
 
 def ingest_content_area(content_area_data):
     
@@ -255,6 +255,13 @@ if __name__ == "__main__":
         ingest_questions(question_data)     
         ingest_question_classification(question_classification_data)      
         ingest_question_options(question_option_data)
+        
+        try:
+            db = next(get_db())
+            for i in range (10, 14):
+                generate_question_embedding(i, db)
+        finally:
+            db.close()
         
         print("Question Related Sample Data Ingestion Successful")
     except Exception as e:
