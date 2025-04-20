@@ -307,31 +307,60 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
 
 def get_content_areas(db, content_area_names: List[str]):
     """Get only existing content area IDs from names"""
-    content_area_ids = []
     
-    for name in content_area_names:
-        # Check if content area exists
-        content_area = db.query(ContentArea).filter(ContentArea.contentname == name).first()
+    if not content_area_names:
+        return {}
+    
+    content_area = db.query(
+        ContentArea.contentareaid,
+        ContentArea.contentname
+    ).filter(
+        ContentArea.contentname.in_(content_area_names)
+    ).all()
+    
+    name_to_id = {}
+    
+    for data in content_area:
+        name_to_id[data[1]] = data[0]
         
-        if content_area:
-            content_area_ids.append(content_area.contentareaid)
+    missing_names = set(content_area_names) - set(name_to_id.keys())
+    if missing_names:
+        print(f"Content area names not found: {', '.join(missing_names)}")
     
-    return content_area_ids
+    return name_to_id
 
 def get_question(db, question_id: int,):
     """Get basic question information by ID"""
-    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+    question_data = db.query(
+        Question.questionid,
+        Question.prompt,
+        Question.questionDifficulty,
+        Question.imageUrl,
+        Question.imageDependent,
+        Question.imageDescription,
+        Question.examid,
+        Exam.examname
+    ).outerjoin(
+        Exam, Question.examid == Exam.examid
+    ).filter(
+        Question.questionid == question_id
+    ).first()
     
-    # Map SQLAlchemy model to Pydantic response model
-    return QuestionResponse(
-        QuestionID=db_question.questionid,
-        ExamID=db_question.examid,
-        Prompt=db_question.prompt,
-        QuestionDifficulty=db_question.questionDifficulty,
-        ImageUrl=db_question.image_url,
-        ImageDependent=db_question.image_dependent,
-        ImageDescription=db_question.image_description
-    )
+    if not question_data:
+        return None
+    
+    question_dict = {
+        "QuestionID": question_data[0],
+        "Prompt": question_data[1],
+        "QuestionDifficulty": question_data[2],
+        "ImageUrl": question_data[3],
+        "ImageDependent": question_data[4],
+        "ImageDescription": question_data[5],
+        "ExamID": question_data[6],
+        "ExamName": question_data[7]
+    }
+    
+    return question_dict
 
 def get_question_with_details(question_id, db):
     

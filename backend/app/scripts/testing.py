@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from ..core.database import get_question_with_details, get_db
+from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
 
 model = SentenceTransformer('all-mpnet-base-v2')
 
@@ -38,6 +38,12 @@ if __name__ == "__main__":
     text = convert_question_to_text(response)
     print(text)
     
-    embedding = model.encode(text).tolist()
+    #embedding = model.encode(text).tolist()
     
-    print(embedding)
+    #print(embedding)
+    
+    questiontext = get_question(db, 11)
+    print(questiontext)
+    
+    contenttext = get_content_areas(db, ["Cardiovascular System", "Pharmacology", "Physiology"])
+    print(contenttext)
