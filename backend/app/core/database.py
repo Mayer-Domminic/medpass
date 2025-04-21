@@ -318,20 +318,38 @@ def get_content_areas(db, content_area_names: List[str]):
     
     return content_area_ids
 
-def get_question(db, question_id: int,):
+def get_question(db, question_id: int):
     """Get basic question information by ID"""
-    db_question = db.query(Question).filter(Question.questionid == question_id).first()
-    
-    # Map SQLAlchemy model to Pydantic response model
-    return QuestionResponse(
-        QuestionID=db_question.questionid,
-        ExamID=db_question.examid,
-        Prompt=db_question.prompt,
-        QuestionDifficulty=db_question.questionDifficulty,
-        ImageUrl=db_question.image_url,
-        ImageDependent=db_question.image_dependent,
-        ImageDescription=db_question.image_description
-    )
+    question_data = db.query(
+        Question.questionid,
+        Question.prompt,
+        Question.questionDifficulty,
+        Question.imageUrl,
+        Question.imageDependent,
+        Question.imageDescription,
+        Question.examid,
+        Exam.examname
+    ).outerjoin(
+        Exam, Question.examid == Exam.examid
+    ).filter(
+        Question.questionid == question_id
+    ).first()
+   
+    if not question_data:
+        return None
+   
+    question_dict = {
+        "QuestionID": question_data[0],
+        "Prompt": question_data[1],
+        "QuestionDifficulty": question_data[2],
+        "ImageUrl": question_data[3],
+        "ImageDependent": question_data[4],
+        "ImageDescription": question_data[5],
+        "ExamID": question_data[6],
+        "ExamName": question_data[7] if question_data[7] is not None else ""
+    }
+   
+    return question_dict
 
 def get_question_with_details(db, question_id: int):
     """
@@ -340,6 +358,8 @@ def get_question_with_details(db, question_id: int):
     # Get the question
     db_question = db.query(Question).filter(Question.questionid == question_id).first()
     
+    if not db_question:
+        return None
     
     # Get question options with their correctness
     question_options = db.query(
@@ -381,12 +401,57 @@ def get_question_with_details(db, question_id: int):
             "ExamID": db_question.examid,
             "Prompt": db_question.prompt,
             "QuestionDifficulty": db_question.questionDifficulty,
-            "ImageUrl": db_question.image_url,
-            "ImageDependent": db_question.image_dependent,
-            "ImageDescription": db_question.image_description
+            "ImageUrl": db_question.imageUrl,
+            "ImageDependent": db_question.imageDependent,
+            "ImageDescription": db_question.imageDescription,
+            "ExamName": db_question.exam.examname if db_question.exam else None
         },
         "options": options,
         "contentAreas": content_area_list
     }
     
     return response
+
+#Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
+def convert_question_to_text(question_response: dict) -> str:
+    
+    question = question_response['Question']
+    option = question_response['Options']
+    content_areas = question_response['ContentAreas']
+    
+    prompt = question['Prompt']
+    
+    # This is for a way to format our options for context in a A, B, C, D format (chr 65 is a + 1 is each letter after)
+    option_lines = [
+        f"{chr(65 + i)}. {opt['OptionDescription']}" for i, opt in enumerate(option)
+    ]
+    
+    difficulty = question.get('QuestionDifficulty', 'Unknown')
+    content_names = [ca["ContentName"] for ca in content_areas]
+    # If multiple content areas combine them into a single string
+    content_area_line = ', '.join(content_names) if content_names else "Uncatergorized"
+    
+    context_lines = [
+        f"Difficulty: {difficulty}",
+        f"Content Areas: {content_area_line}",
+        ""
+    ]
+    
+    text = "\n".join(context_lines + [prompt] + option_lines)
+    
+    return text
+
+def generate_question_embedding(question_id, db):
+    
+    question_data = get_question_with_details(question_id, db)
+    
+    if not question_data:
+        return None
+    
+    question_text = convert_question_to_text(question_data)
+    embedding = model.encode(question_text).tolist()
+    
+    question = db.query(Question).filter(Question.questionid == question_id).first()
+    if question:
+        question.embedding = embedding
+        db.commit()

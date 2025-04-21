@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 
-from app.core.database import get_db
+from app.core.database import get_db, get_question, get_question_with_details
 from app.schemas.question import (
     QuestionCreate,
     QuestionOptionCreate,
@@ -80,96 +80,41 @@ async def create_question_classifications(db: Session, question_id: int, content
 #-----------------------------------------------------------------------------
 
 @router.get("/{question_id}", response_model=dict)
-async def get_question_with_details(
+async def get_question_details(
     question_id: int,
     db: Session = Depends(get_db)
 ):
     """
     Get detailed question information by ID including options and content areas
     """
-    # Get the question
-    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+    # Use the existing database function
+    result = get_question_with_details(db, question_id)
     
-    if not db_question:
+    if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Question with ID {question_id} not found"
         )
     
-    # Get question options with their correctness
-    question_options = db.query(
-        QuestionOption, Option
-    ).join(
-        Option, Option.optionid == QuestionOption.optionid
-    ).filter(
-        QuestionOption.questionid == question_id
-    ).all()
-    
-    options = []
-    for q_option, option in question_options:
-        options.append({
-            "optionId": option.optionid,
-            "description": option.optiondescription,
-            "isCorrect": q_option.correctanswer,
-            "explanation": q_option.explanation
-        })
-    
-    # Get content areas
-    content_areas = db.query(
-        ContentArea
-    ).join(
-        QuestionClassification, ContentArea.contentareaid == QuestionClassification.contentareaid
-    ).filter(
-        QuestionClassification.questionid == question_id
-    ).all()
-    
-    content_area_list = [{
-        "contentAreaId": area.contentareaid,
-        "name": area.contentname,
-        "discipline": area.discipline
-    } for area in content_areas]
-    
-    # Create response
-    response = {
-        "question": {
-            "QuestionID": db_question.questionid,
-            "ExamID": db_question.examid,
-            "Prompt": db_question.prompt,
-            "QuestionDifficulty": db_question.questionDifficulty,
-            "ImageUrl": db_question.image_url,
-            "ImageDependent": db_question.image_dependent,
-            "ImageDescription": db_question.image_description
-        },
-        "options": options,
-        "contentAreas": content_area_list
-    }
-    
-    return response
+    return result
 
 @router.get("/{question_id}/basic", response_model=QuestionResponse)
-async def get_question(
+async def get_question_basic(
     question_id: int,
     db: Session = Depends(get_db)
 ):
     """Get basic question information by ID"""
-    db_question = db.query(Question).filter(Question.questionid == question_id).first()
+    # Use the database function
+    question_dict = get_question(db, question_id)
     
-    if not db_question:
+    if not question_dict:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Question with ID {question_id} not found"
         )
     
-    # Map SQLAlchemy model to Pydantic response model
-    return QuestionResponse(
-        QuestionID=db_question.questionid,
-        ExamID=db_question.examid,
-        Prompt=db_question.prompt,
-        QuestionDifficulty=db_question.questionDifficulty,
-        ImageUrl=db_question.image_url,
-        ImageDependent=db_question.image_dependent,
-        ImageDescription=db_question.image_description
-    )
+    # Return the question data directly, assuming QuestionResponse matches the keys in question_dict
+    return QuestionResponse(**question_dict)
 
 #-----------------------------------------------------------------------------
 # POST Endpoints - Question Creation

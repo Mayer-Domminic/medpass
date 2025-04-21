@@ -22,8 +22,8 @@ class QuestionCreate(BaseModel):
     ImageUrl: Optional[str] = Field(None, max_length=255)
     ImageDependent: Optional[bool] = Field(False)
     ImageDescription: Optional[str] = Field(None, max_length=255)
-    options: List[QuestionOptionCreate]
-    content_areas: List[str]  # List of content area names
+    Options: List[QuestionOptionCreate]
+    ContentAreas: List[str]  # List of content area names
     
     class Config:
         from_attributes = True
@@ -32,26 +32,27 @@ class QuestionCreate(BaseModel):
 class QuestionData(BaseModel):
     Question: str
     Answers: Dict[str, str]
-    correct_option: str
-    Image_Description: Optional[str] = None
-    Image_URL: Optional[str] = None
+    CorrectOption: str
+    ImageDescription: Optional[str] = None
+    ImageURL: Optional[str] = None
     Explanation: Optional[str] = None
-    Image_Dependent: bool = False
-    domain: str
+    ImageDependent: bool = False
+    Domain: str
 
 # Response Models (using your existing models)
 class QuestionResponse(BaseModel):
     QuestionID: int
-    ExamID: Optional[int]
     Prompt: str
     QuestionDifficulty: Optional[str]
     ImageUrl: Optional[str]
     ImageDependent: Optional[bool]
     ImageDescription: Optional[str]
+    ExamID: Optional[int]
+    ExamName: Optional[str]
     
     class Config:
         from_attributes = True
 
 class BulkQuestionResponse(BaseModel):
-    questions: List[QuestionResponse]
-    total_created: int
+    Questions: List[QuestionResponse]
+    TotalCreated: int
