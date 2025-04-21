@@ -1,6 +1,6 @@
 from ..schemas.pydantic_base_models import chat_schemas
 from app.models import ChatConversation, ChatMessageContext, ChatContext, ChatMessage
-from ..core.database import get_db
+from ..core.database import get_db, generate_chatcontext_embedding, generate_chatmessage_embedding
 import datetime
 from decimal import Decimal
 
@@ -261,7 +261,16 @@ if __name__ == "__main__":
             "WasUsed": True
         }
     ]
-
+    
     ingest_chat_message_context(chat_message_context_data)
     
+    try:
+        db = next(get_db())
+        for i in range(1, 4):
+            generate_chatcontext_embedding(i, db)
+        for y in range(1, 5):
+            generate_chatmessage_embedding(y, db)
+    finally:
+        db.close()
+
     print("Sample Chat Data ingested successfully")

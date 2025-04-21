@@ -21,7 +21,9 @@ from app.models import (
     QuestionOption,
     QuestionClassification,
     Option,
-    ContentArea
+    ContentArea,
+    ChatContext,
+    ChatMessage
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
 from app.schemas.question import (QuestionResponse)
@@ -497,13 +499,70 @@ def generate_question_embedding(question_id, db):
         
 # Chat Messages Embedding
 
-def convert_chatcontext_text(context: dict) -> str:
+def get_chat_context(chat_context_id, db):
     
-    title = context.get('title', '')
-    content = context.get('content', '')
+    context_data = db.query(
+        ChatContext.contextid,
+        ChatContext.title,
+        ChatContext.content,
+        ChatContext.importancescore,
+        ChatContext.createdat,
+        ChatContext.updatedat,
+        ChatContext.chatmetadata,
+        ChatContext.conversationid,
+        ChatContext.createdby
+    ).filter(ChatContext.contextid == chat_context_id).first()
+
+    if not context_data:
+        return None
+
+    return {
+        "ContextID": context_data[0],
+        "Title": context_data[1],
+        "Content": context_data[2],
+        "ImportanceScore": context_data[3],
+        "CreatedAt": context_data[4],
+        "UpdatedAt": context_data[5],
+        "Metadata": context_data[6],
+        "ConversationID": context_data[7],
+        "CreatedBy": context_data[8]
+    }
+    
+def get_chat_message(chat_message_id, db):
+    message_data = db.query(
+        ChatMessage.messageid,
+        ChatMessage.conversationid,
+        ChatMessage.sendertype,
+        ChatMessage.content,
+        ChatMessage.timestamp,
+        ChatMessage.tokensinput,
+        ChatMessage.tokensoutput,
+        ChatMessage.messagecost,
+        ChatMessage.messagemetadata
+    ).filter(ChatMessage.messageid == chat_message_id).first()
+
+    if not message_data:
+        return None
+
+    return {
+        "MessageID": message_data[0],
+        "ConversationID": message_data[1],
+        "SenderType": message_data[2],
+        "Content": message_data[3],
+        "Timestamp": message_data[4],
+        "TokensInput": message_data[5],
+        "TokensOutput": message_data[6],
+        "MessageCost": message_data[7],
+        "Metadata": message_data[8]
+    }
+
+def generate_chatcontext_text(context: dict) -> str:
+    
+    title = context.get('Title', '')
+    content = context.get('Content', '')
     
     # Make sure when creating metadata it has topic and tags also
-    metadata = context.get('metadata', {})
+    metadata = context.get('Metadata', {})
     topic = metadata.get('topic', '')
     tags = metadata.get('tags', [])
     tags_line = ', '.join(tags) if tags else "Uncatergorized"
@@ -516,15 +575,17 @@ def convert_chatcontext_text(context: dict) -> str:
         ""
     ]
     
-    return context_lines
+    text = '\n'.join(context_lines)
+    
+    return text
 
-def construct_messagecontext_text(message: dict) -> str:
+def generate_messagecontext_text(message: dict) -> str:
     
-    sender = message.get('sender', '')
-    content = message.get('content', '')
+    sender = message.get('SenderType', '')
+    content = message.get('Content', '')
     
-    metadata = message.get('metadata', {})
-    model = metadata.get('', '')
+    metadata = message.get('Metadata', {})
+    model = metadata.get('model', '')
     temperature = metadata.get('temperature', '')
     client = metadata.get('client', '')
     
@@ -550,4 +611,37 @@ def construct_messagecontext_text(message: dict) -> str:
         ""
     ]
     
-    return context_lines
+    text = '\n'.join(context_lines)
+    
+    return text
+
+def generate_chatcontext_embedding(chatcontext_id, db):
+    
+    context_data = get_chat_context(chatcontext_id, db) 
+    
+    if not context_data:
+        return None
+    
+    context_text = generate_chatcontext_text(context_data)
+    embedding = model.encode(context_text).tolist()
+    
+    context = db.query(ChatContext).filter(ChatContext.contextid == chatcontext_id).first()
+    if context:
+        context.embedding = embedding
+        db.commit()
+    
+        
+def generate_chatmessage_embedding(chatmessage_id, db):
+    message_data = get_chat_message(chatmessage_id, db)
+    
+    if not message_data:
+        return None
+    
+    message_text = generate_messagecontext_text(message_data)
+    embedding = model.encode(message_text).tolist()
+    
+    message = db.query(ChatMessage).filter(ChatMessage.messageid == chatmessage_id).first()
+    if message:
+        message.embedding = embedding
+        db.commit()
+    
