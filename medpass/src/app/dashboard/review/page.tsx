@@ -123,6 +123,8 @@ export default function ReviewPage() {
   const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
+  const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [studentId, setStudentId] = useState<number>(1); // Default studentId
 
   // Load questions from API
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function ReviewPage() {
     loadQuestions();
   }, []);
 
-  //--- localstorage functions ---
+  //---localstorage functions ---
   const saveQuizState = () => {
     const quizState = {
       currentQuestionIndex,
@@ -171,6 +173,79 @@ export default function ReviewPage() {
       }
     }
     return false;
+  };
+  
+  // Function to submit quiz results to the database
+  const submitQuizResultsToDatabase = async (studentId: number, examId: number) => {
+    try {
+      const quizState = JSON.parse(localStorage.getItem('reviewSessionState') || '{}');
+      
+      if (!quizState.userAnswers || quizState.userAnswers.length === 0) {
+        console.error('No quiz data available to submit');
+        return { success: false, message: 'No quiz data available' };
+      }
+      
+      // Convert confidence levels to integer values
+      const confidenceToInt = (confidenceStr: string): number => {
+        switch(confidenceStr.toLowerCase()) {
+          case 'very-good': return 5;
+          case 'good': return 4;
+          case 'neutral': return 3;
+          case 'bad': return 2;
+          case 'very-bad': return 1;
+          default: return 3; // Default to neutral if unknown
+        }
+      };
+      
+      // Calculate percentage score - Must be an integer
+      const percentageScore = Math.round((quizState.score / quizState.answeredQuestions.length) * 100);
+      
+      // Format the data according to ExamResultWithPerformancesCreate schema
+      const formattedData = {
+        student_id: studentId,
+        exam_id: examId,
+        clerkship_id: null, // Set to actual clerkship ID if available
+        score: percentageScore, // Rounded to integer
+        pass_or_fail: null, // Let backend determine this based on exam pass score
+        timestamp: new Date().toISOString(),
+        performances: quizState.userAnswers.map((answer: UserAnswer) => {
+          return {
+            question_id: questions[answer.questionIndex].Question.QuestionID,
+            result: answer.isCorrect,
+            confidence: confidenceToInt(answer.confidenceLevel) // Convert string to integer
+          };
+        })
+      };
+      
+      console.log('Submitting formatted data:', formattedData);
+      
+      const API_URL = 
+        typeof window === "undefined" 
+          ? "http://backend:8000" 
+          : "http://localhost:8000";
+      
+      const response = await fetch(`${API_URL}/api/v1/question/exam-results-with-performance/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to submit quiz results:', errorText);
+        return { success: false, message: `Failed to submit: ${response.status}` };
+      }
+      
+      const result = await response.json();
+      console.log('Quiz results submitted successfully:', result);
+      return { success: true, data: result };
+      
+    } catch (error) {
+      console.error('Error submitting quiz results:', error);
+      return { success: false, message: String(error) };
+    }
   };
   
   //--- navigation Functions ---
@@ -271,7 +346,7 @@ export default function ReviewPage() {
     return () => {
       window.removeEventListener('questionAnswered', handleQuestionAnswered as EventListener);
     };
-  }, []); // Empty dependency array - IMPORTANT FIX
+  }, []);  // Empty dependency array - IMPORTANT FIX
 
   return (
     <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
@@ -367,6 +442,26 @@ export default function ReviewPage() {
                 Your final score: {score}/{questions.length} ({Math.round((score/questions.length) * 100)}%)
               </p>
               
+              {/* Student ID Selector */}
+              <div className="mb-4 p-4 bg-slate-800 rounded-md">
+                <label htmlFor="student-id" className="block text-sm font-medium mb-2">
+                  Student ID (for database submission)
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    id="student-id"
+                    value={studentId}
+                    onChange={(e) => setStudentId(Number(e.target.value))}
+                    className="w-24 bg-slate-700 text-white border border-slate-600 rounded px-3 py-2 mr-2"
+                    min="1"
+                  />
+                  <span className="text-sm text-slate-400">
+                    Change this to match an existing student in your database
+                  </span>
+                </div>
+              </div>
+              
               {/* Question Summary */}
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2">Question Summary:</h3>
@@ -389,10 +484,40 @@ export default function ReviewPage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col space-y-2">
+              <Button 
+                className={`w-full ${
+                  submissionStatus === 'idle' ? 'bg-green-600 hover:bg-green-700' :
+                  submissionStatus === 'submitting' ? 'bg-blue-500' :
+                  submissionStatus === 'success' ? 'bg-green-700' :
+                  'bg-red-600 hover:bg-red-700'
+                } text-white mb-2`}
+                onClick={async () => {
+                  // Now using the state variable for studentId
+                  const examId = questions[0].Question.ExamID;
+                  
+                  // Update submission status
+                  setSubmissionStatus('submitting');
+                  
+                  const result = await submitQuizResultsToDatabase(studentId, examId);
+                  
+                  // Update state based on result
+                  setSubmissionStatus(result.success ? 'success' : 'error');
+                }}
+                disabled={submissionStatus === 'submitting' || submissionStatus === 'success'}
+              >
+                {submissionStatus === 'idle' && 'Save Results to Database'}
+                {submissionStatus === 'submitting' && 'Submitting...'}
+                {submissionStatus === 'success' && 'Results Saved ✓'}
+                {submissionStatus === 'error' && 'Save Failed - Try Again'}
+              </Button>
+              
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={resetQuiz}
+                onClick={() => {
+                  resetQuiz();
+                  setSubmissionStatus('idle');
+                }}
               >
                 Retake Quiz
               </Button>
