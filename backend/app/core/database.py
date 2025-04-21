@@ -494,3 +494,60 @@ def generate_question_embedding(question_id, db):
     if question:
         question.embedding = embedding
         db.commit()
+        
+# Chat Messages Embedding
+
+def convert_chatcontext_text(context: dict) -> str:
+    
+    title = context.get('title', '')
+    content = context.get('content', '')
+    
+    # Make sure when creating metadata it has topic and tags also
+    metadata = context.get('metadata', {})
+    topic = metadata.get('topic', '')
+    tags = metadata.get('tags', [])
+    tags_line = ', '.join(tags) if tags else "Uncatergorized"
+    
+    context_lines = [
+        f"Title: {title}",
+        f"Content: {content}",
+        f"Topic: {topic}",
+        f"Tags: {tags_line}",
+        ""
+    ]
+    
+    return context_lines
+
+def construct_messagecontext_text(message: dict) -> str:
+    
+    sender = message.get('sender', '')
+    content = message.get('content', '')
+    
+    metadata = message.get('metadata', {})
+    model = metadata.get('', '')
+    temperature = metadata.get('temperature', '')
+    client = metadata.get('client', '')
+    
+    # Joins all the metadata together into one line as a string
+    #Only attaches model and temperature if they are from a bot and not a user
+    
+    metadata_text = []
+    
+    if sender == 'bot':
+        if model:
+            metadata_text.append(f"Model: {model}")
+        if temperature:
+            metadata_text.append(f"Temperature: {temperature}")
+    if client:
+        metadata_text.append(f"Client: {client}")
+        
+    text = '\n'.join(metadata_text)
+    
+    context_lines = [
+        f"Sender: {sender}",
+        f"Content: {content}",
+        text,
+        ""
+    ]
+    
+    return context_lines
