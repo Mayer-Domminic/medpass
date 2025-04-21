@@ -455,3 +455,5 @@ def generate_question_embedding(question_id, db):
     if question:
         question.embedding = embedding
         db.commit()
+
+
