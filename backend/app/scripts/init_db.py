@@ -1,3 +1,4 @@
+# backend/app/scripts/init_db.py
 import os
 
 if __name__ == "__main__":
