@@ -1,0 +1,18 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"    # publish Postgres on localhost
+
+  backend:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app           # live‑code mount
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  frontend:
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./medpass:/app          # live‑code mount
+    command: pnpm dev
