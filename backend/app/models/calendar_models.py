@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity, DateTime, JSON, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity, DateTime, JSON, Text, Float
 from sqlalchemy.orm import relationship
 from app.core.base import Base
 from datetime import datetime
@@ -9,15 +9,15 @@ class CalendarEvent(Base):
     event_id = Column('event_id', String(36), primary_key=True)
     student_id = Column('student_id', Integer, ForeignKey('student.studentid'), nullable=False)
     title = Column('title', String(255), nullable=False)
-    description = Column('description', Text)
+    description = Column('description', Text, nullable=True)
     start_time = Column('start_time', DateTime, nullable=False)
     end_time = Column('end_time', DateTime, nullable=False)
     all_day = Column('all_day', Boolean, default=False)
     event_type = Column('event_type', String(50), nullable=False)
     recurrence = Column('recurrence', JSON, nullable=True)
-    location = Column('location', String(255))
-    color = Column('color', String(50))
-    priority = Column('priority', Integer)
+    location = Column('location', String(255), nullable=True)
+    color = Column('color', String(50), nullable=True)
+    priority = Column('priority', Integer, nullable=True)
     created_at = Column('created_at', DateTime, default=datetime.utcnow)
     updated_at = Column('updated_at', DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -30,7 +30,7 @@ class StudyPlan(Base):
     plan_id = Column('plan_id', String(36), primary_key=True)
     student_id = Column('student_id', Integer, ForeignKey('student.studentid'), nullable=False)
     title = Column('title', String(255), nullable=False)
-    description = Column('description', Text)
+    description = Column('description', Text, nullable=True)
     start_date = Column('start_date', DateTime, nullable=False)
     end_date = Column('end_date', DateTime, nullable=False)
     exam_date = Column('exam_date', DateTime, nullable=False)

@@ -11,6 +11,11 @@
   "dependencies": {
     "@auth/core": "^0.34.2",
     "@auth0/auth0-react": "^2.2.4",
+    "@fullcalendar/core": "^6.1.17",
+    "@fullcalendar/daygrid": "^6.1.17",
+    "@fullcalendar/interaction": "^6.1.17",
+    "@fullcalendar/react": "^6.1.17",
+    "@fullcalendar/timegrid": "^6.1.17",
     "@hookform/resolvers": "^3.10.0",
     "@pnpm/exe": "^9.14.2",
     "@radix-ui/react-alert-dialog": "^1.1.6",
