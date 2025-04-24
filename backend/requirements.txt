@@ -50,3 +50,4 @@ tzdata==2025.1
 uvicorn==0.34.0
 pgvector==0.4.0
 sentence-transformers==4.1.0
+gunicorn

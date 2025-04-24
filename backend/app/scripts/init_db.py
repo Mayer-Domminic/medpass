@@ -1,3 +1,4 @@
+# backend/app/scripts/init_db.py
 import os
 from ..core.database import ensure_pgvector_extension
 

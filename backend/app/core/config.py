@@ -21,9 +21,12 @@ class Settings(BaseSettings):
     NEXTAUTH_URL: str
     NEXT_PUBLIC_API_URL: str
     NEXTAUTH_SECRET: str
+    
+    GEMINI_API_KEY: Optional[str] = None
 
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
+        extra = "allow"
 
     @property
     def sync_database_url(self) -> str:

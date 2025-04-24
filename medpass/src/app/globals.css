@@ -80,4 +80,28 @@ body {
     @apply bg-background text-foreground;
   }
 }
+/* FullCalendar dark‑mode tweaks */
+@layer utilities {
+  /* Calendar header title (“April 2025”) */
+  .fc-toolbar-title {
+    color: #e5e7eb !important;
+  }
 
+  /* Day‑of‑week & time axis labels */
+  .fc-col-header-cell-cushion,
+  .fc-timegrid-slot-label,
+  .fc-timegrid-axis {
+    color: #e5e7eb !important;
+  }
+
+  /* Other‑month cells: remove fade, keep dark bg */
+  .fc-day-other {
+    opacity: 1 !important;
+    background-color: #1e293b !important;
+  }
+
+  /* Non‑business hours slots */
+  .fc-non-business {
+    background-color: #1e293b !important;
+  }
+}
