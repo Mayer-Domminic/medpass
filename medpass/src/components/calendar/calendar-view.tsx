@@ -625,52 +625,59 @@ const CalendarView: React.FC = () => {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="pt-0">
-            <Button variant="link" size="sm" className="text-blue-500 p-0 h-auto">
-              <BarChart className="h-4 w-4 mr-1" /> View Detailed Analytics
-            </Button>
-          </CardFooter>
         </Card>
       )}
 
       {/* FullCalendar Component */}
       <div className={calendarStyles.calendarContainer}>
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={calendarStyles.headerToolbar}
-          buttonText={calendarStyles.buttonText}
-          events={events}
-          editable={!authError}
-          selectable={!authError}
-          selectMirror={true}
-          dayMaxEvents={true}
-          weekends={true}
-          dateClick={handleDateClick}
-          eventClick={handleEventClick}
-          height="auto"
-          eventTimeFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: 'short'
-          }}
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
-          slotDuration="00:30:00"
-          allDaySlot={true}
-          nowIndicator={true}
-          eventDisplay="block"
-          stickyHeaderDates={true}
-          dayHeaderFormat={{ weekday: 'short', month: 'numeric', day: 'numeric', omitCommas: true }}
-          eventContent={renderEventContent}
-          viewDidMount={(info) => handleViewChange(info.view.type)}
-          eventClassNames={(info) => {
-            const { event } = info;
-            const { extendedProps } = event;
-            return extendedProps.completed ? 'fc-event-completed' : '';
-          }}
-        />
+      <FullCalendar
+        ref={calendarRef}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        headerToolbar={calendarStyles.headerToolbar}
+        buttonText={calendarStyles.buttonText}
+        events={events}
+        editable={!authError}
+        selectable={!authError}
+        selectMirror={true}
+        dayMaxEvents={true}
+        weekends={true}
+        dateClick={handleDateClick}
+        eventClick={handleEventClick}
+        height="auto"
+        eventTimeFormat={{
+          hour: 'numeric',
+          minute: '2-digit',
+          meridiem: 'short'
+        }}
+        slotMinTime="06:00:00"
+        slotMaxTime="22:00:00"
+        slotDuration="00:30:00"
+        allDaySlot={true}
+        nowIndicator={true}
+        eventDisplay="block"
+        stickyHeaderDates={true}
+        
+        dayHeaderFormat={{ 
+          weekday: 'short', 
+        }}
+        
+        views={{
+          dayGridMonth: {
+            columnHeaderFormat: { 
+              weekday: 'short',
+            }
+          }
+        }}
+        
+        eventContent={renderEventContent}
+        viewDidMount={(info) => handleViewChange(info.view.type)}
+        eventClassNames={(info) => {
+          const { event } = info;
+          const { extendedProps } = event;
+          return extendedProps.completed ? 'fc-event-completed' : '';
+        }}
+      />
       </div>
 
       {/* Regular Event Modal */}
