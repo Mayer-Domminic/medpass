@@ -451,6 +451,7 @@ def get_question_with_details(question_id, db):
         "ContentAreas": content_areas
     }
     
+
     return result
 
 #Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details

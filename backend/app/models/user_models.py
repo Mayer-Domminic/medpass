@@ -28,15 +28,17 @@ class Student(Base):
     bcpmgpa = Column('bcpmgpa', Float)
     mmicalc = Column('mmicalc', Float)
     
-    #Refer to ERD to understand relationship connections
     loginInfo = relationship('LoginInfo', back_populates='student')
     extracurriculars = relationship('Extracurricular', back_populates='student')
     clerkships = relationship('Clerkship', back_populates='student')
     examResults = relationship('ExamResults', back_populates='student')
     graduationStatus = relationship('GraduationStatus', back_populates='student')
-    #Found in classfacultymodels
     enrollmentRecord = relationship('EnrollmentRecord', back_populates='student')
     studentGrades = relationship('StudentGrade', back_populates='student')
+    
+    # calendar integration
+    calendar_events = relationship('CalendarEvent', back_populates='student')
+    study_plans = relationship('StudyPlan', back_populates='student')    
     
     facultyAccess = relationship('FacultyAccess', back_populates='student')
 

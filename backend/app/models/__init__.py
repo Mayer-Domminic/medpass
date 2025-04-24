@@ -36,10 +36,26 @@ from .result_models import (
     GradeClassification
 )
 
+from .chat_models import (
+    ChatConversation,
+    ChatContext,
+    ChatMessage,
+    ChatMessageContext
+)
+
+from .calendar_models import (
+    CalendarEvent,
+    StudyPlan,
+    StudyPlanEvent
+
+)
+
 __all__ = [
     'LoginInfo', 'Student', 'Faculty', 'GraduationStatus', 'EnrollmentRecord',
     'Exam', 'ContentArea', 'Option', 'Question', 'QuestionClassification', 'QuestionOption',
     'Class', 'ClassOffering', 'GradeClassification', 'StudentGrade',
     'ClassRoster', 'Extracurricular',
-    'Clerkship', 'ExamResults', 'StudentQuestionPerformance'
+    'Clerkship', 'ExamResults', 'StudentQuestionPerformance',
+    'ChatConversation', 'ChatContext', 'ChatMessage', 'ChatMessageContext',
+    'CalendarEvent', 'StudyPlan', 'StudyPlanEvent'
 ]
