@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 from app.core.base import Base
 
 
@@ -10,6 +11,7 @@ class Exam(Base):
     examname = Column('examname', String(255), nullable=False)
     examdescription = Column('examdescription', String(255))
     passscore = Column('passscore', Integer)
+    examtype = Column('examtype', String(50))
 
     questions = relationship('Question', back_populates='exam')
     examResults = relationship('ExamResults', back_populates='exam')
@@ -40,6 +42,11 @@ class Question(Base):
     examid = Column('examid', Integer, ForeignKey('exam.examid'))
     prompt = Column('prompt', String(255), nullable=False)
     questionDifficulty = Column('questiondifficulty', String(40))
+    imageUrl = Column('imageurl', String(255))
+    imageDependent = Column('imagedependent', Boolean)
+    imageDescription = Column('imagedescription', String(255))
+    
+    embedding = Column(Vector(768), nullable=True)
 
     exam = relationship('Exam', back_populates='questions')
     classification = relationship('QuestionClassification', back_populates='question')
@@ -63,6 +70,7 @@ class QuestionOption(Base):
     questionid = Column('questionid', Integer, ForeignKey('question.questionid'))
     optionid = Column('optionid', Integer, ForeignKey('option.optionid'))
     correctanswer = Column('correctanswer', Boolean)
+    explanation = Column('explanation', String(255))
     
     question = relationship('Question', back_populates='questionOptions')
     option = relationship('Option', back_populates='questionOptions')

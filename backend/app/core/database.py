@@ -16,13 +16,25 @@ from app.models import (
     Domain,
     ClassDomain,
     Faculty,
-    FacultyAccess
+    FacultyAccess,
+    Question,
+    QuestionOption,
+    QuestionClassification,
+    Option,
+    ContentArea,
+    ChatContext,
+    ChatMessage
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
+from app.schemas.question import (QuestionResponse)
 from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-mpnet-base-v2')
 
 def get_db():
     """Dependency to get a DB session."""
@@ -31,6 +43,16 @@ def get_db():
         yield db
     finally:
         db.close()
+        
+def ensure_pgvector_extension():
+    db = next(get_db())
+    
+    try:
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        db.commit()
+    finally:
+        db.close()
+        
 
 def drop_all_tables():
     """Drop all tables in the database."""
@@ -299,3 +321,327 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
         db.rollback()
         return False, f"Database Error: {str(e)}"
 
+def get_content_areas(db, content_area_names: List[str]):
+    """Get only existing content area IDs from names"""
+    
+    if not content_area_names:
+        return {}
+    
+    content_area = db.query(
+        ContentArea.contentareaid,
+        ContentArea.contentname
+    ).filter(
+        ContentArea.contentname.in_(content_area_names)
+    ).all()
+    
+    name_to_id = {}
+    
+    for data in content_area:
+        name_to_id[data[1]] = data[0]
+        
+    missing_names = set(content_area_names) - set(name_to_id.keys())
+    if missing_names:
+        print(f"Content area names not found: {', '.join(missing_names)}")
+    
+    return name_to_id
+
+def get_question(db, question_id: int,):
+    """Get basic question information by ID"""
+    question_data = db.query(
+        Question.questionid,
+        Question.prompt,
+        Question.questionDifficulty,
+        Question.imageUrl,
+        Question.imageDependent,
+        Question.imageDescription,
+        Question.examid,
+        Exam.examname
+    ).outerjoin(
+        Exam, Question.examid == Exam.examid
+    ).filter(
+        Question.questionid == question_id
+    ).first()
+    
+    if not question_data:
+        return None
+    
+    question_dict = {
+        "QuestionID": question_data[0],
+        "Prompt": question_data[1],
+        "QuestionDifficulty": question_data[2],
+        "ImageUrl": question_data[3],
+        "ImageDependent": question_data[4],
+        "ImageDescription": question_data[5],
+        "ExamID": question_data[6],
+        "ExamName": question_data[7]
+    }
+    
+    return question_dict
+
+def get_question_with_details(question_id, db):
+    
+    question_data = db.query(
+        Question.questionid,
+        Question.examid,
+        Question.prompt,
+        Question.questionDifficulty,
+        Question.imageUrl,
+        Question.imageDependent,
+        Question.imageDescription
+    ).filter(
+        Question.questionid == question_id
+    ).first()
+    
+    if not question_data:
+        return None
+    
+    options_data = db.query(
+        QuestionOption.optionid,
+        QuestionOption.correctanswer,
+        QuestionOption.explanation,
+        Option.optiondescription
+    ).join(
+        Option, Option.optionid == QuestionOption.optionid
+    ).filter(
+        QuestionOption.questionid == question_id
+    ).all()
+    
+    content_area_data = db.query(
+        ContentArea.contentareaid,
+        ContentArea.contentname,
+        ContentArea.description,
+        ContentArea.discipline
+    ).join(
+        QuestionClassification, ContentArea.contentareaid == QuestionClassification.contentareaid
+    ).filter(
+        QuestionClassification.questionid == question_id
+    ).all()
+    
+    question_dict = {
+        "QuestionID": question_data[0],
+        "ExamID": question_data[1],
+        "Prompt": question_data[2],
+        "QuestionDifficulty": question_data[3],
+        "ImageUrl": question_data[4],
+        "ImageDependent": question_data[5],
+        "ImageDescription": question_data[6]
+    }
+    
+    options = []
+    for option in options_data:
+        options.append({
+            "OptionID": option[0],
+            "CorrectAnswer": option[1],
+            "Explanation": option[2],
+            "OptionDescription": option[3]
+        })
+        
+    content_areas = []
+    for area in content_area_data:
+        content_areas.append({
+            "ContentAreaID": area[0],
+            "ContentName": area[1],
+            "Description": area[2],
+            "Discipline": area[3]
+        })
+        
+    result = {
+        "Question": question_dict,
+        "Options": options,
+        "ContentAreas": content_areas
+    }
+    
+    return result
+
+#Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
+def convert_question_to_text(question_response: dict) -> str:
+    
+    question = question_response['Question']
+    option = question_response['Options']
+    content_areas = question_response['ContentAreas']
+    
+    prompt = question['Prompt']
+    
+    # This is for a way to format our options for context in a A, B, C, D format (chr 65 is a + 1 is each letter after)
+    option_lines = [
+        f"{chr(65 + i)}. {opt['OptionDescription']}" for i, opt in enumerate(option)
+    ]
+    
+    difficulty = question.get('QuestionDifficulty', 'Unknown')
+    content_names = [ca["ContentName"] for ca in content_areas]
+    # If multiple content areas combine them into a single string
+    content_area_line = ', '.join(content_names) if content_names else "Uncatergorized"
+    
+    context_lines = [
+        f"Difficulty: {difficulty}",
+        f"Content Areas: {content_area_line}",
+        ""
+    ]
+    
+    text = "\n".join(context_lines + [prompt] + option_lines)
+    
+    return text
+
+def generate_question_embedding(question_id, db):
+    
+    question_data = get_question_with_details(question_id, db)
+    
+    if not question_data:
+        return None
+    
+    question_text = convert_question_to_text(question_data)
+    embedding = model.encode(question_text).tolist()
+    
+    question = db.query(Question).filter(Question.questionid == question_id).first()
+    if question:
+        question.embedding = embedding
+        db.commit()
+        
+# Chat Messages Embedding
+
+def get_chat_context(chat_context_id, db):
+    
+    context_data = db.query(
+        ChatContext.contextid,
+        ChatContext.title,
+        ChatContext.content,
+        ChatContext.importancescore,
+        ChatContext.createdat,
+        ChatContext.updatedat,
+        ChatContext.chatmetadata,
+        ChatContext.conversationid,
+        ChatContext.createdby
+    ).filter(ChatContext.contextid == chat_context_id).first()
+
+    if not context_data:
+        return None
+
+    return {
+        "ContextID": context_data[0],
+        "Title": context_data[1],
+        "Content": context_data[2],
+        "ImportanceScore": context_data[3],
+        "CreatedAt": context_data[4],
+        "UpdatedAt": context_data[5],
+        "Metadata": context_data[6],
+        "ConversationID": context_data[7],
+        "CreatedBy": context_data[8]
+    }
+    
+def get_chat_message(chat_message_id, db):
+    message_data = db.query(
+        ChatMessage.messageid,
+        ChatMessage.conversationid,
+        ChatMessage.sendertype,
+        ChatMessage.content,
+        ChatMessage.timestamp,
+        ChatMessage.tokensinput,
+        ChatMessage.tokensoutput,
+        ChatMessage.messagecost,
+        ChatMessage.messagemetadata
+    ).filter(ChatMessage.messageid == chat_message_id).first()
+
+    if not message_data:
+        return None
+
+    return {
+        "MessageID": message_data[0],
+        "ConversationID": message_data[1],
+        "SenderType": message_data[2],
+        "Content": message_data[3],
+        "Timestamp": message_data[4],
+        "TokensInput": message_data[5],
+        "TokensOutput": message_data[6],
+        "MessageCost": message_data[7],
+        "Metadata": message_data[8]
+    }
+
+def generate_chatcontext_text(context: dict) -> str:
+    
+    title = context.get('Title', '')
+    content = context.get('Content', '')
+    
+    # Make sure when creating metadata it has topic and tags also
+    metadata = context.get('Metadata', {})
+    topic = metadata.get('topic', '')
+    tags = metadata.get('tags', [])
+    tags_line = ', '.join(tags) if tags else "Uncatergorized"
+    
+    context_lines = [
+        f"Title: {title}",
+        f"Content: {content}",
+        f"Topic: {topic}",
+        f"Tags: {tags_line}",
+        ""
+    ]
+    
+    text = '\n'.join(context_lines)
+    
+    return text
+
+def generate_messagecontext_text(message: dict) -> str:
+    
+    sender = message.get('SenderType', '')
+    content = message.get('Content', '')
+    
+    metadata = message.get('Metadata', {})
+    model = metadata.get('model', '')
+    temperature = metadata.get('temperature', '')
+    client = metadata.get('client', '')
+    
+    # Joins all the metadata together into one line as a string
+    #Only attaches model and temperature if they are from a bot and not a user
+    
+    metadata_text = []
+    
+    if sender == 'bot':
+        if model:
+            metadata_text.append(f"Model: {model}")
+        if temperature:
+            metadata_text.append(f"Temperature: {temperature}")
+    if client:
+        metadata_text.append(f"Client: {client}")
+        
+    text = '\n'.join(metadata_text)
+    
+    context_lines = [
+        f"Sender: {sender}",
+        f"Content: {content}",
+        text,
+        ""
+    ]
+    
+    text = '\n'.join(context_lines)
+    
+    return text
+
+def generate_chatcontext_embedding(chatcontext_id, db):
+    
+    context_data = get_chat_context(chatcontext_id, db) 
+    
+    if not context_data:
+        return None
+    
+    context_text = generate_chatcontext_text(context_data)
+    embedding = model.encode(context_text).tolist()
+    
+    context = db.query(ChatContext).filter(ChatContext.contextid == chatcontext_id).first()
+    if context:
+        context.embedding = embedding
+        db.commit()
+    
+        
+def generate_chatmessage_embedding(chatmessage_id, db):
+    message_data = get_chat_message(chatmessage_id, db)
+    
+    if not message_data:
+        return None
+    
+    message_text = generate_messagecontext_text(message_data)
+    embedding = model.encode(message_text).tolist()
+    
+    message = db.query(ChatMessage).filter(ChatMessage.messageid == chatmessage_id).first()
+    if message:
+        message.embedding = embedding
+        db.commit()
+    

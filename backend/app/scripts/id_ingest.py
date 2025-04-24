@@ -69,10 +69,10 @@ if __name__ == "__main__":
 
     #Adding Base Exam Name Data
     base_exam_data = {
-        'Exam Name': ['MCAT', 'CBSE', 'Step 1', 'Step 2'],
+        'Exam Name': ['MCAT', 'CBSE', 'Step 1', 'Step 2', 'Text Exam'],
         'Exam Description': ['Medical School Admission Exam', 'Step 1 Readiness Exam', 
-                             'Major Medical Exam for Pre-Pratical', 'Major Medical Exam Post-Pratical'],
-        'Pass Score': [510, 70, 196, 214]
+                             'Major Medical Exam for Pre-Pratical', 'Major Medical Exam Post-Pratical', 'Test Exam for Development'],
+        'Pass Score': [510, 70, 196, 214, 100]
     }
     
     df_exam_data = pd.DataFrame(base_exam_data)
@@ -326,7 +326,7 @@ if __name__ == "__main__":
             )
             db.add(db_logininfo_data)
         db.commit()
-        link_logininfo(298, 11)
+        link_logininfo(298, 11, 'student')
         print('Mock Login Info Data Loaded in Database')
         
     except Exception as e:

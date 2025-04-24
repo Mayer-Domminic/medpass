@@ -6,6 +6,7 @@ class Exam(BaseModel):
     ExamName: str = Field(..., max_length=255)
     ExamDescription: Optional[str] = Field(None, max_length=255)
     PassScore: Optional[int] = None
+    ExamType: Optional[str] = Field(None, max_length=50)
 
     #Model_config represents "ORM Mode" so we can easily interact with SQLAlchemy
     #https://docs.pydantic.dev/latest/concepts/models/#arbitrary-class-instances
@@ -33,6 +34,9 @@ class Question(BaseModel):
     ExamID: Optional[int] # Note a question can be not related to an exam (manual teacher input)
     Prompt: str = Field(..., max_length=255)
     QuestionDifficulty: Optional[str] = Field(None, max_length=40)
+    ImageUrl: Optional[str] = Field(None, max_length=255)
+    ImageDependent: Optional[bool] = Field(default=False)
+    ImageDescription: Optional[str] = Field(None, max_length=255)
     
     class Config:
         from_attributes = True
@@ -50,6 +54,7 @@ class QuestionOptions(BaseModel):
     QuestionID: int
     OptionID: int
     CorrectAnswer: bool
+    Explanation: Optional[str] = Field(None, max_length=255)
     
     class Config:
         from_attributes = True

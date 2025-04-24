@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 
 class Clerkship(BaseModel):
     ClerkshipID: int
@@ -21,6 +21,7 @@ class ExamResults(BaseModel):
     ClerkshipID: Optional[int] = None
     Score: int
     PassOrFail: Optional[bool] = None
+    Timestamp: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -30,6 +31,7 @@ class StudentQuestPerformance(BaseModel):
     ExamResultsID: Optional[int]
     QuestionID: Optional[int]
     Result: bool
+    Confidence: Optional[int] = None
     
     class Config:
         from_attributes = True
