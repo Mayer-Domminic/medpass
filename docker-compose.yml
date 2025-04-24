@@ -32,7 +32,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./medpass
       dockerfile: Dockerfile
     environment:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
