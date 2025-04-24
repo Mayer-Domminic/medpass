@@ -14,104 +14,141 @@ import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import Sidebar from '@/components/navbar';
 import Question from '@/components/QuestionComp/Question';
 
+// Interface matching the API response format
+interface QuestionResponseData {
+  Question: {
+    QuestionID: number;
+    ExamID: number;
+    Prompt: string;
+    QuestionDifficulty: string;
+    ImageUrl: string | null;
+    ImageDependent: boolean;
+    ImageDescription: string | null;
+    ExamName?: string;
+  };
+  Options: {
+    OptionID: number;
+    CorrectAnswer: boolean;
+    Explanation: string;
+    OptionDescription: string;
+  }[];
+  ContentAreas: {
+    ContentAreaID: number;
+    ContentName: string;
+    Description: string;
+    Discipline: string;
+  }[];
+}
+
 // structure for user answer data
-// plan to add timestamp
-// replace questionIndex with questionID, link to userID, and that's a good format to store as a 'session instance' in db?
 interface UserAnswer {
   questionIndex: number;
-  selectedAnswer: string;
+  selectedAnswers: number[]; // Array for multiple correct answers
   confidenceLevel: string;
   isCorrect: boolean;
 }
 
-export default function DevPage() {
-  // mock question data
-  const questions = [
-    {
-      "Question": "What structure is indicated by the arrow in this chest X-ray?",
-      "Answers": {
-        "A": "Aortic arch",
-        "B": "Left ventricle",
-        "C": "Pulmonary artery",
-        "D": "Right atrium"
-      },
-      "correct_option": "A",
-      "Image_URL": "https://medical.uworld.com/wp-content/uploads/2024/12/MED_USMLE-Step-1_Carousel_01.webp",
-      "Image_Description": "Chest X-ray with arrow pointing to aortic arch",
-      "Explanation": "The arrow points to the aortic arch, which appears as a prominent curved structure in the upper left mediastinum on chest X-ray.",
-      "Image_Dependent": true,
-      "domain": "Social Sciences: Communication and Interpersonal Skills"
-    },
-    {
-      "Question": "A 42-year-old female presents with fatigue, cold intolerance, and unexplained weight gain. Laboratory studies show elevated TSH and low free T4. Which of the following is the most likely diagnosis?",
-      "Answers": {
-        "A": "Graves' disease",
-        "B": "Hashimoto's thyroiditis",
-        "C": "Subacute thyroiditis",
-        "D": "Thyroid storm"
-      },
-      "correct_option": "B",
-      "Image_URL": "",
-      "Image_Description": "",
-      "Explanation": "The combination of elevated TSH and low free T4 indicates primary hypothyroidism. The most common cause of primary hypothyroidism in developed countries is Hashimoto's thyroiditis, an autoimmune disorder. The patient's symptoms of fatigue, cold intolerance, and weight gain are classic manifestations of hypothyroidism.",
-      "Image_Dependent": false,
-      "domain": "Reproductive & Endocrine Systems"
-    },
-    {
-      "Question": "Which ECG finding is shown in this tracing of a patient presenting with chest pain?",
-      "Answers": {
-        "A": "Left bundle branch block",
-        "B": "Right bundle branch block", 
-        "C": "ST-segment elevation",
-        "D": "Ventricular fibrillation"
-      },
-      "correct_option": "C",
-      "Image_URL": "https://previews.123rf.com/images/thunderstock/thunderstock1810/thunderstock181000186/110838061-stop-gesture-focused-made-with-palm-by-mad-angry-indan-doctor-isolated-on-white-studio-background.jpg",
-      "Image_Description": "12-lead ECG showing ST-segment elevation in leads V1-V4",
-      "Explanation": "The ECG demonstrates ST-segment elevation in the anterior leads (V1-V4), consistent with an acute anterior ST-elevation myocardial infarction (STEMI), likely due to occlusion of the left anterior descending coronary artery.",
-      "Image_Dependent": true,
-      "domain": "Cardiovascular System"
-    },
-    {
-      "Question": "Which neurotransmitter is primarily involved in the pathophysiology of Parkinson's disease?",
-      "Answers": {
-        "A": "Acetylcholine",
-        "B": "Dopamine",
-        "C": "GABA",
-        "D": "Serotonin"
-      },
-      "correct_option": "B",
-      "Image_URL": "",
-      "Image_Description": "",
-      "Explanation": "Parkinson's disease is characterized by the progressive degeneration of dopaminergic neurons in the substantia nigra pars compacta, leading to reduced dopamine levels in the basal ganglia. This dopamine deficiency results in the classic motor symptoms of Parkinson's disease, including bradykinesia, rigidity, and resting tremor.",
-      "Image_Dependent": false,
-      "domain": "Behavioral Health & Nervous Systems/Special Senses"
-    },
-    {
-      "Question": "A 28-year-old male presents with fever, sore throat, and generalized lymphadenopathy for 10 days. Laboratory studies show atypical lymphocytes on peripheral blood smear and positive heterophile antibody test. Which of the following is the causative agent?",
-      "Answers": {
-        "A": "Cytomegalovirus",
-        "B": "Epstein-Barr virus",
-        "C": "Human herpesvirus 6",
-        "D": "Toxoplasma gondii"
-      },
-      "correct_option": "B",
-      "Image_URL": "",
-      "Image_Description": "",
-      "Explanation": "The clinical presentation of fever, sore throat, and generalized lymphadenopathy, along with atypical lymphocytes and a positive heterophile antibody test, is characteristic of infectious mononucleosis. Epstein-Barr virus (EBV) is the most common cause of infectious mononucleosis and is associated with a positive heterophile antibody test (Monospot).",
-      "Image_Dependent": false,
-      "domain": "Blood & Lymphoreticular/Immune Systems"
-    }
-  ];
+// Function to fetch question details from API
+const fetchQuestionDetails = async (questionId: number, accessToken?: string) => {
+  try {
+    const API_URL = 
+      typeof window === "undefined" 
+        ? "http://backend:8000" 
+        : "http://localhost:8000";
+    
+    const response = await fetch(`${API_URL}/api/v1/question/${questionId}`);
 
+    if (!response.ok) {
+      console.error(`Server responded with status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Error details: ${errorText}`);
+      throw new Error(`Error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log("Received data structure:", data);
+    
+    // Convert data to match the expected QuestionResponseData format if needed
+    const formattedData: QuestionResponseData = {
+      Question: {
+        QuestionID: data.question.QuestionID,
+        ExamID: data.question.ExamID,
+        Prompt: data.question.Prompt,
+        QuestionDifficulty: data.question.QuestionDifficulty,
+        ImageUrl: data.question.ImageUrl,
+        ImageDependent: data.question.ImageDependent,
+        ImageDescription: data.question.ImageDescription,
+        ExamName: data.question.ExamName
+      },
+      Options: data.options.map((opt: any) => ({
+        OptionID: opt.optionId,
+        CorrectAnswer: opt.isCorrect,
+        Explanation: opt.explanation,
+        OptionDescription: opt.description
+      })),
+      ContentAreas: data.contentAreas.map((area: any) => ({
+        ContentAreaID: area.contentAreaId,
+        ContentName: area.name,
+        Description: area.discipline, // Using discipline as description if no description is provided
+        Discipline: area.discipline
+      }))
+    };
+    
+    return formattedData;
+  } catch (error) {
+    console.error('Failed to fetch question:', error);
+    throw error;
+  }
+};
+
+// Function to fetch all questions needed for the quiz
+const fetchQuizQuestions = async (questionIds: number[], accessToken?: string) => {
+  try {
+    const questionsPromises = questionIds.map(id => fetchQuestionDetails(id, accessToken));
+    return await Promise.all(questionsPromises);
+  } catch (error) {
+    console.error('Failed to fetch quiz questions:', error);
+    throw error;
+  }
+};
+
+export default function ReviewPage() {
+  // replace mock data with state for loaded questions
+  const [questions, setQuestions] = useState<QuestionResponseData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   //--- state variables ---
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
+  const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [studentId, setStudentId] = useState<number>(1); // Default studentId
 
-//--- localstorage functions ---
-const saveQuizState = () => {
+  // Load questions from API
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setLoading(true);
+        // Example question IDs - replace with your actual question IDs
+        // You might want to fetch these from another endpoint or have them predefined
+        const questionIds = [10, 11, 12]; // Example IDs
+        const loadedQuestions = await fetchQuizQuestions(questionIds);
+        setQuestions(loadedQuestions);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load questions. Please try again later.');
+        setLoading(false);
+        console.error('Error loading questions:', err);
+      }
+    };
+
+    loadQuestions();
+  }, []);
+
+  //---localstorage functions ---
+  const saveQuizState = () => {
     const quizState = {
       currentQuestionIndex,
       userAnswers,
@@ -136,6 +173,79 @@ const saveQuizState = () => {
       }
     }
     return false;
+  };
+  
+  // Function to submit quiz results to the database
+  const submitQuizResultsToDatabase = async (studentId: number, examId: number) => {
+    try {
+      const quizState = JSON.parse(localStorage.getItem('reviewSessionState') || '{}');
+      
+      if (!quizState.userAnswers || quizState.userAnswers.length === 0) {
+        console.error('No quiz data available to submit');
+        return { success: false, message: 'No quiz data available' };
+      }
+      
+      // Convert confidence levels to integer values
+      const confidenceToInt = (confidenceStr: string): number => {
+        switch(confidenceStr.toLowerCase()) {
+          case 'very-good': return 5;
+          case 'good': return 4;
+          case 'neutral': return 3;
+          case 'bad': return 2;
+          case 'very-bad': return 1;
+          default: return 3; // Default to neutral if unknown
+        }
+      };
+      
+      // Calculate percentage score - Must be an integer
+      const percentageScore = Math.round((quizState.score / quizState.answeredQuestions.length) * 100);
+      
+      // Format the data according to ExamResultWithPerformancesCreate schema
+      const formattedData = {
+        student_id: studentId,
+        exam_id: examId,
+        clerkship_id: null, // Set to actual clerkship ID if available
+        score: percentageScore, // Rounded to integer
+        pass_or_fail: null, // Let backend determine this based on exam pass score
+        timestamp: new Date().toISOString(),
+        performances: quizState.userAnswers.map((answer: UserAnswer) => {
+          return {
+            question_id: questions[answer.questionIndex].Question.QuestionID,
+            result: answer.isCorrect,
+            confidence: confidenceToInt(answer.confidenceLevel) // Convert string to integer
+          };
+        })
+      };
+      
+      console.log('Submitting formatted data:', formattedData);
+      
+      const API_URL = 
+        typeof window === "undefined" 
+          ? "http://backend:8000" 
+          : "http://localhost:8000";
+      
+      const response = await fetch(`${API_URL}/api/v1/question/exam-results-with-performance/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to submit quiz results:', errorText);
+        return { success: false, message: `Failed to submit: ${response.status}` };
+      }
+      
+      const result = await response.json();
+      console.log('Quiz results submitted successfully:', result);
+      return { success: true, data: result };
+      
+    } catch (error) {
+      console.error('Error submitting quiz results:', error);
+      return { success: false, message: String(error) };
+    }
   };
   
   //--- navigation Functions ---
@@ -165,55 +275,69 @@ const saveQuizState = () => {
   };
   
   //--- calculated properties ---
-  const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const progressPercentage = questions.length ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isCurrentQuestionAnswered = answeredQuestions.includes(currentQuestionIndex);
-  const isQuizCompleted = answeredQuestions.length === questions.length;
+  const isQuizCompleted = questions.length > 0 && answeredQuestions.length === questions.length;
   
   //---effect hooks and listeners ---
   
-  // load saved state when component mounts
-  // '[]' as second argument ensures this effect runs only once
+  // load saved state when component mounts and after questions are loaded
   useEffect(() => {
-    loadQuizState();
-  }, []);
+    if (questions.length > 0 && !loading) {
+      loadQuizState();
+    }
+  }, [questions, loading]);
   
   // save state whenever key state variables changes
   useEffect(() => {
-    saveQuizState();
-  }, [currentQuestionIndex, userAnswers, answeredQuestions, score]);
+    if (questions.length > 0) {
+      saveQuizState();
+    }
+  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, questions]);
   
   // update global window prop to track current question index
   useEffect(() => {
     window.currentQuestionIndex = currentQuestionIndex;
   }, [currentQuestionIndex]);
   
-  // question answered event listener
+  // question answered event listener - UPDATED FOR MULTIPLE CORRECT ANSWERS
   useEffect(() => {
     const handleQuestionAnswered = (event: CustomEvent<any>) => {
-      const { questionIndex, isCorrect, selectedAnswer, confidenceLevel } = event.detail;
+      console.log("Question answered event received", event.detail);
+      
+      const { questionIndex, isCorrect, selectedAnswers, confidenceLevel } = event.detail;
+      
+      console.log("Current answeredQuestions state:", answeredQuestions);
       
       // updates answered questions tracking if not already included
-      if (!answeredQuestions.includes(questionIndex)) {
-        setAnsweredQuestions(prev => [...prev, questionIndex]);
-        
-        // updates score if correct
-        if (isCorrect) {
-          setScore(prevScore => prevScore + 1);
+      setAnsweredQuestions(prev => {
+        if (!prev.includes(questionIndex)) {
+          // Only increment score if this is a new correct answer
+          if (isCorrect) {
+            setScore(prevScore => prevScore + 1);
+            console.log("Incrementing score because answer is correct");
+          }
+          return [...prev, questionIndex];
         }
-      }
+        return prev;
+      });
       
-      // stores user answer data
+      // stores user answer data - always updates even if question was previously answered
       setUserAnswers(prev => {
         // removes any existing answer for this question
         const filteredAnswers = prev.filter(answer => answer.questionIndex !== questionIndex);
         // adds new answer
-        return [...filteredAnswers, { 
+        const newAnswers = [...filteredAnswers, { 
           questionIndex, 
           isCorrect, 
-          selectedAnswer, 
+          selectedAnswers, // Now using array of selected answers
           confidenceLevel 
         }];
+        console.log("New userAnswers state:", newAnswers);
+        return newAnswers;
       });
+      
+      console.log("Event handling complete");
     };
   
     // listen for custom event from the Question component
@@ -222,7 +346,7 @@ const saveQuizState = () => {
     return () => {
       window.removeEventListener('questionAnswered', handleQuestionAnswered as EventListener);
     };
-  }, [answeredQuestions]);
+  }, []);  // Empty dependency array - IMPORTANT FIX
 
   return (
     <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
@@ -248,38 +372,63 @@ const saveQuizState = () => {
         </div>
       </div>
 
-      {/* Current Question */}
-      <div className="container mx-auto mb-6">
-        {/* Pass answer data only if this specific question has been answered */}
-        {/* use a key to ensure proper re-rendering when switching questions */}
-        <Question 
-          key={`question-${currentQuestionIndex}`}
-          questionData={questions[currentQuestionIndex]}
-          ShowFeedback={isCurrentQuestionAnswered}
-          savedAnswer={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.selectedAnswer || "") : ""}
-          savedConfidenceLevel={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.confidenceLevel || "") : ""}
-        />
+      {/* Loading state */}
+      {loading && (
+        <div className="container mx-auto text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-xl">Loading questions...</p>
+        </div>
+      )}
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-6">
+      {/* Error state */}
+      {error && (
+        <div className="container mx-auto text-center py-12">
+          <div className="bg-red-800 text-white p-4 rounded-md mb-4 inline-block">
+            <p>{error}</p>
+          </div>
           <Button 
-            variant="outline" 
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
-            className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-          </Button>
-          
-          <Button 
-            onClick={handleNextQuestion}
-            disabled={currentQuestionIndex === questions.length - 1}
+            onClick={() => window.location.reload()}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            Next <ChevronRight className="ml-2 h-4 w-4" />
+            Try Again
           </Button>
         </div>
-      </div>
+      )}
+
+      {/* Current Question */}
+      {!loading && !error && questions.length > 0 && (
+        <div className="container mx-auto mb-6">
+          {/* Pass answer data only if this specific question has been answered */}
+          {/* use a key to ensure proper re-rendering when switching questions */}
+          <Question 
+            key={`question-${currentQuestionIndex}`}
+            questionData={questions[currentQuestionIndex]}
+            showFeedback={isCurrentQuestionAnswered}
+            savedAnswers={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.selectedAnswers || []) : []}
+            savedConfidenceLevel={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.confidenceLevel || "") : ""}
+          />
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between mt-6">
+            <Button 
+              variant="outline" 
+              onClick={handlePreviousQuestion}
+              disabled={currentQuestionIndex === 0}
+              className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+            >
+              <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+            </Button>
+            
+            <Button 
+              onClick={handleNextQuestion}
+              disabled={currentQuestionIndex === questions.length - 1}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Next <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Quiz Summary*/}
       {isQuizCompleted && (
@@ -292,6 +441,26 @@ const saveQuizState = () => {
               <p className="text-xl mb-4">
                 Your final score: {score}/{questions.length} ({Math.round((score/questions.length) * 100)}%)
               </p>
+              
+              {/* Student ID Selector */}
+              <div className="mb-4 p-4 bg-slate-800 rounded-md">
+                <label htmlFor="student-id" className="block text-sm font-medium mb-2">
+                  Student ID (for database submission)
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    id="student-id"
+                    value={studentId}
+                    onChange={(e) => setStudentId(Number(e.target.value))}
+                    className="w-24 bg-slate-700 text-white border border-slate-600 rounded px-3 py-2 mr-2"
+                    min="1"
+                  />
+                  <span className="text-sm text-slate-400">
+                    Change this to match an existing student in your database
+                  </span>
+                </div>
+              </div>
               
               {/* Question Summary */}
               <div className="mt-6">
@@ -308,17 +477,47 @@ const saveQuizState = () => {
                         }`}>
                           {index + 1}
                         </div>
-                        <span className="truncate max-w-md">{q.Question.substring(0, 60)}...</span>
+                        <span className="truncate max-w-md">{q.Question.Prompt.substring(0, 60)}...</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col space-y-2">
+              <Button 
+                className={`w-full ${
+                  submissionStatus === 'idle' ? 'bg-green-600 hover:bg-green-700' :
+                  submissionStatus === 'submitting' ? 'bg-blue-500' :
+                  submissionStatus === 'success' ? 'bg-green-700' :
+                  'bg-red-600 hover:bg-red-700'
+                } text-white mb-2`}
+                onClick={async () => {
+                  // Now using the state variable for studentId
+                  const examId = questions[0].Question.ExamID;
+                  
+                  // Update submission status
+                  setSubmissionStatus('submitting');
+                  
+                  const result = await submitQuizResultsToDatabase(studentId, examId);
+                  
+                  // Update state based on result
+                  setSubmissionStatus(result.success ? 'success' : 'error');
+                }}
+                disabled={submissionStatus === 'submitting' || submissionStatus === 'success'}
+              >
+                {submissionStatus === 'idle' && 'Save Results to Database'}
+                {submissionStatus === 'submitting' && 'Submitting...'}
+                {submissionStatus === 'success' && 'Results Saved ✓'}
+                {submissionStatus === 'error' && 'Save Failed - Try Again'}
+              </Button>
+              
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={resetQuiz}
+                onClick={() => {
+                  resetQuiz();
+                  setSubmissionStatus('idle');
+                }}
               >
                 Retake Quiz
               </Button>

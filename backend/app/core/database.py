@@ -345,7 +345,7 @@ def get_content_areas(db, content_area_names: List[str]):
     
     return name_to_id
 
-def get_question(db, question_id: int,):
+def get_question(db, question_id: int):
     """Get basic question information by ID"""
     question_data = db.query(
         Question.questionid,
@@ -361,10 +361,10 @@ def get_question(db, question_id: int,):
     ).filter(
         Question.questionid == question_id
     ).first()
-    
+   
     if not question_data:
         return None
-    
+   
     question_dict = {
         "QuestionID": question_data[0],
         "Prompt": question_data[1],
@@ -373,9 +373,9 @@ def get_question(db, question_id: int,):
         "ImageDependent": question_data[4],
         "ImageDescription": question_data[5],
         "ExamID": question_data[6],
-        "ExamName": question_data[7]
+        "ExamName": question_data[7] if question_data[7] is not None else ""
     }
-    
+   
     return question_dict
 
 def get_question_with_details(question_id, db):
@@ -451,6 +451,7 @@ def get_question_with_details(question_id, db):
         "ContentAreas": content_areas
     }
     
+
     return result
 
 #Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
@@ -644,4 +645,3 @@ def generate_chatmessage_embedding(chatmessage_id, db):
     if message:
         message.embedding = embedding
         db.commit()
-    
