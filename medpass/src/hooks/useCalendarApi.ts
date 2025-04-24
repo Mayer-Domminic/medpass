@@ -8,6 +8,7 @@ import {
   StudyPlanRequestPayload,
   StudyPlanGenerationResponse,
   CalendarApi,
+  StudyPlanProgress
 } from '@/types/calendar';
 
 export function useCalendarApi(): CalendarApi {
@@ -111,6 +112,8 @@ export function useCalendarApi(): CalendarApi {
       location: payload.location,
       color: payload.color,
       priority: payload.priority,
+      topic_name: payload.topic_name,
+      completed: payload.completed
     };
 
     const event = await fetchApi<any>('/calendar/events', {
@@ -130,11 +133,15 @@ export function useCalendarApi(): CalendarApi {
       location: event.location,
       color: event.color,
       priority: event.priority,
+      topicName: event.topic_name,
+      completed: event.completed,
       extendedProps: {
         type: event.event_type,
         description: event.description,
         location: event.location,
         priority: event.priority,
+        topicName: event.topic_name,
+        completed: event.completed
       }
     };
   }, [fetchApi]);
@@ -154,6 +161,8 @@ export function useCalendarApi(): CalendarApi {
     if (payload.location !== undefined) backendPayload.location = payload.location;
     if (payload.color !== undefined) backendPayload.color = payload.color;
     if (payload.priority !== undefined) backendPayload.priority = payload.priority;
+    if (payload.topic_name !== undefined) backendPayload.topic_name = payload.topic_name;
+    if (payload.completed !== undefined) backendPayload.completed = payload.completed;
 
     const event = await fetchApi<any>(`/calendar/events/${eventId}`, {
       method: 'PUT',
@@ -172,11 +181,15 @@ export function useCalendarApi(): CalendarApi {
       location: event.location,
       color: event.color,
       priority: event.priority,
+      topicName: event.topic_name,
+      completed: event.completed,
       extendedProps: {
         type: event.event_type,
         description: event.description,
         location: event.location,
         priority: event.priority,
+        topicName: event.topic_name,
+        completed: event.completed
       }
     };
   }, [fetchApi]);
@@ -248,6 +261,55 @@ export function useCalendarApi(): CalendarApi {
     });
   }, [fetchApi]);
 
+  const markEventCompleted = useCallback(async (eventId: string, completed: boolean): Promise<CalendarEvent> => {
+    const result = await fetchApi<any>(`/calendar/events/${eventId}/complete`, {
+      method: 'PATCH',
+      body: JSON.stringify({ completed }),
+    });
+    
+    return {
+      id: result.id || result.event_id,
+      title: result.title,
+      start: result.start || result.start_time,
+      end: result.end || result.end_time,
+      allDay: result.all_day || false,
+      type: result.event_type || result.type,
+      description: result.description,
+      location: result.location,
+      color: result.color,
+      priority: result.priority,
+      topicName: result.topic_name,
+      completed: completed,
+      extendedProps: {
+        type: result.event_type || result.type,
+        description: result.description,
+        location: result.location,
+        priority: result.priority,
+        topicName: result.topic_name,
+        completed: completed
+      }
+    };
+  }, [fetchApi]);
+
+  const exportPlanAsPdf = useCallback(async (planId: string): Promise<Blob> => {
+    const response = await fetch(`${getApiBaseUrl()}/api/v1/calendar/export-plan/${planId}`, {
+      method: 'GET',
+      headers: {
+        ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {})
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to export PDF: ${response.statusText}`);
+    }
+    
+    return await response.blob();
+  }, [session]);
+
+  const getStudyPlanProgress = useCallback(async (planId: string): Promise<StudyPlanProgress> => {
+    return await fetchApi<StudyPlanProgress>(`/calendar/study-plan-progress/${planId}`);
+  }, [fetchApi]);
+
   return {
     getEvents,
     createEvent,
@@ -255,5 +317,8 @@ export function useCalendarApi(): CalendarApi {
     deleteEvent,
     getRiskAssessment,
     generateStudyPlan,
+    markEventCompleted,
+    exportPlanAsPdf,
+    getStudyPlanProgress
   };
 }
