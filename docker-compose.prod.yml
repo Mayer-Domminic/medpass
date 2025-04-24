@@ -3,7 +3,7 @@ services:
     command: gunicorn app.main:app \
       --workers 4 \
       --worker-class uvicorn.workers.UvicornWorker \
-      --bind 0.0.0.0:8000     # overrides dev reload :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
+      --bind 0.0.0.0:8000     
 
   frontend:
-    command: pnpm start        # production build server :contentReference[oaicite:2]{index=2}&#8203;:contentReference[oaicite:3]{index=3}
+    command: sh -c "pnpm install && pnpm build && pnpm start"

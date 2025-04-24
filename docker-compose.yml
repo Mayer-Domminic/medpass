@@ -11,6 +11,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d  # runs init-pgvector.sql
+    networks:
+      - medpass
 
   backend:
     build:
