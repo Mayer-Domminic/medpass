@@ -42,7 +42,8 @@ export function LoginForm() {
       const result = await signIn("credentials", {
         username: data.username,
         password: data.password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: "/dashboard"
       });
 
       if (result?.error) {
