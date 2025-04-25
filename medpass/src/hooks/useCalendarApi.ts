@@ -14,19 +14,12 @@ import {
 export function useCalendarApi(): CalendarApi {
   const { data: session } = useSession();
 
-  // Helper function to get the API base URL
-  const getApiBaseUrl = () => {
-    // Use the environment variable if available, otherwise infer from window location
-    return process.env.NEXT_PUBLIC_API_URL || 
-           (typeof window !== 'undefined' ? `${window.location.origin}` : '');
-  };
-
   // Helper to handle fetch requests and errors
   const fetchApi = useCallback(async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
     // Get token from NextAuth session
     const token = session?.accessToken;
     
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/api/v1${endpoint}`;
     
     const headers = {
@@ -292,7 +285,7 @@ export function useCalendarApi(): CalendarApi {
   }, [fetchApi]);
 
   const exportPlanAsPdf = useCallback(async (planId: string): Promise<Blob> => {
-    const response = await fetch(`${getApiBaseUrl()}/api/v1/calendar/export-plan/${planId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/calendar/export-plan/${planId}`, {
       method: 'GET',
       headers: {
         ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {})

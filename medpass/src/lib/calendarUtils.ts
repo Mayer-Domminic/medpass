@@ -4,12 +4,6 @@ import { getSession } from 'next-auth/react';
 // Set to false to use the real API
 const USE_MOCK_API = false;
 
-// API utility functions without hooks
-export const getApiBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_API_URL || 
-         (typeof window !== 'undefined' ? `${window.location.origin}` : '');
-};
-
 // Get auth token from NextAuth session
 export const getAuthToken = async () => {
   try {
@@ -90,7 +84,7 @@ export const fetchFromApi = async <T>(endpoint: string, options: RequestInit = {
   }
   
   // Real API implementation
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   const url = `${baseUrl}/api/v1${endpoint}`;
   
   // Get fresh headers with auth token for each request
@@ -303,7 +297,7 @@ export const markEventComplete = async (eventId: string, completed: boolean): Pr
 
 export const exportStudyPlanPdf = async (planId: string): Promise<Blob> => {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/api/v1/calendar/export-plan/${planId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/calendar/export-plan/${planId}`, {
       method: 'GET',
       headers: await getHeaders(),
     });
@@ -337,7 +331,7 @@ export const testApiConnection = async () => {
     const headers = await getHeaders();
     console.log('Auth headers:', headers);
     
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const url = `${baseUrl}/api/v1/calendar/events`;
     
     console.log('Fetching from URL:', url);
