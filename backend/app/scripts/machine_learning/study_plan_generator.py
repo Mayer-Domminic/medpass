@@ -7,7 +7,7 @@ import google.generativeai as genai
 from fastapi import HTTPException
 from app.core.config import settings
 
-'''try:
+try:
     api_key = settings.GEMINI_API_KEY or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         print("Warning: No API key found for Gemini. Using fallback generator.")
@@ -15,15 +15,6 @@ from app.core.config import settings
     else:
         genai.configure(api_key=api_key)
         GEMINI_AVAILABLE = True
-except Exception as e:
-    print(f"Error configuring Gemini API: {str(e)}")
-    GEMINI_AVAILABLE = False'''
-# Configure the Gemini API client
-try:
-    # Directly configure with the API key
-    genai.configure(api_key="AIzaSyDYvGyp_kkjqFzOEWJ-cjNsOxcQWO6HUPU")
-    GEMINI_AVAILABLE = True
-    print("Successfully configured Gemini API with direct key")
 except Exception as e:
     print(f"Error configuring Gemini API: {str(e)}")
     GEMINI_AVAILABLE = False
