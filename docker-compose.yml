@@ -1,7 +1,7 @@
-version: "3.9"
-
 services:
   postgres:
+    ports:
+      - "5432:5432"
     image: ankane/pgvector:latest            # pgvector pre‑installed
     restart: unless-stopped
     environment:
@@ -15,6 +15,8 @@ services:
       - medpass
 
   backend:
+    ports:
+      - "8000:8000"
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -25,20 +27,23 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      GEMINI_API_KEYS: ${GEMINI_API_KEYS}
     depends_on:
       - postgres
     networks:
       - medpass
 
   frontend:
+    ports:
+      - "3000:3000"
     build:
       context: ./medpass
       dockerfile: Dockerfile
     environment:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     depends_on:
       - backend

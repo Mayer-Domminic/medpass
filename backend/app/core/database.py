@@ -32,9 +32,8 @@ from app.schemas.pydantic_base_models import user_schemas
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('all-mpnet-base-v2')
+from app.services.gemini_service import embed_text
 
 def get_db():
     """Dependency to get a DB session."""
@@ -484,15 +483,12 @@ def convert_question_to_text(question_response: dict) -> str:
     return text
 
 def generate_question_embedding(question_id, db):
-    
     question_data = get_question_with_details(question_id, db)
-    
     if not question_data:
         return None
-    
     question_text = convert_question_to_text(question_data)
-    embedding = model.encode(question_text).tolist()
-    
+    # Use Gemini embedding
+    embedding = embed_text(question_text)
     question = db.query(Question).filter(Question.questionid == question_id).first()
     if question:
         question.embedding = embedding
@@ -617,15 +613,12 @@ def generate_messagecontext_text(message: dict) -> str:
     return text
 
 def generate_chatcontext_embedding(chatcontext_id, db):
-    
     context_data = get_chat_context(chatcontext_id, db) 
-    
     if not context_data:
         return None
-    
     context_text = generate_chatcontext_text(context_data)
-    embedding = model.encode(context_text).tolist()
-    
+    # Use Gemini embedding
+    embedding = embed_text(context_text)
     context = db.query(ChatContext).filter(ChatContext.contextid == chatcontext_id).first()
     if context:
         context.embedding = embedding
@@ -634,13 +627,11 @@ def generate_chatcontext_embedding(chatcontext_id, db):
         
 def generate_chatmessage_embedding(chatmessage_id, db):
     message_data = get_chat_message(chatmessage_id, db)
-    
     if not message_data:
         return None
-    
     message_text = generate_messagecontext_text(message_data)
-    embedding = model.encode(message_text).tolist()
-    
+    # Use Gemini embedding
+    embedding = embed_text(message_text)
     message = db.query(ChatMessage).filter(ChatMessage.messageid == chatmessage_id).first()
     if message:
         message.embedding = embedding

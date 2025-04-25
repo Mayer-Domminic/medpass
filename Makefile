@@ -10,8 +10,7 @@ initdb:
 
 # 3) Production (build & detach)
 prod:
-	docker compose -f docker-compose.yml \
-	-f docker-compose.prod.yml up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 # 4) Tear down services (keep data)
 down:

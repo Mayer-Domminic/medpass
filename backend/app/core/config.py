@@ -18,11 +18,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ENVIRONMENT: str = "production"
+
     NEXTAUTH_URL: str
-    NEXT_PUBLIC_API_URL: str
     NEXTAUTH_SECRET: str
+    NEXT_PUBLIC_API_BASE_URL: str
     
-    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_API_KEYS: Optional[str] = None
 
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
