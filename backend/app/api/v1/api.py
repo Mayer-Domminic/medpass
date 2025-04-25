@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auth, risk, settings, student, report, faculty, about, question, calendar
+from .endpoints import auth, risk, settings, student, report, faculty, about, question, calendar, gemini
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -19,3 +19,4 @@ api_router.include_router(about.router, prefix="/about", tags=["about"])
 api_router.include_router(question.router, prefix="/question", tags=["question"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(about.router, prefix="/about", tags=["about"])
+api_router.include_router(gemini.router)
