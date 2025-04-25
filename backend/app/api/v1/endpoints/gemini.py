@@ -1,47 +1,59 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from typing import List
 from app.core.database import get_db
 from app.services.gemini_service import (
     start_and_store_conversation,
-    chat_flash,
     append_and_store_message,
+    chat_flash,
     get_chat_history
+)
+from app.schemas.chat_schemas import (
+    ChatSessionRequest, ChatSessionResponse,
+    ChatFlashRequest,   ChatMessageResponse,
+    ChatHistoryResponse
 )
 
 router = APIRouter(prefix="/gemini", tags=["gemini"])
 
-class NewChatRequest(BaseModel):
-    user_id: int
-    title: str
-    message: str
+@router.post(
+    "/chat/new",
+    response_model=ChatSessionResponse,
+    status_code=status.HTTP_201_CREATED
+)
+async def new_chat(
+    req: ChatSessionRequest,
+    db: Session = Depends(get_db)
+):
+    convo_id = start_and_store_conversation(req.user_id, req.initial_message, db)
+    return ChatSessionResponse(conversation_id=convo_id)
 
-class ChatRequest(BaseModel):
-    conversation_id: int
-    message: str
+@router.post(
+    "/chat/flash",
+    response_model=ChatMessageResponse,
+    status_code=status.HTTP_200_OK
+)
+async def flash_chat(
+    req: ChatFlashRequest,
+    db: Session = Depends(get_db)
+):
+    reply = chat_flash(req.messages)
+    msg = append_and_store_message(req.conversation_id, "assistant", reply, db)
+    return ChatMessageResponse(
+        message_id=msg.messageid,
+        sender=msg.sendertype,
+        content=msg.content,
+        timestamp=msg.timestamp
+    )
 
-@router.post("/chat/new", status_code=status.HTTP_201_CREATED)
-def new_chat(req: NewChatRequest, db: Session = Depends(get_db)):
-    convo = start_and_store_conversation(req.user_id, req.title, req.message, db)
-    return {"conversation_id": convo.conversationid}
-
-@router.post("/chat/{conversation_id}/flash")
-def flash_chat(conversation_id: int, req: ChatRequest, db: Session = Depends(get_db)):
-    # store user message
-    append_and_store_message(conversation_id, "user", req.message, db)
-    # send to Gemini
-    messages = get_chat_history(conversation_id, db)
-    # format for gen AI
-    ga_messages = [{"author": m["sender"], "content": m["content"]} for m in messages]
-    ga_messages.append({"author": "user", "content": req.message})
-    resp = chat_flash(ga_messages)
-    # store assistant reply
-    append_and_store_message(conversation_id, "assistant", resp["content"], db)
-    return {"reply": resp["content"], "usage": resp["usage"]}
-
-@router.get("/chat/{conversation_id}/history")
-def chat_history(conversation_id: int, db: Session = Depends(get_db)):
+@router.get(
+    "/chat/{conversation_id}/history",
+    response_model=ChatHistoryResponse,
+    status_code=status.HTTP_200_OK
+)
+async def chat_history(
+    conversation_id: int,
+    db: Session = Depends(get_db)
+):
     history = get_chat_history(conversation_id, db)
-    if not history:
-        raise HTTPException(status_code=404, detail="Conversation not found or no messages")
-    return {"history": history}
+    return ChatHistoryResponse(messages=history)
