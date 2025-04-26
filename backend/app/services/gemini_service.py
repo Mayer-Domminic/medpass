@@ -86,6 +86,23 @@ def append_and_store_message(
     db.add(msg); db.commit(); db.refresh(msg)
     return msg
 
+# Above are old functions keeping them for now
+
+# Cost Functions, simple but will be constantly used
+# This isn't needed if we are able to retrive the cost from the API call itself
+
+def calculate_token_usage(text: str):
+    
+    # From research gemeni uses 1 token per 4 characters
+    return len(text) // 4
+
+def calculate_message_cost(tokens_input, tokens_output):
+    
+    # Change cost to the actual cost of final model
+    # Is currently using 2.5 flash token cost 
+    return (tokens_input * 0.00000015) + (tokens_output * 0.0000035)
+    
+
 def get_chat_history(db, logininfoid, active_only: bool = True):
     
     query = (
@@ -151,14 +168,23 @@ def get_message_contexts(db, message_id):
         for context in results
     ]
 
-def get_entire_chat(db, conversation_id):
+def get_entire_chat(db, conversation_id, since_timestamp: Optional[datetime] = None):
 
     conversation = db.query(ChatConversation).filter(ChatConversation.conversationid == conversation_id).first()
     
     if not conversation:
         return None
     
-    messages = db.query(ChatMessage).filter(ChatMessage.conversationid == conversation_id).order_by(ChatMessage.timestamp).all()
+    query = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.conversationid == conversation_id)
+        .order_by(ChatMessage.timestamp)
+    )
+    
+    if since_timestamp:
+        query = query.filter(ChatMessage.timestamp > since_timestamp)
+        
+    messages = query.all()
     
     result = ChatConversationDetail(
         conversationid=conversation.conversationid,
@@ -192,3 +218,50 @@ def get_entire_chat(db, conversation_id):
         result.messages.append(message_model)
         
     return result
+
+def create_conversation(db, user_id, title, metadata: Optional[Dict[str, Any]] = None) -> ChatConversation:
+    
+    conversation = ChatConversation(
+        userid=user_id,
+        title=title,
+    )
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+def create_message(db, conversation_id, content, sender_type, metadata: Optional[Dict[str, Any]] = None) -> ChatMessage:
+    
+    tokens = calculate_token_usage(content)
+    
+    new_message = ChatMessage(
+        conversationid=conversation_id,
+        sendertype=sender_type,
+        content=content,
+        # Allows us to differentiate the cost between user and flash
+        tokensinput=tokens if sender_type == "user" else 0,
+        tokensoutput=tokens if sender_type == "flash" else 0,
+        messagecost=calculate_message_cost(
+            tokens if sender_type == "user" else 0,
+            tokens if sender_type == "flash" else 0
+        ),
+        messagemetadata=metadata
+    )
+    
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+    
+    conversation = db.query(ChatConversation).filter(ChatConversation.conversationid == conversation_id).first()
+    
+    if conversation:
+        if sender_type == "user":
+            conversation.totaltokensinput += tokens
+        else:
+            conversation.totaltokensoutput += tokens
+            
+        conversation.totalcost += new_message.messagecost
+        conversation.updatedat = datetime.utcnow()
+        db.commit()
+        
+    return new_message

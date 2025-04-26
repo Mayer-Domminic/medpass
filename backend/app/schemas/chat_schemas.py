@@ -76,3 +76,31 @@ class ChatConversationDetail(BaseModel):
 class SearchConversationsRequest(BaseModel):
     """Schema for conversation search request"""
     search_term: str = Field(..., description="Text to search for in conversation titles and messages")
+    
+
+class AddConversationResponse(BaseModel):
+    
+    conversation_id: int = Field(..., alias="conversationid")
+    title: str
+    created_at: datetime = Field(..., alias="createdat")
+
+class SendMessageRequest(BaseModel):
+
+    content: str
+    sender_type: str = Field("user", description="Type of sender: 'user' or 'flash'")
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="messagemetadata")
+
+
+class AddMessageResponse(BaseModel):
+    message_id: int = Field(..., alias="messageid")
+    conversation_id: int = Field(..., alias="conversationid")
+    sender_type: str = Field(..., alias="sendertype")
+    content: str
+    timestamp: datetime
+    tokens_input: int = Field(0, alias="tokensinput")
+    tokens_output: int = Field(0, alias="tokensoutput")
+    message_cost: float = Field(0.0, alias="messagecost")
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="messagemetadata")
+    
+    class Config:
+        from_attributes = True
