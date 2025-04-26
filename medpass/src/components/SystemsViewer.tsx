@@ -172,10 +172,10 @@ const SystemsViewer: React.FC<SystemsViewerProps> = ({
                   }
                   .system-group {
                     opacity: 0;
-                    transition: opacity 0.3s ease-in-out;
+                    transition: opacity 0.15s ease-in-out;
                   }
                   .system-group.visible {
-                    opacity: 1;
+                    opacity: 0.6;
                   }
                 `}
               </style>
