@@ -2,10 +2,14 @@ import random
 import datetime
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta import GenerativeServiceClient
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
+from sqlalchemy import func, select, desc
 from app.core.config import settings
-from app.models.chat_models import ChatConversation, ChatMessage
+from app.core.database import get_db
+from app.models.chat_models import ChatConversation, ChatMessage, ChatContext, ChatMessageContext
+from app.schemas.chat_schemas import ChatContextModel, ChatMessageWithContextModel, ChatConversationSummary, ChatConversationDetail
+from datetime import datetime
 
 # ——————— API-key rotation ———————
 API_KEYS = [k.strip() for k in settings.GEMINI_API_KEYS.split(",") if k.strip()]
@@ -82,24 +86,109 @@ def append_and_store_message(
     db.add(msg); db.commit(); db.refresh(msg)
     return msg
 
-def get_chat_history(
-    conversation_id: int,
-    db: Optional[Session] = None
-) -> List[dict]:
-    if db is None:
-        from app.core.database import get_db
-        db = next(get_db())
-    rows = (
-        db.query(ChatMessage)
-          .filter(ChatMessage.conversationid == conversation_id)
-          .order_by(ChatMessage.timestamp)
-          .all()
+def get_chat_history(db, logininfoid, active_only: bool = True):
+    
+    query = (
+        select(
+            ChatConversation,
+            func.count(ChatMessage.messageid).label("message_count"),
+        ).outerjoin(
+            ChatMessage,
+            ChatConversation.conversationid == ChatMessage.conversationid,
+        ).where(
+            ChatConversation.userid == logininfoid
+        ).group_by(
+            ChatConversation.conversationid
+        ).order_by(
+            desc(ChatConversation.updatedat)
+        )
     )
+    
+    if active_only:
+        query = query.where(ChatConversation.isactive == True)
+        
+    results = db.execute(query).all()
+    
+    conversations = []
+    
+    for conv, msg_count in results:
+        conversations.append(
+            ChatConversationSummary(
+                conversationid=conv.conversationid,
+                title=conv.title,
+                createdat=conv.createdat,
+                updatedat=conv.updatedat,
+                message_count=msg_count,
+                total_tokens=conv.totaltokensinput + conv.totaltokensoutput,
+                total_cost=float(conv.totalcost)
+            )
+        )
+        
+    return conversations
+
+def get_message_contexts(db, message_id):
+    
+    query = (
+        select(
+            ChatContext
+        ).join(
+            ChatMessageContext, ChatMessageContext.contextid == ChatContext.contextid
+        ).where(
+            ChatMessageContext.messageid == message_id
+        )
+    )
+    
+    results = db.execute(query).scalars().all()
+    
     return [
-        {
-            "sender": m.sendertype,
-            "content": m.content,
-            "timestamp": m.timestamp.isoformat()
-        }
-        for m in rows
+        ChatContextModel(
+            contextid=context.contextid,
+            title=context.title,
+            content=context.content,
+            importancescore=context.importancescore,
+            metadata=context.chatmetadata
+        )
+        for context in results
     ]
+
+def get_entire_chat(db, conversation_id):
+
+    conversation = db.query(ChatConversation).filter(ChatConversation.conversationid == conversation_id).first()
+    
+    if not conversation:
+        return None
+    
+    messages = db.query(ChatMessage).filter(ChatMessage.conversationid == conversation_id).order_by(ChatMessage.timestamp).all()
+    
+    result = ChatConversationDetail(
+        conversationid=conversation.conversationid,
+        title=conversation.title,
+        createdat=conversation.createdat,
+        updatedat=conversation.updatedat,
+        isactive=conversation.isactive,
+        totaltokensinput=conversation.totaltokensinput,
+        totaltokensoutput=conversation.totaltokensoutput,
+        totalcost=float(conversation.totalcost),
+        messages=[]
+    )
+    
+    # adding messages to the result
+    
+    for msg in messages: 
+        context = get_message_contexts(db, msg.messageid)
+        
+        message_model = ChatMessageWithContextModel(
+            messageid=msg.messageid,
+            sendertype=msg.sendertype,
+            content=msg.content,
+            timestamp=msg.timestamp,
+            tokensinput=msg.tokensinput,
+            tokensoutput=msg.tokensoutput,
+            messagecost=float(msg.messagecost),
+            metadata=msg.messagemetadata,
+            contexts=context
+        )
+        
+        result.messages.append(message_model)
+        
+    return result

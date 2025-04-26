@@ -1,5 +1,6 @@
 from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
 from ..services.rag_service import ingest_document, search_documents
+from ..services.gemini_service import get_chat_history, get_entire_chat
 import os
 
 def convert_question_to_text(question_response: dict) -> str:
@@ -53,6 +54,7 @@ if __name__ == "__main__":
             yield lst[i:i + batch_size]
     
     #print(rag_result)
+    '''
     print(f"Bron Question: {query}\n")
 
     for batch in split_list(rag_result, batch_size=2):
@@ -62,3 +64,10 @@ if __name__ == "__main__":
             print(f"Title: {result['title']}")
             print(f"Similarity: {result['similarity']:.3f}")
             print(f"Content Preview:\n{result['content'][:1000]}...\n")
+    '''
+    db = next(get_db())
+    #conversation = get_chat_history(db, 11)
+    
+    chat1 = get_entire_chat(db, 1)
+    
+    print(chat1)

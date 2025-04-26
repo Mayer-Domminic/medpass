@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -6,27 +6,23 @@ from app.services.gemini_service import (
     start_and_store_conversation,
     append_and_store_message,
     chat_flash,
+    get_entire_chat,
     get_chat_history
+)
+from app.core.security import (
+    get_current_active_user
 )
 from app.schemas.chat_schemas import (
     ChatSessionRequest, ChatSessionResponse,
     ChatFlashRequest,   ChatMessageResponse,
-    ChatHistoryResponse
+    ChatHistoryResponse,
+    ChatConversationDetail,
+    ChatConversationSummary
 )
+
+from app.models import LoginInfo as User
 
 router = APIRouter(prefix="/gemini", tags=["gemini"])
-
-@router.post(
-    "/chat/new",
-    response_model=ChatSessionResponse,
-    status_code=status.HTTP_201_CREATED
-)
-async def new_chat(
-    req: ChatSessionRequest,
-    db: Session = Depends(get_db)
-):
-    convo_id = start_and_store_conversation(req.user_id, req.initial_message, db)
-    return ChatSessionResponse(conversation_id=convo_id)
 
 @router.post(
     "/chat/flash",
@@ -46,14 +42,34 @@ async def flash_chat(
         timestamp=msg.timestamp
     )
 
-@router.get(
-    "/chat/{conversation_id}/history",
-    response_model=ChatHistoryResponse,
-    status_code=status.HTTP_200_OK
-)
-async def chat_history(
+# Above is an old endpoint for the flash chat, leaving as I don't know our process for that. 
+
+@router.get("/chat/history", response_model=List[ChatConversationSummary], status_code=status.HTTP_200_OK)
+async def get_all_chat_history(
+    current_user: User = Depends(get_current_active_user),
+    active_only: bool = Query(True, description="Only return active conversations"),
+    db: Session = Depends(get_db)
+    
+):
+    
+    conversations = get_chat_history(db, current_user.logininfoid, active_only)
+    
+    return conversations
+
+@router.get("/chat/{conversation_id}/history", response_model=ChatConversationDetail, status_code=status.HTTP_200_OK)
+async def single_chat_history(
     conversation_id: int,
     db: Session = Depends(get_db)
 ):
-    history = get_chat_history(conversation_id, db)
-    return ChatHistoryResponse(messages=history)
+    
+    conversation = get_entire_chat(db, conversation_id)
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    return conversation
+    
+    
