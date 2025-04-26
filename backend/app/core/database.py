@@ -21,12 +21,13 @@ from app.models import (
     QuestionOption,
     QuestionClassification,
     Option,
+    StudentQuestionPerformance,
     ContentArea,
     ChatContext,
     ChatMessage
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
-from app.schemas.question import (QuestionResponse)
+from app.schemas.question import ExamResultsCreate
 from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
@@ -320,6 +321,7 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
         db.rollback()
         return False, f"Database Error: {str(e)}"
 
+# Gets only existing content area IDs from names
 def get_content_areas(db, content_area_names: List[str]):
     """Get only existing content area IDs from names"""
     
@@ -344,6 +346,7 @@ def get_content_areas(db, content_area_names: List[str]):
     
     return name_to_id
 
+# Get basic question information by ID
 def get_question(db, question_id: int):
     """Get basic question information by ID"""
     question_data = db.query(
@@ -377,6 +380,7 @@ def get_question(db, question_id: int):
    
     return question_dict
 
+# Get question and all options by ID
 def get_question_with_details(question_id, db):
     
     question_data = db.query(
@@ -450,7 +454,93 @@ def get_question_with_details(question_id, db):
         "ContentAreas": content_areas
     }
     
+    return result
 
+# Get all exam results and associated student question performances for a student
+def get_historical_performance(db, student_id=None, exam_id=None, skip=0, limit=100):
+    """
+    Get exam results with their associated student question performances.
+    
+    """
+    # Start with a base query for exam results
+    query = db.query(ExamResults)
+    
+    # Apply filters if provided
+    if student_id:
+        query = query.filter(ExamResults.studentid == student_id)
+    if exam_id:
+        query = query.filter(ExamResults.examid == exam_id)
+
+    # Order by timestamp desc, then by examresultsid desc if timestamp is NULL
+    query = query.order_by(
+        ExamResults.timestamp.desc().nulls_last(),
+        ExamResults.examresultsid.desc()
+    )
+        
+    # Apply pagination
+    query = query.offset(skip).limit(limit)
+    
+    # Execute the query to get all exam results
+    exam_results = query.all()
+    
+    if not exam_results:
+        return []
+    
+    # Build the response
+    result = []
+    
+    for er in exam_results:
+        # Get student name
+        student = db.query(Student).filter(Student.studentid == er.studentid).first()
+        student_name = f"{student.firstname} {student.lastname}" if student else "Unknown"
+        
+        # Get exam name
+        exam = db.query(Exam).filter(Exam.examid == er.examid).first()
+        exam_name = exam.examname if exam else "Unknown"
+        
+        # Get performances for this exam result
+        performances = db.query(
+            StudentQuestionPerformance
+        ).outerjoin(
+            Question, StudentQuestionPerformance.questionid == Question.questionid
+        ).filter(
+            StudentQuestionPerformance.examresultid == er.examresultsid
+        ).all()
+        
+        # Format performances
+        performance_list = []
+        for perf in performances:
+            # Get question details
+            question = db.query(Question).filter(
+                Question.questionid == perf.questionid
+            ).first()
+            
+            performance_list.append({
+                "StudentQuestionPerformanceID": perf.studentquestionperformanceid,
+                "ExamResultsID": perf.examresultid,
+                "QuestionID": perf.questionid,
+                "Result": perf.result,
+                "Confidence": perf.confidence,
+                "QuestionPrompt": question.prompt if question else None,
+                "QuestionDifficulty": question.questionDifficulty if question else None
+            })
+        
+        # Add to result
+        result.append({
+            "ExamResults": {
+                "ExamResultsID": er.examresultsid,
+                "StudentID": er.studentid,
+                "StudentName": student_name,
+                "ExamID": er.examid,
+                "ExamName": exam_name,
+                "Score": er.score,
+                "PassOrFail": er.passorfail,
+                "Timestamp": er.timestamp,
+                "ClerkshipID": er.clerkshipid
+            },
+            "Performances": performance_list
+        })
+    
     return result
 
 #Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
