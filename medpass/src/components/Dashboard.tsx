@@ -18,8 +18,8 @@ interface DashboardProps {
 const DOMAIN_TO_SYSTEMS: Record<string, SystemName[]> = {
   "Human Development": ["reproductive", "endocrine"],
   "Biostatistics & Epidemiology/Population Health": [],
-  "Social Sciences: Communication and Interpersonal Skills": ["nervous"],
-  "Cardiovascular System": ["cardiovascular", "lymphatic"],
+  "Social Sciences: Communication and Interpersonal Skills": ["nervous", "endocrine"],
+  "Cardiovascular System": ["cardiovascular"],
   "Respiratory & Renal/Urinary Systems": ["respiratory", "urinary"],
   "Gastrointestinal System": ["digestive"],
   "Reproductive & Endocrine Systems": ["reproductive", "endocrine"],
