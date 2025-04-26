@@ -1,12 +1,16 @@
 from typing import List
 
 from app.models import (
+    Question,
+    ChatMessage,
+    ChatContext,
+    ChatMessageContext,
     Faculty,
     Document,
     DocumentChunk,
 )
 
-from ..core.database import get_db
+from ..core.database import get_db, get_question_with_details, get_chat_context, get_chat_message
 from app.services.gemini_service import embed_texts, embed_text
 
 from sqlalchemy import text, func
@@ -16,6 +20,131 @@ import pypdf
 import docx
 import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+#Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
+def convert_question_to_text(question_response: dict) -> str:
+    
+    question = question_response['Question']
+    option = question_response['Options']
+    content_areas = question_response['ContentAreas']
+    
+    prompt = question['Prompt']
+    
+    # This is for a way to format our options for context in a A, B, C, D format (chr 65 is a + 1 is each letter after)
+    option_lines = [
+        f"{chr(65 + i)}. {opt['OptionDescription']}" for i, opt in enumerate(option)
+    ]
+    
+    difficulty = question.get('QuestionDifficulty', 'Unknown')
+    content_names = [ca["ContentName"] for ca in content_areas]
+    # If multiple content areas combine them into a single string
+    content_area_line = ', '.join(content_names) if content_names else "Uncatergorized"
+    
+    context_lines = [
+        f"Difficulty: {difficulty}",
+        f"Content Areas: {content_area_line}",
+        ""
+    ]
+    
+    text = "\n".join(context_lines + [prompt] + option_lines)
+    
+    return text
+
+def generate_question_embedding(question_id, db):
+    question_data = get_question_with_details(question_id, db)
+    if not question_data:
+        return None
+    question_text = convert_question_to_text(question_data)
+    # Use Gemini embedding
+    embedding = embed_text(question_text)
+    question = db.query(Question).filter(Question.questionid == question_id).first()
+    if question:
+        question.embedding = embedding
+        db.commit()
+
+def generate_chatcontext_text(context: dict) -> str:
+    
+    title = context.get('Title', '')
+    content = context.get('Content', '')
+    
+    # Make sure when creating metadata it has topic and tags also
+    metadata = context.get('Metadata', {})
+    topic = metadata.get('topic', '')
+    tags = metadata.get('tags', [])
+    tags_line = ', '.join(tags) if tags else "Uncatergorized"
+    
+    context_lines = [
+        f"Title: {title}",
+        f"Content: {content}",
+        f"Topic: {topic}",
+        f"Tags: {tags_line}",
+        ""
+    ]
+    
+    text = '\n'.join(context_lines)
+    
+    return text
+
+def generate_messagecontext_text(message: dict) -> str:
+    
+    sender = message.get('SenderType', '')
+    content = message.get('Content', '')
+    
+    metadata = message.get('Metadata', {})
+    model = metadata.get('model', '')
+    temperature = metadata.get('temperature', '')
+    client = metadata.get('client', '')
+    
+    # Joins all the metadata together into one line as a string
+    #Only attaches model and temperature if they are from a bot and not a user
+    
+    metadata_text = []
+    
+    if sender == 'bot':
+        if model:
+            metadata_text.append(f"Model: {model}")
+        if temperature:
+            metadata_text.append(f"Temperature: {temperature}")
+    if client:
+        metadata_text.append(f"Client: {client}")
+        
+    text = '\n'.join(metadata_text)
+    
+    context_lines = [
+        f"Sender: {sender}",
+        f"Content: {content}",
+        text,
+        ""
+    ]
+    
+    text = '\n'.join(context_lines)
+    
+    return text
+
+def generate_chatcontext_embedding(chatcontext_id, db):
+    context_data = get_chat_context(chatcontext_id, db) 
+    if not context_data:
+        return None
+    context_text = generate_chatcontext_text(context_data)
+    # Use Gemini embedding
+    embedding = embed_text(context_text)
+    context = db.query(ChatContext).filter(ChatContext.contextid == chatcontext_id).first()
+    if context:
+        context.embedding = embedding
+        db.commit()
+    
+        
+def generate_chatmessage_embedding(chatmessage_id, db):
+    message_data = get_chat_message(chatmessage_id, db)
+    if not message_data:
+        return None
+    message_text = generate_messagecontext_text(message_data)
+    # Use Gemini embedding
+    embedding = embed_text(message_text)
+    message = db.query(ChatMessage).filter(ChatMessage.messageid == chatmessage_id).first()
+    if message:
+        message.embedding = embedding
+        db.commit()
 
 def extract_text_pdf(filepath: str) -> str:
     

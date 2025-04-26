@@ -1,5 +1,5 @@
 from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
-from ..core.rag import ingest_document, search_documents
+from ..services.rag_service import ingest_document, search_documents
 import os
 
 def convert_question_to_text(question_response: dict) -> str:

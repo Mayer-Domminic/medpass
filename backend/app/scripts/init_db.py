@@ -1,6 +1,6 @@
 # backend/app/scripts/init_db.py
 import os
-from ..core.rag import ingest_document_directory
+from ..services.rag_service import ingest_document_directory
 
 if __name__ == "__main__":
     
