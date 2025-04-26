@@ -1,7 +1,6 @@
-from sentence_transformers import SentenceTransformer
 from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
-
-model = SentenceTransformer('all-mpnet-base-v2')
+from ..core.rag import ingest_document
+import os
 
 def convert_question_to_text(question_response: dict) -> str:
     
@@ -33,17 +32,16 @@ def convert_question_to_text(question_response: dict) -> str:
     
 if __name__ == "__main__":
     
+    filepath = class_filePath = os.path.join(
+        "app", "scripts", "data", "ragdata", "Abdomen Condensed Chapter Material.pdf"
+    )
+    
+    filepath1 = class_filePath = os.path.join(
+        "app", "scripts", "data", "ragdata", "Breast Condensed Chapter Material.docx"
+    )
+    
     db = next(get_db())
-    response = get_question_with_details(10, db)
-    text = convert_question_to_text(response)
-    print(text)
+    docnumber0 = ingest_document(db, filepath)
+    #docnumber1 = ingest_document(db, filepath1)
+    #print(text2[1])
     
-    #embedding = model.encode(text).tolist()
-    
-    #print(embedding)
-    
-    questiontext = get_question(db, 11)
-    print(questiontext)
-    
-    contenttext = get_content_areas(db, ["Cardiovascular System", "Pharmacology", "Physiology"])
-    print(contenttext)

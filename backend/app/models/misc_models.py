@@ -35,15 +35,16 @@ class Document(Base):
     facultyid = Column('facultyid', Integer, ForeignKey('faculty.facultyid'))
     
     faculty = relationship('Faculty', back_populates='documents')
+    chunks = relationship('DocumentChunk', back_populates='documents')
     
 class DocumentChunk(Base):
     __tablename__ = 'documentchunk'
     
     documentchunkid = Column('documentchunkid', Integer, Identity(start=1, increment=1), primary_key=True)
     documentid = Column('documentid', Integer, ForeignKey('document.documentid'))
-    chuntindex = Column('chunkindex', Integer)
+    chunkindex = Column('chunkindex', Integer)
     content = Column('content', Text)
-    embedding = Column('embedding', Vector(3072), nullable=True)
+    embedding = Column('embedding', Vector(768), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    document = relationship('Document', back_populates='chunks')
+    documents = relationship('Document', back_populates='chunks')

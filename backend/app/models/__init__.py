@@ -24,7 +24,9 @@ from .class_models import (
 
 from .misc_models import (
     ClassRoster,
-    Extracurricular
+    Extracurricular,
+    Document,
+    DocumentChunk
 )
 
 from .result_models import (

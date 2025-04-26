@@ -141,8 +141,6 @@ def link_logininfo(id, logininfoid, usertype):
     
     if user:
         user.logininfoid = logininfoid
-        user.firstname = "LeBron"
-        user.lastname = "James"
         db.commit()
         
     db.close()

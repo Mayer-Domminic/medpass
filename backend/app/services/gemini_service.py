@@ -1,6 +1,7 @@
 import random
 import datetime
 import google.generativeai as genai
+from google.ai.generativelanguage_v1beta import GenerativeServiceClient
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -12,10 +13,12 @@ if not API_KEYS:
     raise ValueError("No GEMINI_API_KEYS configured")
 
 def _select_api_key() -> str:
-    return random.choice(API_KEYS)
+    index = random.randint(0, 3)
+
+    return API_KEYS[index]
 
 # ——————— Embeddings ———————
-EMBED_MODEL = "gemini-embedding-exp-03-07"
+EMBED_MODEL = "models/text-embedding-004"
 def embed_text(text: str) -> List[float]:
     genai.configure(api_key=_select_api_key())
     res = genai.embed_content(model=EMBED_MODEL, content=text)
@@ -23,8 +26,16 @@ def embed_text(text: str) -> List[float]:
 
 def embed_texts(texts: List[str]) -> List[List[float]]:
     genai.configure(api_key=_select_api_key())
-    res = genai.embed_content(model=EMBED_MODEL, content=texts)
-    return res.get("embeddings")
+    embeddings = []
+    
+    for idx, text in enumerate(texts, start=1):  # start counting from 1
+        print(f"Embedding {idx}/{len(texts)}")  # Show progress
+        
+        res = genai.embed_content(model=EMBED_MODEL, content=text)
+        embedding = res.get("embedding") or res.get("embeddings")
+        embeddings.append(embedding)
+    
+    return embeddings
 
 # ——————— Flash chat ———————
 def chat_flash(

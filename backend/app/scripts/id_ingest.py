@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from app.schemas.pydantic_base_models import user_schemas, exam_schemas, misc_schemas, result_schemas
-from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam
+from app.models import Student, ClassRoster, GraduationStatus, ExamResults, LoginInfo, Exam, Faculty
 from app.core.database import get_db, link_logininfo
 from app.core.security import get_password_hash
 import os
@@ -327,6 +327,12 @@ if __name__ == "__main__":
             db.add(db_logininfo_data)
         db.commit()
         link_logininfo(298, 11, 'student')
+        user = db.query(Student).filter(Student.studentid == 298).first()
+        
+        if user:
+            user.firstname = 'Bron'
+            user.lastname = 'Jamenson'
+            db.commit()
         print('Mock Login Info Data Loaded in Database')
         
     except Exception as e:
@@ -336,6 +342,26 @@ if __name__ == "__main__":
     
     finally:
         db.close()  
+        
+    try:
+        db = next(get_db())
+        faculty_member = Faculty(
+            facultyid = 1,
+            firstname = 'Bronson',
+            lastname = 'Admin',
+            position = 'Medpass Admin'
+        )
+        db.add(faculty_member)
+        
+        db.commit()
+        link_logininfo(1, 1, 'faculty')
+        print('Mock Faculty Data Loaded in Database')
+    except Exception as e:
+        print(f"Error when adding data {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
     
     
     
