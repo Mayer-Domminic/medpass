@@ -7,7 +7,10 @@ from app.models import (
 )
 
 from ..core.database import get_db
-from app.services.gemini_service import embed_texts
+from app.services.gemini_service import embed_texts, embed_text
+
+from sqlalchemy import text, func
+from sqlalchemy import select, desc
 
 import pypdf
 import docx
@@ -127,3 +130,65 @@ def ingest_document_directory(directory_path: str):
         return None
     finally:
         db.close()
+        
+def search_documents(query: str, limit: int = 5, faculty_id: int = None, similiarity_threshold: float = 0.5):
+    
+    query_embedding = embed_text(query)
+    
+    try:
+        db = next(get_db())
+
+        try:
+            
+            context = (
+                select(
+                    DocumentChunk.documentchunkid,
+                    DocumentChunk.content,
+                    Document.title,
+                    Document.author,
+                    
+                    # Calculating vector similarity (cosine sim)
+                    (1 - DocumentChunk.embedding.cosine_distance(query_embedding)).label("similarity")
+                ).join(
+                    Document, DocumentChunk.documentid == Document.documentid
+                ).order_by(
+                    desc("similarity")
+                ).limit(limit)
+            )
+                
+            if faculty_id:
+                context = context.where(Document.facultyid == faculty_id)
+            
+            # Filtering by min similarity threshold 
+            context = context.where(
+                (1 - DocumentChunk.embedding.cosine_distance(query_embedding)) >= similiarity_threshold
+            )
+            
+            results = db.execute(context).fetchall()
+            
+            formatted_results = [
+                {
+                    "documentchunkid": result[0],
+                    "content": result[1],
+                    "title": result[2],
+                    "author": result[3],
+                    "similarity": result[4]
+                }
+                for result in results
+            ]
+            
+            return formatted_results
+                
+        except Exception as e:
+            print(f"Error searching documents: {e}")
+            return []
+            
+        finally:
+            db.close()
+                
+            
+    except Exception as e:
+        print(f"Error connecting to database: {e}")
+        return None
+    
+    
