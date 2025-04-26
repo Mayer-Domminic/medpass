@@ -13,8 +13,9 @@ interface DashboardProps {
 }
 export function Dashboard({ domainData }: DashboardProps) {
   // State to track which systems should be highlighted
-  // For demo purposes, initially highlighting cardiovascular and nervous systems
-  const [highlightedSystems, setHighlightedSystems] = useState<SystemName[]>(['cardiovascular', 'nervous']);
+
+  //const [highlightedSystems, setHighlightedSystems] = useState<SystemName[]>(["cardiovascular", "nervous"]);
+  const [highlightedSystems, setHighlightedSystems] = useState<SystemName[]>([]);
  
   return (
     <div className="min-h-screen bg-gray-900 text-foreground flex">
@@ -29,15 +30,12 @@ export function Dashboard({ domainData }: DashboardProps) {
       </div>
       <div className="w-1/3 border-l border-gray-800 bg-gray-900">
         <div className="p-6 flex flex-col h-screen">
-          <h2 className="text-3xl font-bold mb-4 text-center text-white">Systems Viewer</h2>
+          <h2 className="text-4xl font-bold mb-2 text-center text-white">Systems Viewer</h2>
           <div className="flex-grow overflow-auto">
             <SystemsViewer
               highlightedSystems={highlightedSystems}
               className="h-full w-full"
             />
-          </div>
-          <div className="mt-4 text-center text-white">
-            <span>{highlightedSystems.length} Systems Highlighted</span>
           </div>
         </div>
       </div>
