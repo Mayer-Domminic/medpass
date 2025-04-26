@@ -35,6 +35,12 @@ export interface CalendarEvent {
   };
 }
 
+export interface StudySession extends CalendarEvent {
+  topicName: string;
+  completed: boolean;
+  plan_id?: string;
+}
+
 export interface EventCreatePayload {
   title: string;
   description?: string;
@@ -46,6 +52,8 @@ export interface EventCreatePayload {
   location?: string;
   color?: string;
   priority?: number;
+  topic_name?: string; 
+  completed?: boolean;
 }
 
 export interface EventUpdatePayload extends Partial<EventCreatePayload> {}
@@ -125,6 +133,16 @@ export interface StudyPlanGenerationResponse {
   summary: StudyPlanSummary;
 }
 
+// StudyPlanAnalytics displays progress over time
+export interface StudyPlanProgress {
+  total_sessions: number;
+  completed_sessions: number;
+  completion_percentage: number;
+  hours_studied: number;
+  hours_remaining: number;
+  progress_by_topic: { [key: string]: number }; // percentage completed by topic
+}
+
 // Type for API interaction functions
 export interface CalendarApi {
   getEvents: () => Promise<CalendarEvent[]>;
@@ -133,6 +151,9 @@ export interface CalendarApi {
   deleteEvent: (eventId: string) => Promise<{ message: string }>;
   getRiskAssessment: () => Promise<RiskAssessment>; 
   generateStudyPlan: (payload: StudyPlanRequestPayload) => Promise<StudyPlanGenerationResponse>;
+  markEventCompleted: (eventId: string, completed: boolean) => Promise<CalendarEvent>;
+  exportPlanAsPdf: (planId: string) => Promise<Blob>;
+  getStudyPlanProgress: (planId: string) => Promise<StudyPlanProgress>;
 }
 
 // Type for FullCalendar event mapping

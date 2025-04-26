@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 import uuid
@@ -120,30 +120,45 @@ class StudyPlanResponseData(BaseModel):
     events: List[StudyPlanEventResponse]
     createdAt: str
 
+    @validator('id')
+    def id_must_exist(cls, v):
+        if not v:
+            raise ValueError('id must not be empty')
+        return v
+        
+    @validator('startDate', 'endDate', 'examDate', 'createdAt')
+    def check_date_format(cls, v):
+        try:
+            # Try to parse the date to ensure it's valid
+            datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return v
+        except Exception as e:
+            raise ValueError(f'Invalid date format: {v}. Error: {str(e)}')
+
 class WeaknessStrength(BaseModel):
     """Schema for student strength/weakness"""
     subject: str
-    performance: float
-    is_weakness: Optional[bool] = None
-    unit_type: Optional[str] = None
+    unit_type: Optional[str] = "Course"
+    performance: float = Field(..., ge=0, le=100)
     performance_score: Optional[float] = None
-
-class StudyPlanRequest(BaseModel):
-    """Schema for study plan generation request"""
-    exam_date: datetime
-    weaknesses: List[WeaknessStrength]
-    strengths: List[WeaknessStrength]
-    events: List[Dict[str, Any]]
-    study_hours_per_day: Optional[int] = 4
-    focus_areas: Optional[List[str]] = None
-    additional_notes: Optional[str] = None
+    is_weakness: Optional[bool] = None
 
 class StudyPlanSummary(BaseModel):
     """Schema for study plan summary"""
     total_study_hours: int
     topics_count: int
-    focus_areas: Dict[str, int]
-    weekly_breakdown: Dict[str, int]
+    focus_areas: Dict[str, Union[int, float]] = {}
+    weekly_breakdown: Dict[str, Union[int, float]] = {}
+
+class StudyPlanRequest(BaseModel):
+    """Schema for study plan generation request"""
+    exam_date: datetime
+    weaknesses: List[WeaknessStrength] = []
+    strengths: List[WeaknessStrength] = []
+    events: List[Dict[str, Any]] = []
+    study_hours_per_day: Optional[int] = 4
+    focus_areas: Optional[List[str]] = None
+    additional_notes: Optional[str] = None
 
 class StudyPlanResponse(BaseModel):
     """Schema for complete study plan response"""
