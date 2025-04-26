@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from app.core.config import settings
 
 try:
-    api_key = settings.GEMINI_API_KEY or os.environ.get("GOOGLE_API_KEY")
+    api_key = settings.GEMINI_API_KEYS # USE GEMINI SERVICE PLEASE
     if not api_key:
         print("Warning: No API key found for Gemini. Using fallback generator.")
         GEMINI_AVAILABLE = False

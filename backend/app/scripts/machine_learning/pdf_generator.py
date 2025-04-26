@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Dict, List, Any
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.pyplot as plt
 matplotlib.use('Agg')  # Use non-interactive backend for server usage
 import seaborn as sns
 from reportlab.lib import colors

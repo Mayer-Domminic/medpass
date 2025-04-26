@@ -19,7 +19,7 @@ export function Dashboard({ domainData }: DashboardProps) {
  
   return (
     <div className="min-h-screen bg-gray-900 text-foreground flex">
-      <Sidebar />
+      <Sidebar /> 
       <div className="w-2/3 pl-[72px] bg-gray-900">
         <div className="p-6">
           <h1 className="text-3xl font-bold mb-8 text-white">
