@@ -1,18 +1,10 @@
-from sqlalchemy import create_engine, inspect, MetaData, text
-from sqlalchemy.orm import sessionmaker
-from typing import Optional, List
-from app.models import Student, LoginInfo
-from .config import settings
-from .base import Base
-import math
+from typing import List
+
 from app.models import (
     Faculty,
     Document,
     DocumentChunk,
 )
-from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
-from app.schemas.question import (QuestionResponse)
-from app.schemas.pydantic_base_models import user_schemas
 
 from ..core.database import get_db
 from app.services.gemini_service import embed_texts
@@ -114,4 +106,24 @@ def ingest_document(db, file_path):
     
     finally:
         db.close()
+        
+def ingest_document_directory(directory_path: str):
     
+    doc_ids = []
+    try:
+        db = next(get_db())
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            
+            if os.path.isfile(file_path):
+                print(f"Processing file: {file_path}")
+                doc_id = ingest_document(db, file_path)
+                if doc_id:
+                    doc_ids.append(doc_id)
+                    
+        return doc_ids
+    except Exception as e:
+        print(f"Error processing directory: {directory_path}, {e}")
+        return None
+    finally:
+        db.close()
