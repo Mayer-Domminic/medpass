@@ -1,20 +1,17 @@
-'use client';
-
-// extends window (global object) to include currentQuestionIndex, used by Question component
-declare global {
-    interface Window {
-      currentQuestionIndex?: number;
-    }
-  }
-
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
-import Sidebar from '@/components/navbar';
-import Question from '@/components/QuestionComp/Question';
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
-// Interface matching the API response format
+// extends window to include custom attribute, currentQuestionIndex
+declare global {
+  interface Window {
+    currentQuestionIndex?: number;
+  }
+}
+
+// Original format interfaces (what is passed from parent component)
 interface QuestionResponseData {
   Question: {
     QuestionID: number;
@@ -42,484 +39,350 @@ interface QuestionResponseData {
 
 interface QuestionProps {
   questionData: QuestionResponseData;
-  showFeedback: boolean;
-  savedAnswers: number[];
-  savedConfidenceLevel: string;
+  showFeedback?: boolean;
+  savedAnswers?: number[]; // Array of option IDs
+  savedConfidenceLevel?: string;
 }
 
-// structure for user answer data
-interface UserAnswer {
-  questionIndex: number;
-  selectedAnswers: number[]; // Array for multiple correct answers
-  confidenceLevel: string;
-  isCorrect: boolean;
-}
+const Question = ({ 
+  questionData, 
+  showFeedback = false, 
+  savedAnswers = [], 
+  savedConfidenceLevel = "" 
+}: QuestionProps) => {
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const [confidenceLevel, setConfidenceLevel] = useState(savedConfidenceLevel);
+  const [isShowingFeedback, setIsShowingFeedback] = useState(showFeedback);
+  const [isCorrect, setIsCorrect] = useState(false);
 
-// Function to fetch question details from API
-const fetchQuestionDetails = async (questionId: number, accessToken?: string) => {
-  try {
-    const API_URL = 
-      typeof window === "undefined" 
-        ? "http://backend:8000" 
-        : "http://localhost:8000";
+  // Calculate if answers are correct - comparing selected vs correct options
+  const checkIfCorrect = (selected: number[], options: any[]): boolean => {
+    // Get all correct option IDs
+    const correctOptionIds = options
+      .filter(option => option.CorrectAnswer)
+      .map(option => option.OptionID);
     
-    const response = await fetch(`${API_URL}/api/v1/question/${questionId}`);
-
-    if (!response.ok) {
-      console.error(`Server responded with status: ${response.status}`);
-      const errorText = await response.text();
-      console.error(`Error details: ${errorText}`);
-      throw new Error(`Error: ${response.status}`);
+    // If the arrays have different lengths, they can't be the same
+    if (selected.length !== correctOptionIds.length) {
+      return false;
     }
     
-    const data = await response.json();
-    console.log("Received data structure:", data);
+    // Check if all selected options are correct and all correct options are selected
+    const allSelectedAreCorrect = selected.every(id => correctOptionIds.includes(id));
+    const allCorrectAreSelected = correctOptionIds.every(id => selected.includes(id));
     
-    // Convert data to match the expected QuestionResponseData format if needed
-    const formattedData: QuestionResponseData = {
-      Question: {
-        QuestionID: data.Question.QuestionID,
-        ExamID: data.Question.ExamID,
-        Prompt: data.Question.Prompt,
-        QuestionDifficulty: data.Question.QuestionDifficulty,
-        ImageUrl: data.Question.ImageUrl,
-        ImageDependent: data.Question.ImageDependent,
-        ImageDescription: data.Question.ImageDescription,
-        ExamName: data.Question.ExamName
-      },
-      Options: data.Options.map((opt: any) => ({
-        OptionID: opt.OptionID,
-        CorrectAnswer: opt.CorrectAnswer,
-        Explanation: opt.Explanation,
-        OptionDescription: opt.OptionDescription
-      })),
-      ContentAreas: data.ContentAreas.map((area: any) => ({
-        ContentAreaID: area.ContentAreaID,
-        ContentName: area.ContentName,
-        Description: area.Description,
-        Discipline: area.Discipline
-      }))
-    };
+    return allSelectedAreCorrect && allCorrectAreSelected;
+  };
+
+  // update state when props change - making sure component stays in sync with parent
+  useEffect(() => {
+    console.log("Question component received savedAnswers:", savedAnswers);
     
-    return formattedData;
-  } catch (error) {
-    console.error('Failed to fetch question:', error);
-    throw error;
-  }
-};
-
-// Function to fetch all questions needed for the quiz
-const fetchQuizQuestions = async (questionIds: number[], accessToken?: string) => {
-  try {
-    const questionsPromises = questionIds.map(id => fetchQuestionDetails(id, accessToken));
-    return await Promise.all(questionsPromises);
-  } catch (error) {
-    console.error('Failed to fetch quiz questions:', error);
-    throw error;
-  }
-};
-
-export default function ReviewPage() {
-  // replace mock data with state for loaded questions
-  const [questions, setQuestions] = useState<QuestionResponseData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  //--- state variables ---
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
-  const [score, setScore] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
-  const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [studentId, setStudentId] = useState<number>(100); // Example student ID, replace with actual logic to get student ID
-
-  // Load questions from API
-  useEffect(() => {
-    const loadQuestions = async () => {
-      try {
-        setLoading(true);
-        // Example question IDs - replace with your actual question IDs
-        // You might want to fetch these from another endpoint or have them predefined
-        const questionIds = [10, 11, 12]; // Example IDs
-        const loadedQuestions = await fetchQuizQuestions(questionIds);
-        setQuestions(loadedQuestions);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load questions. Please try again later.');
-        setLoading(false);
-        console.error('Error loading questions:', err);
-      }
-    };
-
-    loadQuestions();
-  }, []);
-
-  //---localstorage functions ---
-  const saveQuizState = () => {
-    const quizState = {
-      currentQuestionIndex,
-      userAnswers,
-      answeredQuestions,
-      score
-    };
-    localStorage.setItem('reviewSessionState', JSON.stringify(quizState));
-  };
-  
-  const loadQuizState = () => {
-    const savedState = localStorage.getItem('reviewSessionState');
-    if (savedState) {
-      try {
-        const { currentQuestionIndex, userAnswers, answeredQuestions, score } = JSON.parse(savedState);
-        setCurrentQuestionIndex(currentQuestionIndex);
-        setUserAnswers(userAnswers);
-        setAnsweredQuestions(answeredQuestions);
-        setScore(score);
-        return true;
-      } catch (error) {
-        console.error('Error parsing saved quiz state', error);
-      }
+    // Only update selected answers if savedAnswers exists and is an array
+    if (Array.isArray(savedAnswers)) {
+      setSelectedAnswers([...savedAnswers]); // Create a new array to ensure state update
+    } else {
+      setSelectedAnswers([]);
     }
-    return false;
-  };
-  
-  // Function to submit quiz results to the database
-  const submitQuizResultsToDatabase = async (studentId: number, examId: number) => {
-    try {
-      const quizState = JSON.parse(localStorage.getItem('reviewSessionState') || '{}');
-      
-      if (!quizState.userAnswers || quizState.userAnswers.length === 0) {
-        console.error('No quiz data available to submit');
-        return { success: false, message: 'No quiz data available' };
-      }
-      
-      // Convert confidence levels to integer values
-      const confidenceToInt = (confidenceStr: string): number => {
-        switch(confidenceStr.toLowerCase()) {
-          case 'very-good': return 5;
-          case 'good': return 4;
-          case 'neutral': return 3;
-          case 'bad': return 2;
-          case 'very-bad': return 1;
-          default: return 3; // Default to neutral if unknown
-        }
-      };
-      
-      // Calculate percentage score - Must be an integer
-      const percentageScore = Math.round((quizState.score / quizState.answeredQuestions.length) * 100);
-      
-      // Format the data according to ExamResultWithPerformancesCreate schema
-      const formattedData = {
-        student_id: studentId,
-        exam_id: examId,
-        clerkship_id: null, // Set to actual clerkship ID if available
-        score: percentageScore, // Rounded to integer
-        pass_or_fail: null, // Let backend determine this based on exam pass score
-        timestamp: new Date().toISOString(),
-        performances: quizState.userAnswers.map((answer: UserAnswer) => {
-          return {
-            question_id: questions[answer.questionIndex].Question.QuestionID,
-            result: answer.isCorrect,
-            confidence: confidenceToInt(answer.confidenceLevel) // Convert string to integer
-          };
-        })
-      };
-      
-      console.log('Submitting formatted data:', formattedData);
-      
-      const API_URL = 
-        typeof window === "undefined" 
-          ? "http://backend:8000" 
-          : "http://localhost:8000";
-      
-      const response = await fetch(`${API_URL}/api/v1/question/exam-results-with-performance/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formattedData)
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Failed to submit quiz results:', errorText);
-        return { success: false, message: `Failed to submit: ${response.status}` };
-      }
-      
-      const result = await response.json();
-      console.log('Quiz results submitted successfully:', result);
-      return { success: true, data: result };
-      
-    } catch (error) {
-      console.error('Error submitting quiz results:', error);
-      return { success: false, message: String(error) };
+    
+    setConfidenceLevel(savedConfidenceLevel);
+    setIsShowingFeedback(showFeedback);
+    
+    if (showFeedback && Array.isArray(savedAnswers) && savedAnswers.length > 0 && questionData) {
+      setIsCorrect(checkIfCorrect(savedAnswers, questionData.Options));
+    } else {
+      setIsCorrect(false);
     }
-  };
+  }, [questionData, savedAnswers, savedConfidenceLevel, showFeedback]);
   
-  //--- navigation Functions ---
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
+  const confidenceLevels = [
+    { id: "very-bad", label: "Very Bad" },
+    { id: "bad", label: "Bad" },
+    { id: "neutral", label: "Neutral" },
+    { id: "good", label: "Good" },
+    { id: "very-good", label: "Very Good" }
+  ];
   
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
-  
-  //--- helper Functions ---
-  const getCurrentQuestionAnswerData = () => {
-    return userAnswers.find(answer => answer.questionIndex === currentQuestionIndex);
-  };
-  
-  const resetQuiz = () => {
-    setCurrentQuestionIndex(0);
-    setAnsweredQuestions([]);
-    setUserAnswers([]);
-    setScore(0);
-    localStorage.removeItem('reviewSessionState');
-  };
-  
-  //--- calculated properties ---
-  const progressPercentage = questions.length ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
-  const isCurrentQuestionAnswered = answeredQuestions.includes(currentQuestionIndex);
-  const isQuizCompleted = questions.length > 0 && answeredQuestions.length === questions.length;
-  
-  //---effect hooks and listeners ---
-  
-  // load saved state when component mounts and after questions are loaded
-  useEffect(() => {
-    if (questions.length > 0 && !loading) {
-      loadQuizState();
-    }
-  }, [questions, loading]);
-  
-  // save state whenever key state variables changes
-  useEffect(() => {
-    if (questions.length > 0) {
-      saveQuizState();
-    }
-  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, questions]);
-  
-  // update global window prop to track current question index
-  useEffect(() => {
-    window.currentQuestionIndex = currentQuestionIndex;
-  }, [currentQuestionIndex]);
-  
-  // question answered event listener - UPDATED FOR MULTIPLE CORRECT ANSWERS
-  useEffect(() => {
-    const handleQuestionAnswered = (event: CustomEvent<any>) => {
-      console.log("Question answered event received", event.detail);
+  // Handle option change for multiple/single answer selection
+  const handleOptionChange = (optionId: number) => {
+    if (!isShowingFeedback) {
+      // Check if this is a single-answer question (only one correct answer)
+      const isSingleAnswerQuestion = getCorrectAnswerCount() === 1;
       
-      const { questionIndex, isCorrect, selectedAnswers, confidenceLevel } = event.detail;
-      
-      console.log("Current answeredQuestions state:", answeredQuestions);
-      
-      // updates answered questions tracking if not already included
-      setAnsweredQuestions(prev => {
-        if (!prev.includes(questionIndex)) {
-          // Only increment score if this is a new correct answer
-          if (isCorrect) {
-            setScore(prevScore => prevScore + 1);
-            console.log("Incrementing score because answer is correct");
+      setSelectedAnswers(prev => {
+        if (prev.includes(optionId)) {
+          // Remove option if already selected
+          return prev.filter(id => id !== optionId);
+        } else {
+          // For single-answer questions, replace the current selection
+          // For multiple-answer questions, add to the current selection
+          if (isSingleAnswerQuestion) {
+            return [optionId];
+          } else {
+            return [...prev, optionId];
           }
-          return [...prev, questionIndex];
         }
-        return prev;
       });
-      
-      // stores user answer data - always updates even if question was previously answered
-      setUserAnswers(prev => {
-        // removes any existing answer for this question
-        const filteredAnswers = prev.filter(answer => answer.questionIndex !== questionIndex);
-        // adds new answer
-        const newAnswers = [...filteredAnswers, { 
-          questionIndex, 
-          isCorrect, 
-          selectedAnswers, // Now using array of selected answers
-          confidenceLevel 
-        }];
-        console.log("New userAnswers state:", newAnswers);
-        return newAnswers;
-      });
-      
-      console.log("Event handling complete");
-    };
+    }
+  };
   
-    // listen for custom event from the Question component
-    window.addEventListener('questionAnswered', handleQuestionAnswered as EventListener);
+  // UPDATED version of handleSubmit for multiple correct answers
+  const handleSubmit = () => {
+    console.log("Submit button clicked");
+    console.log("Selected Answers:", selectedAnswers);
+    console.log("Confidence Level:", confidenceLevel);
+    console.log("Is Showing Feedback:", isShowingFeedback);
     
-    return () => {
-      window.removeEventListener('questionAnswered', handleQuestionAnswered as EventListener);
-    };
-  }, []);  // Empty dependency array - IMPORTANT FIX
-
+    // Make sure we have both answers and confidence level
+    if (selectedAnswers.length === 0 || !confidenceLevel) {
+      console.log("Missing required inputs - not submitting");
+      return;
+    }
+    
+    // Check if the selected answers match the correct answers
+    const correct = questionData && questionData.Options ? checkIfCorrect(selectedAnswers, questionData.Options) : false;
+    setIsCorrect(correct);
+    setIsShowingFeedback(true);
+    
+    console.log("Dispatching event with data:", {
+      questionIndex: window.currentQuestionIndex || 0,
+      isCorrect: correct,
+      selectedAnswers,
+      confidenceLevel
+    });
+    
+    // Create and dispatch the custom event
+    const event = new CustomEvent('questionAnswered', { 
+      detail: { 
+        questionIndex: window.currentQuestionIndex || 0,
+        isCorrect: correct,
+        selectedAnswers,
+        confidenceLevel
+      } 
+    });
+    
+    window.dispatchEvent(event);
+    console.log("Event dispatched");
+  };
+  
+  // Helper function to determine if image should be displayed
+  const shouldDisplayImage = () => {
+    return questionData && questionData.Question && questionData.Question.ImageDependent && 
+           (questionData.Question.ImageUrl || questionData.Question.ImageDescription);
+  };
+  
+  // Helper function to get the number of correct answers required
+  const getCorrectAnswerCount = (): number => {
+    if (!questionData || !questionData.Options) return 0;
+    return questionData.Options.filter(opt => opt.CorrectAnswer).length;
+  };
+  
   return (
-    <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
-      <Sidebar />
-      
-      {/* Progress header */}
-      <div className="flex justify-between items-center mb-6 px-2">
-        {/* Left side: Title - Positioned correctly to align with navbar */}
-        <h1 className="text-4xl font-bold ml-8">Review: BLOCK 1</h1>
+    <Card className="w-full max-w-2xl mx-auto bg-slate-900 text-slate-100 border-slate-800 cursor-default">
+      <CardHeader className="pb-4">
+        <div className="flex justify-between items-start w-full">
+          <div className="text-2xl font-bold tracking-tight">Question</div>
+          <div className="flex space-x-2">
+            {questionData && questionData.ContentAreas && questionData.ContentAreas.map(area => (
+              <Badge 
+                key={area.ContentAreaID}
+                variant="outline"
+                className="bg-slate-700 text-slate-300"
+                title={area.Description}
+              >
+                {area.ContentName}
+              </Badge>
+            ))}
+            {questionData && questionData.Question && (
+              <Badge 
+                variant="outline" 
+                className="bg-slate-800 text-slate-400"
+              >
+                {questionData.Question.QuestionDifficulty}
+              </Badge>
+            )}
+          </div>
+        </div>
         
-        {/* Right side: Progress information and user info */}
-        <div className="flex items-center">
-          <span className="text-slate-400 mr-3">
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </span>
-          <div className="w-64 h-2 bg-slate-800 rounded-full mr-3">
-            <div 
-              className="h-full bg-blue-600 rounded-full" 
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
+        {/* Question Text Section*/}
+        <div className="pb-6">
+          <p className="text-base text-slate-400 mt-2">
+            {questionData && questionData.Question ? questionData.Question.Prompt : ''}
+          </p>
+          {questionData && getCorrectAnswerCount() > 1 && (
+            <p className="text-sm text-blue-400 mt-2">
+              Select all that apply. ({getCorrectAnswerCount()} correct answers)
+            </p>
+          )}
+        </div>
+        
+        {/* Image Section */}
+        {questionData && shouldDisplayImage() && (
+          <div className="mt-6 pt-4 border-t border-slate-700 rounded-md overflow-hidden">
+            {questionData.Question.ImageUrl ? (
+              <div className="flex flex-col items-center">
+                <img 
+                  src={questionData.Question.ImageUrl} 
+                  alt={questionData.Question.ImageDescription || "Question image"} 
+                  className="max-w-full rounded-md max-h-96 object-contain bg-slate-800"
+                />
+                {questionData.Question.ImageDescription && (
+                  <p className="mt-2 text-sm italic text-slate-400">{questionData.Question.ImageDescription}</p>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-800 rounded-md text-slate-300">
+                <p className="italic text-sm">[Image: {questionData.Question.ImageDescription}]</p>
+              </div>
+            )}
           </div>
-          <span className="text-slate-400 mr-4">
-            Score: {score}/{answeredQuestions.length}
-          </span>
-          
-          {/* User info */}
-          <span className="text-xl font-bold">Bron</span>!
-          <span className="ml-3 text-sm bg-emerald-900 text-green-300 px-3 py-1 rounded-full">
-            Junior
-          </span>
-        </div>
-      </div>
-
-      {/* Loading state */}
-      {loading && (
-        <div className="container mx-auto text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-xl">Loading questions...</p>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && (
-        <div className="container mx-auto text-center py-12">
-          <div className="bg-red-800 text-white p-4 rounded-md mb-4 inline-block">
-            <p>{error}</p>
-          </div>
-          <Button 
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      {/* Current Question - Adjusted for better centering */}
-      {!loading && !error && questions.length > 0 && (
-        <div className="container mx-auto mb-6 max-w-4xl"> {/* Added max-width for better centering */}
-          {/* Pass answer data only if this specific question has been answered */}
-          {/* use a key to ensure proper re-rendering when switching questions */}
-          <Question 
-            key={`question-${currentQuestionIndex}`}
-            questionData={questions[currentQuestionIndex]}
-            showFeedback={isCurrentQuestionAnswered}
-            savedAnswers={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.selectedAnswers || []) : []}
-            savedConfidenceLevel={isCurrentQuestionAnswered ? (getCurrentQuestionAnswerData()?.confidenceLevel || "") : ""}
-          />
-
-          {/* Navigation buttons */}
-          <div className="flex justify-between mt-6">
-            <Button 
-              variant="outline" 
-              onClick={handlePreviousQuestion}
-              disabled={currentQuestionIndex === 0}
-              className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-            </Button>
-            
-            <Button 
-              onClick={handleNextQuestion}
-              disabled={currentQuestionIndex === questions.length - 1}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Next <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Quiz Summary*/}
-      {isQuizCompleted && (
-        <div className="container mx-auto mt-8 max-w-4xl"> {/* Added max-width for consistency */}
-          <Card className="bg-slate-900 border-slate-800 text-slate-100">
-            <CardHeader>
-              <h2 className="text-2xl font-bold">Quiz Complete!</h2>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl mb-4">
-                Your final score: {score}/{questions.length} ({Math.round((score/questions.length) * 100)}%)
-              </p>
-              
-              {/* Question Summary */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Question Summary:</h3>
-                <div className="space-y-2">
-                  {questions.map((q, index) => {
-                    const answer = userAnswers.find(a => a.questionIndex === index);
-                    return (
-                      <div key={index} className="flex items-center space-x-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                          answer
-                            ? (answer.isCorrect ? "bg-green-600" : "bg-red-600") 
-                            : "bg-slate-700"
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <span className="truncate max-w-md">{q.Question.Prompt.substring(0, 60)}...</span>
-                      </div>
-                    );
-                  })}
+        )}
+      </CardHeader>
+      
+      <CardContent>
+        {/* Answer Options - Custom implementation for multiple selection */}
+        <div className="space-y-3">
+          {questionData && questionData.Options && questionData.Options.map(option => {
+            // determines if option is selected, correct, or incorrect
+            const isSelected = selectedAnswers.includes(option.OptionID);
+            const isCorrectOption = option.CorrectAnswer;
+           
+            // sets bg color based on feedback state
+            let bgColor = isSelected ? 'bg-slate-800 border border-slate-600' : '';
+            let textColor = isSelected ? 'text-slate-100' : 'text-slate-300';
+           
+            if (isShowingFeedback) {
+              if (isCorrectOption) {
+                if (isSelected) {
+                  // Correct and selected - green
+                  bgColor = 'bg-green-900/50 border border-green-600';
+                  textColor = 'text-green-400';
+                } else {
+                  // Correct but not selected - gray
+                  bgColor = 'bg-slate-700/50 border border-slate-500';
+                  textColor = 'text-slate-400';
+                }
+              } else if (isSelected) {
+                // Selected but incorrect - red
+                bgColor = 'bg-red-900/50 border border-red-600';
+                textColor = 'text-red-400';
+              }
+            }
+           
+            return (
+              <div
+                key={option.OptionID}
+                className={`flex items-start space-x-2 p-3 rounded-lg transition-all duration-200 ${bgColor}`}
+              >
+                <div 
+                  className={`w-5 h-5 mt-0.5 flex-shrink-0 border ${
+                    isSelected ? 'bg-slate-700 border-slate-400' : 'border-slate-600'
+                  } rounded ${
+                    getCorrectAnswerCount() > 1 ? 'rounded-md' : 'rounded-full'
+                  } flex items-center justify-center ${
+                    isShowingFeedback && isCorrectOption ? 'border-green-500' : ''
+                  } ${
+                    isShowingFeedback && isSelected && !isCorrectOption ? 'border-red-500' : ''
+                  } ${
+                    isShowingFeedback && isCorrectOption && !isSelected ? 'border-slate-500' : ''
+                  } transition-all duration-200`}
+                  onClick={() => !isShowingFeedback && handleOptionChange(option.OptionID)}
+                >
+                  {isSelected && (
+                    <div className={`${
+                      getCorrectAnswerCount() > 1 
+                        ? 'w-3 h-3 flex items-center justify-center text-xs' 
+                        : 'w-3 h-3 rounded-full'
+                      } ${
+                        isShowingFeedback && isCorrectOption 
+                          ? 'bg-green-500' 
+                          : (isShowingFeedback && !isCorrectOption ? 'bg-red-500' : 'bg-blue-500')
+                      }`}>
+                      {getCorrectAnswerCount() > 1 && (
+                        <span className="text-white">✓</span>
+                      )}
+                    </div>
+                  )}
+                  {isShowingFeedback && isCorrectOption && !isSelected && (
+                    <div className={`${
+                      getCorrectAnswerCount() > 1 
+                        ? 'w-3 h-3 flex items-center justify-center text-xs' 
+                        : 'w-3 h-3 rounded-full'
+                      } bg-slate-500`}>
+                      {getCorrectAnswerCount() > 1 && (
+                        <span className="text-white">✓</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Label
+                    className={`flex-grow cursor-pointer ${textColor} ${
+                      isShowingFeedback && isCorrectOption && !isSelected ? 'text-slate-500' : ''
+                    } ${!isShowingFeedback ? 'hover:text-slate-100' : ''} transition-all duration-200`}
+                    onClick={() => !isShowingFeedback && handleOptionChange(option.OptionID)}
+                  >
+                    {option.OptionDescription}
+                  </Label>
+                  
+                  {/* Show explanation when feedback is shown */}
+                  {isShowingFeedback && (
+                    <p className={`mt-1 text-sm ${
+                      isCorrectOption 
+                        ? isSelected ? 'text-green-400' : 'text-slate-500' 
+                        : 'text-slate-400'
+                    }`}>
+                      {option.Explanation}
+                    </p>
+                  )}
                 </div>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-2">
-              <Button 
-                className={`w-full ${
-                  submissionStatus === 'idle' ? 'bg-green-600 hover:bg-green-700' :
-                  submissionStatus === 'submitting' ? 'bg-blue-500' :
-                  submissionStatus === 'success' ? 'bg-green-700' :
-                  'bg-red-600 hover:bg-red-700'
-                } text-white mb-2`}
-                onClick={async () => {
-                  // Now using the state variable for studentId
-                  const examId = questions[0].Question.ExamID;
-                  
-                  // Update submission status
-                  setSubmissionStatus('submitting');
-                  
-                  const result = await submitQuizResultsToDatabase(studentId, examId);
-                  
-                  // Update state based on result
-                  setSubmissionStatus(result.success ? 'success' : 'error');
-                }}
-                disabled={submissionStatus === 'submitting' || submissionStatus === 'success'}
-              >
-                {submissionStatus === 'idle' && 'Save Results to Database'}
-                {submissionStatus === 'submitting' && 'Submitting...'}
-                {submissionStatus === 'success' && 'Results Saved ✓'}
-                {submissionStatus === 'error' && 'Save Failed - Try Again'}
-              </Button>
-              
-              <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => {
-                  resetQuiz();
-                  setSubmissionStatus('idle');
-                }}
-              >
-                Retake Quiz
-              </Button>
-            </CardFooter>
-          </Card>
+            );
+          })}
         </div>
-      )}
-    </div>
+       
+        <div className="mt-8">
+          <div className="text-xs tracking-wider text-slate-400 uppercase mb-3">
+            Confidence Level
+          </div>
+          <div className="flex w-full justify-between gap-2 transition-all duration-200">
+            {confidenceLevels.map((level) => (
+              <Button
+                key={level.id}
+                className={`flex-1 font-medium flex flex-col items-center justify-center py-4 h-auto transition-all duration-200 ${
+                  confidenceLevel === level.id
+                    ? 'bg-slate-600 text-slate-100 ring-2 ring-white'
+                    : 'bg-slate-800 text-slate-300'
+                } ${isShowingFeedback && confidenceLevel !== level.id ? 'opacity-80 hover:bg-slate-800 hover:text-slate-300' : 'hover:bg-slate-700'}`}
+                onClick={() => !isShowingFeedback && setConfidenceLevel(level.id)}
+                disabled={isShowingFeedback}
+              >
+                <span className="mt-2 mb-2">
+                  {level.label}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <Button 
+            className={`w-full py-2 transition-all duration-200 ${
+              isShowingFeedback 
+                ? 'bg-slate-700 text-slate-300 cursor-not-allowed' 
+                : selectedAnswers.length > 0 && confidenceLevel 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+            }`}
+            onClick={handleSubmit}
+            disabled={selectedAnswers.length === 0 || !confidenceLevel || isShowingFeedback}
+          >
+            {isShowingFeedback ? 'Submitted' : 'Submit Answer'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default Question;
