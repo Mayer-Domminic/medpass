@@ -4,21 +4,21 @@ from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from datetime import datetime
 
-from app.core.database import get_db, get_question, get_question_with_details
+from app.core.database import get_db, get_question, get_question_with_details, get_historical_performance
 from app.schemas.question import (
     QuestionCreate,
     QuestionOptionCreate,
     QuestionResponse, 
     BulkQuestionResponse,
     QuestionData,
-    ExamResultCreate,
+    ExamResultsCreate,
     StudentQuestionPerformanceCreate,
-    ExamResultWithPerformancesCreate,
-    ExamResultResponse,
+    ExamResultsWithPerformancesCreate,
+    ExamResultsResponse,
     StudentQuestionPerformanceResponse,
-    BulkExamResultResponse,
+    BulkExamResultsResponse,
     BulkStudentQuestionPerformanceResponse,
-    ExamResultWithPerformancesResponse
+    ExamResultsWithPerformancesResponse,
 )
 from app.models.exam_models import Question, ContentArea, Option, QuestionOption, QuestionClassification
 from app.models.result_models import ExamResults, StudentQuestionPerformance
@@ -99,7 +99,7 @@ async def get_question_details(
     Get detailed question information by ID including options and content areas
     """
     # Use the existing database function
-    result = get_question_with_details(db, question_id)
+    result = get_question_with_details(question_id, db)
     
     if not result:
         raise HTTPException(
@@ -334,9 +334,9 @@ async def create_question_from_data(
 # Exam Results Endpoints
 #-----------------------------------------------------------------------------
 
-@router.post("/exam-results/", response_model=ExamResultResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/exam-results/", response_model=ExamResultsResponse, status_code=status.HTTP_201_CREATED)
 async def create_exam_result_endpoint(
-    exam_data: ExamResultCreate,
+    exam_data: ExamResultsCreate,
     db: Session = Depends(get_db)
 ):
     """
@@ -344,43 +344,43 @@ async def create_exam_result_endpoint(
     """
     try:
         # Verify student exists
-        student = db.query(Student).filter(Student.studentid == exam_data.student_id).first()
+        student = db.query(Student).filter(Student.studentid == exam_data.StudentID).first()
         if not student:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Student with ID {exam_data.student_id} not found"
+                detail=f"Student with ID {exam_data.StudentID} not found"
             )
         
         # Verify exam exists
-        exam = db.query(Exam).filter(Exam.examid == exam_data.exam_id).first()
+        exam = db.query(Exam).filter(Exam.examid == exam_data.ExamID).first()
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Exam with ID {exam_data.exam_id} not found"
+                detail=f"Exam with ID {exam_data.ExamID} not found"
             )
         
         # Only verify clerkship if provided and not None
-        if exam_data.clerkship_id is not None:
-            clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == exam_data.clerkship_id).first()
+        if exam_data.ClerkshipID is not None:
+            clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == exam_data.ClerkshipID).first()
             if not clerkship:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Clerkship with ID {exam_data.clerkship_id} not found"
+                    detail=f"Clerkship with ID {exam_data.ClerkshipID} not found"
                 )
         
         # If pass_or_fail is not provided, determine based on exam pass score
-        pass_or_fail = exam_data.pass_or_fail
+        pass_or_fail = exam_data.PassOrFail
         if pass_or_fail is None and exam.passscore is not None:
-            pass_or_fail = exam_data.score >= exam.passscore
+            pass_or_fail = exam_data.Score >= exam.passscore
         
         # Use current time if timestamp not provided
-        timestamp = exam_data.timestamp or datetime.now()
+        timestamp = exam_data.Timestamp or datetime.now()
         
         exam_result = ExamResults(
-            studentid=exam_data.student_id,
-            examid=exam_data.exam_id,
-            clerkshipid=exam_data.clerkship_id,  # This can be None
-            score=exam_data.score,
+            studentid=exam_data.StudentID,
+            examid=exam_data.ExamID,
+            clerkshipid=exam_data.ClerkshipID,  # This can be None
+            score=exam_data.Score,
             passorfail=pass_or_fail,
             timestamp=timestamp
         )
@@ -389,14 +389,14 @@ async def create_exam_result_endpoint(
         db.commit()
         db.refresh(exam_result)
         
-        return ExamResultResponse(
-            exam_result_id=exam_result.examresultsid,
-            student_id=exam_result.studentid,
-            exam_id=exam_result.examid,
-            score=exam_result.score,
-            pass_or_fail=exam_result.passorfail,
-            timestamp=exam_result.timestamp,
-            clerkship_id=exam_result.clerkshipid  # This can be None in the response
+        return ExamResultsResponse(
+            ExamResultsID=exam_result.examresultsid,
+            StudentID=exam_result.studentid,
+            ExamID=exam_result.examid,
+            Score=exam_result.score,
+            PassOrFail=exam_result.passorfail,
+            Timestamp=exam_result.timestamp,
+            ClerkshipID=exam_result.clerkshipid  # This can be None in the response
         )
     
     except HTTPException:
@@ -415,9 +415,9 @@ async def create_exam_result_endpoint(
             detail=f"An error occurred: {str(e)}"
         )
 
-@router.post("/exam-results/bulk/", response_model=BulkExamResultResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/exam-results/bulk/", response_model=BulkExamResultsResponse, status_code=status.HTTP_201_CREATED)
 async def create_exam_results_bulk(
-    exam_results_data: List[ExamResultCreate],
+    exam_results_data: List[ExamResultsCreate],
     db: Session = Depends(get_db)
 ):
     """
@@ -430,47 +430,47 @@ async def create_exam_results_bulk(
         for data in exam_results_data:
             try:
                 # Verify student exists
-                student = db.query(Student).filter(Student.studentid == data.student_id).first()
+                student = db.query(Student).filter(Student.studentid == data.StudentID).first()
                 if not student:
                     failed_exam_results.append({
                         "data": data.dict(),
-                        "error": f"Student with ID {data.student_id} not found"
+                        "error": f"Student with ID {data.StudentID} not found"
                     })
                     continue
                 
                 # Verify exam exists
-                exam = db.query(Exam).filter(Exam.examid == data.exam_id).first()
+                exam = db.query(Exam).filter(Exam.examid == data.ExamID).first()
                 if not exam:
                     failed_exam_results.append({
                         "data": data.dict(),
-                        "error": f"Exam with ID {data.exam_id} not found"
+                        "error": f"Exam with ID {data.ExamID} not found"
                     })
                     continue
                 
                 # Only verify clerkship if provided and not None
-                if data.clerkship_id is not None:
-                    clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == data.clerkship_id).first()
+                if data.ClerkshipID is not None:
+                    clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == data.ClerkshipID).first()
                     if not clerkship:
                         failed_exam_results.append({
                             "data": data.dict(),
-                            "error": f"Clerkship with ID {data.clerkship_id} not found"
+                            "error": f"Clerkship with ID {data.ClerkshipID} not found"
                         })
                         continue
                 
                 # If pass_or_fail is not provided, determine based on exam pass score
-                pass_or_fail = data.pass_or_fail
+                pass_or_fail = data.PassOrFail
                 if pass_or_fail is None and exam.passscore is not None:
-                    pass_or_fail = data.score >= exam.passscore
+                    pass_or_fail = data.Score >= exam.passscore
                 
                 # Use current time if timestamp not provided
-                timestamp = data.timestamp or datetime.now()
+                timestamp = data.Timestamp or datetime.now()
                 
                 # Create and add exam result
                 exam_result = ExamResults(
-                    studentid=data.student_id,
-                    examid=data.exam_id,
-                    clerkshipid=data.clerkship_id,  
-                    score=data.score,
+                    studentid=data.StudentID,
+                    examid=data.ExamID,
+                    clerkshipid=data.ClerkshipID,  
+                    score=data.Score,
                     passorfail=pass_or_fail,
                     timestamp=timestamp
                 )
@@ -478,14 +478,14 @@ async def create_exam_results_bulk(
                 db.add(exam_result)
                 db.flush()
                 
-                created_exam_results.append(ExamResultResponse(
-                    exam_result_id=exam_result.examresultsid,
-                    student_id=exam_result.studentid,
-                    exam_id=exam_result.examid,
-                    score=exam_result.score,
-                    pass_or_fail=exam_result.passorfail,
-                    timestamp=exam_result.timestamp,
-                    clerkship_id=exam_result.clerkshipid  
+                created_exam_results.append(ExamResultsResponse(
+                    ExamResultsID=exam_result.examresultsid,
+                    StudentID=exam_result.studentid,
+                    ExamID=exam_result.examid,
+                    Score=exam_result.score,
+                    PassOrFail=exam_result.passorfail,
+                    Timestamp=exam_result.timestamp,
+                    ClerkshipID=exam_result.clerkshipid  
                 ))
             
             except Exception as e:
@@ -498,11 +498,11 @@ async def create_exam_results_bulk(
         if created_exam_results:
             db.commit()
             
-        return BulkExamResultResponse(
-            total_created=len(created_exam_results),
-            created_exam_results=created_exam_results,
-            total_failed=len(failed_exam_results),
-            failed_exam_results=failed_exam_results
+        return BulkExamResultsResponse(
+            TotalCreated=len(created_exam_results),
+            CreatedExamResults=created_exam_results,
+            TotalFailed=len(failed_exam_results),
+            FailedExamResults=failed_exam_results
         )
     
     except Exception as e:
@@ -512,13 +512,14 @@ async def create_exam_results_bulk(
             detail=f"An error occurred: {str(e)}"
         )
 
+
 #-----------------------------------------------------------------------------
 # Student Question Performance Endpoints
 #-----------------------------------------------------------------------------
 
 @router.post("/question-performance/", response_model=StudentQuestionPerformanceResponse, status_code=status.HTTP_201_CREATED)
 async def create_question_performance_endpoint(
-    exam_result_id: int,
+    exam_results_id: int,
     performance_data: StudentQuestionPerformanceCreate,
     db: Session = Depends(get_db)
 ):
@@ -527,27 +528,27 @@ async def create_question_performance_endpoint(
     """
     try:
         # Verify exam result exists
-        exam_result = db.query(ExamResults).filter(ExamResults.examresultsid == exam_result_id).first()
+        exam_result = db.query(ExamResults).filter(ExamResults.examresultsid == exam_results_id).first()
         if not exam_result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Exam result with ID {exam_result_id} not found"
+                detail=f"Exam result with ID {exam_results_id} not found"
             )
         
         # Verify question exists
-        question = db.query(Question).filter(Question.questionid == performance_data.question_id).first()
+        question = db.query(Question).filter(Question.questionid == performance_data.QuestionID).first()
         if not question:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Question with ID {performance_data.question_id} not found"
+                detail=f"Question with ID {performance_data.QuestionID} not found"
             )
         
         # Create performance record
         performance = StudentQuestionPerformance(
-            examresultid=exam_result_id,
-            questionid=performance_data.question_id,
-            result=performance_data.result,
-            confidence=performance_data.confidence
+            examresultid=exam_results_id,
+            questionid=performance_data.QuestionID,
+            result=performance_data.Result,
+            confidence=performance_data.Confidence
         )
         
         db.add(performance)
@@ -555,11 +556,11 @@ async def create_question_performance_endpoint(
         db.refresh(performance)
         
         return StudentQuestionPerformanceResponse(
-            performance_id=performance.studentquestionperformanceid,
-            exam_result_id=performance.examresultid,
-            question_id=performance.questionid,
-            result=performance.result,
-            confidence=performance.confidence
+            StudentQuestionPerformanceID=performance.studentquestionperformanceid,
+            ExamResultsID=performance.examresultid,
+            QuestionID=performance.questionid,
+            Result=performance.result,
+            Confidence=performance.confidence
         )
     
     except HTTPException:
@@ -580,7 +581,7 @@ async def create_question_performance_endpoint(
 
 @router.post("/question-performance/bulk/", response_model=BulkStudentQuestionPerformanceResponse, status_code=status.HTTP_201_CREATED)
 async def create_question_performances_bulk(
-    exam_result_id: int,
+    exam_results_id: int,
     performances_data: List[StudentQuestionPerformanceCreate],
     db: Session = Depends(get_db)
 ):
@@ -588,11 +589,11 @@ async def create_question_performances_bulk(
     Create multiple question performance records for a single exam result
     """
     # First verify exam result exists
-    exam_result = db.query(ExamResults).filter(ExamResults.examresultsid == exam_result_id).first()
+    exam_result = db.query(ExamResults).filter(ExamResults.examresultsid == exam_results_id).first()
     if not exam_result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Exam result with ID {exam_result_id} not found"
+            detail=f"Exam result with ID {exam_results_id} not found"
         )
     
     created_performances = []
@@ -602,31 +603,31 @@ async def create_question_performances_bulk(
         for data in performances_data:
             try:
                 # Verify question exists
-                question = db.query(Question).filter(Question.questionid == data.question_id).first()
+                question = db.query(Question).filter(Question.questionid == data.QuestionID).first()
                 if not question:
                     failed_performances.append({
                         "data": data.dict(),
-                        "error": f"Question with ID {data.question_id} not found"
+                        "error": f"Question with ID {data.QuestionID} not found"
                     })
                     continue
                 
                 # Create performance record
                 performance = StudentQuestionPerformance(
-                    examresultid=exam_result_id,
-                    questionid=data.question_id,
-                    result=data.result,
-                    confidence=data.confidence
+                    examresultid=exam_results_id,
+                    questionid=data.QuestionID,
+                    result=data.Result,
+                    confidence=data.Confidence
                 )
                 
                 db.add(performance)
                 db.flush()
                 
                 created_performances.append(StudentQuestionPerformanceResponse(
-                    performance_id=performance.studentquestionperformanceid,
-                    exam_result_id=performance.examresultid,
-                    question_id=performance.questionid,
-                    result=performance.result,
-                    confidence=performance.confidence
+                    StudentQuestionPerformanceID=performance.studentquestionperformanceid,
+                    ExamResultsID=performance.examresultid,
+                    QuestionID=performance.questionid,
+                    Result=performance.result,
+                    Confidence=performance.confidence
                 ))
             
             except Exception as e:
@@ -640,11 +641,11 @@ async def create_question_performances_bulk(
             db.commit()
             
         return BulkStudentQuestionPerformanceResponse(
-            exam_result_id=exam_result_id,
-            total_created=len(created_performances),
-            created_performances=created_performances,
-            total_failed=len(failed_performances),
-            failed_performances=failed_performances
+            ExamResultsID=exam_results_id,
+            TotalCreated=len(created_performances),
+            CreatedPerformances=created_performances,
+            TotalFailed=len(failed_performances),
+            FailedPerformances=failed_performances
         )
     
     except Exception as e:
@@ -654,9 +655,9 @@ async def create_question_performances_bulk(
             detail=f"An error occurred: {str(e)}"
         )
 
-@router.post("/exam-results-with-performance/", response_model=ExamResultWithPerformancesResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/exam-results-with-performance/", response_model=ExamResultsWithPerformancesResponse, status_code=status.HTTP_201_CREATED)
 async def create_exam_result_with_performances(
-    data: ExamResultWithPerformancesCreate,
+    data: ExamResultsWithPerformancesCreate,
     db: Session = Depends(get_db)
 ):
     """
@@ -664,44 +665,44 @@ async def create_exam_result_with_performances(
     """
     try:
         # Verify student exists
-        student = db.query(Student).filter(Student.studentid == data.student_id).first()
+        student = db.query(Student).filter(Student.studentid == data.StudentID).first()
         if not student:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Student with ID {data.student_id} not found"
+                detail=f"Student with ID {data.StudentID} not found"
             )
         
         # Verify exam exists
-        exam = db.query(Exam).filter(Exam.examid == data.exam_id).first()
+        exam = db.query(Exam).filter(Exam.examid == data.ExamID).first()
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Exam with ID {data.exam_id} not found"
+                detail=f"Exam with ID {data.ExamID} not found"
             )
         
         # Verify clerkship if provided
-        if data.clerkship_id:
-            clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == data.clerkship_id).first()
+        if data.ClerkshipID:
+            clerkship = db.query(Clerkship).filter(Clerkship.clerkshipid == data.ClerkshipID).first()
             if not clerkship:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Clerkship with ID {data.clerkship_id} not found"
+                    detail=f"Clerkship with ID {data.ClerkshipID} not found"
                 )
         
         # If pass_or_fail is not provided, determine based on exam pass score
-        pass_or_fail = data.pass_or_fail
+        pass_or_fail = data.PassOrFail
         if pass_or_fail is None and exam.passscore is not None:
-            pass_or_fail = data.score >= exam.passscore
+            pass_or_fail = data.Score >= exam.passscore
         
         # Use current time if timestamp not provided
-        timestamp = data.timestamp or datetime.now()
+        timestamp = data.Timestamp or datetime.now()
         
         # Create exam result
         exam_result = ExamResults(
-            studentid=data.student_id,
-            examid=data.exam_id,
-            clerkshipid=data.clerkship_id,
-            score=data.score,
+            studentid=data.StudentID,
+            examid=data.ExamID,
+            clerkshipid=data.ClerkshipID,
+            score=data.Score,
             passorfail=pass_or_fail,
             timestamp=timestamp
         )
@@ -713,34 +714,34 @@ async def create_exam_result_with_performances(
         created_performances = []
         failed_performances = []
         
-        for performance_data in data.performances:
+        for performance_data in data.Performances:
             try:
                 # Verify question exists
-                question = db.query(Question).filter(Question.questionid == performance_data.question_id).first()
+                question = db.query(Question).filter(Question.questionid == performance_data.QuestionID).first()
                 if not question:
                     failed_performances.append({
                         "data": performance_data.dict(),
-                        "error": f"Question with ID {performance_data.question_id} not found"
+                        "error": f"Question with ID {performance_data.QuestionID} not found"
                     })
                     continue
                 
                 # Create performance record
                 performance = StudentQuestionPerformance(
                     examresultid=exam_result.examresultsid,
-                    questionid=performance_data.question_id,
-                    result=performance_data.result,
-                    confidence=performance_data.confidence
+                    questionid=performance_data.QuestionID,
+                    result=performance_data.Result,
+                    confidence=performance_data.Confidence
                 )
                 
                 db.add(performance)
                 db.flush()
                 
                 created_performances.append(StudentQuestionPerformanceResponse(
-                    performance_id=performance.studentquestionperformanceid,
-                    exam_result_id=performance.examresultid,
-                    question_id=performance.questionid,
-                    result=performance.result,
-                    confidence=performance.confidence
+                    StudentQuestionPerformanceID=performance.studentquestionperformanceid,
+                    ExamResultsID=performance.examresultid,
+                    QuestionID=performance.questionid,
+                    Result=performance.result,
+                    Confidence=performance.confidence
                 ))
             
             except Exception as e:
@@ -752,22 +753,22 @@ async def create_exam_result_with_performances(
         # Commit all changes
         db.commit()
         
-        return ExamResultWithPerformancesResponse(
-            exam_result=ExamResultResponse(
-                exam_result_id=exam_result.examresultsid,
-                student_id=exam_result.studentid,
-                exam_id=exam_result.examid,
-                score=exam_result.score,
-                pass_or_fail=exam_result.passorfail,
-                timestamp=exam_result.timestamp,
-                clerkship_id=exam_result.clerkshipid
+        return ExamResultsWithPerformancesResponse(
+            ExamResults=ExamResultsResponse(
+                ExamResultsID=exam_result.examresultsid,
+                StudentID=exam_result.studentid,
+                ExamID=exam_result.examid,
+                Score=exam_result.score,
+                PassOrFail=exam_result.passorfail,
+                Timestamp=exam_result.timestamp,
+                ClerkshipID=exam_result.clerkshipid
             ),
-            performance_records=BulkStudentQuestionPerformanceResponse(
-                exam_result_id=exam_result.examresultsid,
-                total_created=len(created_performances),
-                created_performances=created_performances,
-                total_failed=len(failed_performances),
-                failed_performances=failed_performances
+            PerformanceRecords=BulkStudentQuestionPerformanceResponse(
+                ExamResultsID=exam_result.examresultsid,
+                TotalCreated=len(created_performances),
+                CreatedPerformances=created_performances,
+                TotalFailed=len(failed_performances),
+                FailedPerformances=failed_performances
             )
         )
     
@@ -776,6 +777,28 @@ async def create_exam_result_with_performances(
         raise
     except Exception as e:
         db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+    
+@router.get("/historical-performance/", response_model=List[dict])
+async def get_historical_performance_endpoint(
+    student_id: Optional[int] = None,
+    exam_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all exam results with their associated student question performances.
+    Can be filtered by student_id or exam_id.
+    """
+    try:
+        results = get_historical_performance(db, student_id, exam_id, skip, limit)
+        return results
+        
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}"
