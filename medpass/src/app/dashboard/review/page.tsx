@@ -38,6 +38,11 @@ interface QuestionResponseData {
     Description: string;
     Discipline: string;
   }[];
+  GradeClassification: {
+    GradeClassificationID: number;
+    ClassificationName: string;
+    Description: string;
+  } | null;
 }
 
 // structure for user answer data
@@ -68,33 +73,63 @@ const fetchQuestionDetails = async (questionId: number, accessToken?: string) =>
     const data = await response.json();
     console.log("Received data structure:", data);
     
-    // Convert data to match the expected QuestionResponseData format if needed
-    const formattedData: QuestionResponseData = {
-      Question: {
-        QuestionID: data.question.QuestionID,
-        ExamID: data.question.ExamID,
-        Prompt: data.question.Prompt,
-        QuestionDifficulty: data.question.QuestionDifficulty,
-        ImageUrl: data.question.ImageUrl,
-        ImageDependent: data.question.ImageDependent,
-        ImageDescription: data.question.ImageDescription,
-        ExamName: data.question.ExamName
-      },
-      Options: data.options.map((opt: any) => ({
-        OptionID: opt.optionId,
-        CorrectAnswer: opt.isCorrect,
-        Explanation: opt.explanation,
-        OptionDescription: opt.description
-      })),
-      ContentAreas: data.contentAreas.map((area: any) => ({
-        ContentAreaID: area.contentAreaId,
-        ContentName: area.name,
-        Description: area.discipline, // Using discipline as description if no description is provided
-        Discipline: area.discipline
-      }))
-    };
-    
-    return formattedData;
+    // Check what structure the API returns
+    if (data.Question) {
+      // Data already has the expected structure
+      return {
+        Question: data.Question,
+        Options: data.Options || [],
+        ContentAreas: data.ContentAreas || [],
+        GradeClassification: data.GradeClassification || null
+      };
+    } else if (data.QuestionID) {
+      // Data is the question object directly
+      return {
+        Question: {
+          QuestionID: data.QuestionID,
+          ExamID: data.ExamID,
+          Prompt: data.Prompt,
+          QuestionDifficulty: data.QuestionDifficulty,
+          ImageUrl: data.ImageUrl,
+          ImageDependent: data.ImageDependent,
+          ImageDescription: data.ImageDescription,
+          ExamName: data.ExamName
+        },
+        Options: data.options || [],
+        ContentAreas: data.contentAreas || [],
+        GradeClassification: data.GradeClassification || null
+      };
+    } else if (data.question) {
+      // Original expected structure
+      return {
+        Question: {
+          QuestionID: data.question.QuestionID,
+          ExamID: data.question.ExamID,
+          Prompt: data.question.Prompt,
+          QuestionDifficulty: data.question.QuestionDifficulty,
+          ImageUrl: data.question.ImageUrl,
+          ImageDependent: data.question.ImageDependent,
+          ImageDescription: data.question.ImageDescription,
+          ExamName: data.question.ExamName
+        },
+        Options: data.options.map((opt: any) => ({
+          OptionID: opt.optionId,
+          CorrectAnswer: opt.isCorrect,
+          Explanation: opt.explanation,
+          OptionDescription: opt.description
+        })),
+        ContentAreas: data.contentAreas.map((area: any) => ({
+          ContentAreaID: area.contentAreaId,
+          ContentName: area.name,
+          Description: area.discipline,
+          Discipline: area.discipline
+        })),
+        GradeClassification: data.GradeClassification || null
+      };
+    } else {
+      console.error("Unexpected data structure:", data);
+      throw new Error("API returned unexpected data structure");
+    }
   } catch (error) {
     console.error('Failed to fetch question:', error);
     throw error;

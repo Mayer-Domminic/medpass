@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from datetime import datetime
 
-from app.core.database import get_db, get_question, get_question_with_details, get_historical_performance
+from app.core.database import get_db, get_question, get_question_with_details, get_historical_performance, generate_question_embedding
 from app.schemas.question import (
     QuestionCreate,
     QuestionOptionCreate,
@@ -21,7 +22,7 @@ from app.schemas.question import (
     ExamResultsWithPerformancesResponse,
 )
 from app.models.exam_models import Question, ContentArea, Option, QuestionOption, QuestionClassification
-from app.models.result_models import ExamResults, StudentQuestionPerformance
+from app.models.result_models import ExamResults, StudentQuestionPerformance, GradeClassification
 from app.models import Student, Exam, Clerkship
 
 router = APIRouter()
@@ -43,48 +44,85 @@ async def get_content_areas(db: Session, content_area_names: List[str]):
     
     return content_area_ids
 
-async def create_content_areas(db: Session, content_area_names: List[str]):
-    """Create content areas from names if they don't exist"""
+async def create_content_areas(db, content_area_names):
+    """Create content areas if they don't exist and return their IDs"""
     content_area_ids = []
     
     for name in content_area_names:
-        # Check if content area exists
-        content_area = db.query(ContentArea).filter(ContentArea.contentname == name).first()
+        # First check if the content area already exists
+        existing_content_area = db.query(ContentArea).filter(ContentArea.contentname == name).first()
         
-        if not content_area:
-            # Create new content area with minimal info
-            content_area = ContentArea(contentname=name)
-            db.add(content_area)
-            db.flush()  # Flush to get the ID without committing
-        
-        content_area_ids.append(content_area.contentareaid)
+        if existing_content_area:
+            # Use the existing content area
+            content_area_ids.append(existing_content_area.contentareaid)
+        else:
+            # Get the maximum ID currently in the table
+            max_id_result = db.query(func.max(ContentArea.contentareaid)).scalar()
+            next_id = 1 if max_id_result is None else max_id_result + 1
+            
+            # Create a new content area with an ID greater than any existing ID
+            new_content_area = ContentArea(
+                contentareaid=next_id,
+                contentname=name,
+                description=None,
+                discipline=None
+            )
+            db.add(new_content_area)
+            db.flush()  # Get the generated ID
+            content_area_ids.append(new_content_area.contentareaid)
     
     return content_area_ids
 
 async def create_question_options(db: Session, question_id: int, options_data):
     """Create options and question-option relationships"""
     for option_data in options_data:
-        # Create option
-        option = Option(optiondescription=option_data.OptionDescription)
+        # Get the maximum option ID currently in the table
+        max_option_id = db.query(func.max(Option.optionid)).scalar()
+        next_option_id = 1 if max_option_id is None else max_option_id + 1
+        
+        # Create option with a unique ID
+        option = Option(
+            optionid=next_option_id,
+            optiondescription=option_data.OptionDescription
+        )
         db.add(option)
         db.flush()  # Get the option ID
         
-        # Create question-option relationship
+        # Get the maximum question-option ID currently in the table
+        max_qo_id = db.query(func.max(QuestionOption.questionoptionid)).scalar()
+        next_qo_id = 1 if max_qo_id is None else max_qo_id + 1
+        
+        # Create question-option relationship with explanation included
         question_option = QuestionOption(
+            questionoptionid=next_qo_id,
             questionid=question_id,
             optionid=option.optionid,
-            correctanswer=option_data.CorrectAnswer
+            correctanswer=option_data.CorrectAnswer,
+            explanation=option_data.Explanation if option_data.CorrectAnswer else None
         )
         db.add(question_option)
 
 async def create_question_classifications(db: Session, question_id: int, content_area_ids: List[int]):
     """Create question-content area classifications"""
     for content_area_id in content_area_ids:
-        classification = QuestionClassification(
-            questionid=question_id,
-            contentareaid=content_area_id
-        )
-        db.add(classification)
+        # Check if this classification already exists
+        existing = db.query(QuestionClassification).filter(
+            QuestionClassification.questionid == question_id,
+            QuestionClassification.contentareaid == content_area_id
+        ).first()
+        
+        if not existing:
+            # Get the maximum classification ID currently in the table
+            max_class_id = db.query(func.max(QuestionClassification.questionclassid)).scalar()
+            next_class_id = 1 if max_class_id is None else max_class_id + 1
+            
+            # Create a new classification with a unique ID
+            classification = QuestionClassification(
+                questionclassid=next_class_id,
+                questionid=question_id,
+                contentareaid=content_area_id
+            )
+            db.add(classification)
 
 #-----------------------------------------------------------------------------
 # GET Endpoints - Question Retrieval
@@ -136,25 +174,37 @@ async def create_question(
     question_data: QuestionCreate,
     db: Session = Depends(get_db)
 ):
-    """Create a new question with options and content area classifications"""
+    """Create a new question with options and grade classification"""
     try:
+        max_question_id = db.query(func.max(Question.questionid)).scalar()
+        next_question_id = 1 if max_question_id is None else max_question_id + 1
+
+        # Check if GradeClassificationID exists if provided
+        if question_data.GradeClassificationID:
+            grade_class = db.query(GradeClassification).filter(
+                GradeClassification.gradeclassificationid == question_data.GradeClassificationID
+            ).first()
+            if not grade_class:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Grade Classification with ID {question_data.GradeClassificationID} not found"
+                )
+
         # Create the question
         db_question = Question(
+            questionid=next_question_id,
             examid=question_data.ExamID,
             prompt=question_data.Prompt,
             questionDifficulty=question_data.QuestionDifficulty,
-            image_url=question_data.ImageUrl,
-            image_dependent=question_data.ImageDependent,
-            image_description=question_data.ImageDescription
+            imageUrl=question_data.ImageUrl,
+            imageDependent=question_data.ImageDependent,
+            imageDescription=question_data.ImageDescription,
+            gradeclassificationid=question_data.GradeClassificationID
         )
         db.add(db_question)
         db.flush()  # Get the question ID without committing
         
-        # Create content areas if needed
-        content_area_ids = await create_content_areas(db, question_data.ContentAreas)
-        
-        # Create question-content area classifications
-        await create_question_classifications(db, db_question.questionid, content_area_ids)
+        generate_question_embedding(db_question.questionid, db)  # generate embedding for the question
         
         # Create options and question-option relationships
         await create_question_options(db, db_question.questionid, question_data.Options)
@@ -168,9 +218,11 @@ async def create_question(
             ExamID=db_question.examid,
             Prompt=db_question.prompt,
             QuestionDifficulty=db_question.questionDifficulty,
-            ImageUrl=db_question.image_url,
-            ImageDependent=db_question.image_dependent,
-            ImageDescription=db_question.image_description
+            ImageUrl=db_question.imageUrl,
+            ImageDependent=db_question.imageDependent,
+            ImageDescription=db_question.imageDescription,
+            GradeClassificationID=db_question.gradeclassificationid,
+            ExamName=None
         )
     
     except IntegrityError as e:
@@ -193,49 +245,57 @@ async def create_questions_bulk(
 ):
     """Create multiple questions in a single request"""
     created_questions = []
-    
+   
     try:
         for question_data in questions_data:
+            # Check if GradeClassificationID exists if provided
+            if question_data.GradeClassificationID:
+                grade_class = db.query(GradeClassification).filter(
+                    GradeClassification.gradeclassificationid == question_data.GradeClassificationID
+                ).first()
+                if not grade_class:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Grade Classification with ID {question_data.GradeClassificationID} not found"
+                    )
+                   
             # Create the question
             db_question = Question(
                 examid=question_data.ExamID,
                 prompt=question_data.Prompt,
                 questionDifficulty=question_data.QuestionDifficulty,
-                image_url=question_data.ImageUrl,
-                image_dependent=question_data.ImageDependent,
-                image_description=question_data.ImageDescription
+                imageUrl=question_data.ImageUrl,
+                imageDependent=question_data.ImageDependent,
+                imageDescription=question_data.ImageDescription,
+                gradeclassificationid=question_data.GradeClassificationID
             )
             db.add(db_question)
             db.flush()  # Get the question ID without committing
             
-            # Create content areas if needed
-            content_area_ids = await create_content_areas(db, question_data.ContentAreas)
-            
-            # Create question-content area classifications
-            await create_question_classifications(db, db_question.questionid, content_area_ids)
-            
             # Create options and question-option relationships
             await create_question_options(db, db_question.questionid, question_data.Options)
-            
+           
             # Map SQLAlchemy model to Pydantic response model
             created_questions.append(QuestionResponse(
                 QuestionID=db_question.questionid,
                 ExamID=db_question.examid,
                 Prompt=db_question.prompt,
                 QuestionDifficulty=db_question.questionDifficulty,
-                ImageUrl=db_question.image_url,
-                ImageDependent=db_question.image_dependent,
-                ImageDescription=db_question.image_description
+                ImageUrl=db_question.imageUrl,
+                ImageDependent=db_question.imageDependent,
+                ImageDescription=db_question.imageDescription,
+                GradeClassificationID=db_question.gradeclassificationid,
+                ExamName=None
             ))
-        
+       
         # Commit all changes
         db.commit()
-        
+       
         return {
             "Questions": created_questions,
             "TotalCreated": len(created_questions)
         }
-    
+   
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(
@@ -253,6 +313,7 @@ async def create_questions_bulk(
 async def create_question_from_data(
     question_data: QuestionData,
     exam_id: Optional[int] = None,
+    grade_classification_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -260,6 +321,17 @@ async def create_question_from_data(
     This allows converting from your front-end format to the database format
     """
     try:
+        # Check if GradeClassificationID exists if provided
+        if grade_classification_id:
+            grade_class = db.query(GradeClassification).filter(
+                GradeClassification.gradeclassificationid == grade_classification_id
+            ).first()
+            if not grade_class:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Grade Classification with ID {grade_classification_id} not found"
+                )
+                
         # Extract options data from the Answers dictionary
         options_data = []
         for option_key, option_text in question_data.Answers.items():
@@ -272,33 +344,35 @@ async def create_question_from_data(
             }
             options_data.append(option)
         
+        max_question_id = db.query(func.max(Question.questionid)).scalar()
+        next_question_id = 1 if max_question_id is None else max_question_id + 1
+
         # Create a QuestionCreate object
         db_question_data = QuestionCreate(
             ExamID=exam_id,
             Prompt=question_data.Question,
-            ImageUrl=question_data.ImageURL,
+            ImageUrl=question_data.ImageUrl,
             ImageDependent=question_data.ImageDependent,
             ImageDescription=question_data.ImageDescription,
             Options=[QuestionOptionCreate(**opt) for opt in options_data],
-            ContentAreas=[question_data.Domain] if question_data.Domain else []
+            ContentAreas=[],  # Empty list since we're removing content areas
+            GradeClassificationID=grade_classification_id
         )
         
         # Create the question
         db_question = Question(
+            questionid=next_question_id,
             examid=db_question_data.ExamID,
             prompt=db_question_data.Prompt,
-            image_url=db_question_data.ImageUrl,
-            image_dependent=db_question_data.ImageDependent,
-            image_description=db_question_data.ImageDescription
+            imageUrl=db_question_data.ImageUrl,
+            imageDependent=db_question_data.ImageDependent,
+            imageDescription=db_question_data.ImageDescription,
+            gradeclassificationid=db_question_data.GradeClassificationID
         )
         db.add(db_question)
         db.flush()  # Get the question ID without committing
-        
-        # Create content areas if needed
-        content_area_ids = await create_content_areas(db, db_question_data.ContentAreas)
-        
-        # Create question-content area classifications
-        await create_question_classifications(db, db_question.questionid, content_area_ids)
+
+        generate_question_embedding(db_question.questionid, db)  # Generate embedding for the question
         
         # Create options and question-option relationships
         await create_question_options(db, db_question.questionid, db_question_data.Options)
@@ -312,9 +386,11 @@ async def create_question_from_data(
             ExamID=db_question.examid,
             Prompt=db_question.prompt,
             QuestionDifficulty=db_question.questionDifficulty,
-            ImageUrl=db_question.image_url,
-            ImageDependent=db_question.image_dependent,
-            ImageDescription=db_question.image_description
+            ImageUrl=db_question.imageUrl,
+            ImageDependent=db_question.imageDependent,
+            ImageDescription=db_question.imageDescription,
+            GradeClassificationID=db_question.gradeclassificationid,
+            ExamName=None
         )
     
     except IntegrityError as e:
@@ -329,7 +405,6 @@ async def create_question_from_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}"
         )
-
 #-----------------------------------------------------------------------------
 # Exam Results Endpoints
 #-----------------------------------------------------------------------------

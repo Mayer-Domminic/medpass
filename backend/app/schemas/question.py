@@ -24,7 +24,8 @@ class QuestionCreate(BaseModel):
     ImageDependent: Optional[bool] = Field(False)
     ImageDescription: Optional[str] = Field(None, max_length=255)
     Options: List[QuestionOptionCreate]
-    ContentAreas: List[str]  # List of content area names
+    ClassificationName: Optional[str] = None
+    GradeClassificationID: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -35,7 +36,7 @@ class QuestionData(BaseModel):
     Answers: Dict[str, str]
     CorrectOption: str
     ImageDescription: Optional[str] = None
-    ImageURL: Optional[str] = None
+    ImageUrl: Optional[str] = None
     Explanation: Optional[str] = None
     ImageDependent: bool = False
     Domain: str
@@ -50,6 +51,7 @@ class QuestionResponse(BaseModel):
     ImageDescription: Optional[str]
     ExamID: Optional[int]
     ExamName: Optional[str]
+    GradeClassificationID: Optional[int] = None
     
     class Config:
         from_attributes = True

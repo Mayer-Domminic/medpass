@@ -82,4 +82,5 @@ class GradeClassification(Base):
     
     offering = relationship('ClassOffering', back_populates='gradeClassification')
     studentGrades = relationship('StudentGrade', back_populates='gradeClassification')
+    questions = relationship("Question", back_populates="gradeclassification")
 

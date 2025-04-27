@@ -351,6 +351,7 @@ def get_question(db, question_id: int):
         Question.imageDependent,
         Question.imageDescription,
         Question.examid,
+        Question.gradeclassificationid,
         Exam.examname
     ).outerjoin(
         Exam, Question.examid == Exam.examid
@@ -369,7 +370,8 @@ def get_question(db, question_id: int):
         "ImageDependent": question_data[4],
         "ImageDescription": question_data[5],
         "ExamID": question_data[6],
-        "ExamName": question_data[7] if question_data[7] is not None else ""
+        "GradeClassificationID": question_data[7], 
+        "ExamName": question_data[8] if question_data[8] is not None else ""
     }
    
     return question_dict
@@ -384,7 +386,8 @@ def get_question_with_details(question_id, db):
         Question.questionDifficulty,
         Question.imageUrl,
         Question.imageDependent,
-        Question.imageDescription
+        Question.imageDescription,
+        Question.gradeclassificationid  
     ).filter(
         Question.questionid == question_id
     ).first()
@@ -414,6 +417,20 @@ def get_question_with_details(question_id, db):
         QuestionClassification.questionid == question_id
     ).all()
     
+    #add grade classification data if it exists
+    grade_classification_data = None
+    if question_data[7]:  # If gradeclassificationid is not None
+        grade_classification_data = db.query(
+            GradeClassification.gradeclassificationid,
+            GradeClassification.classificationname,
+            GradeClassification.unittype,
+            ClassOffering.classofferingid
+        ).outerjoin(
+            ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid
+        ).filter(
+            GradeClassification.gradeclassificationid == question_data[7]
+        ).first()
+    
     question_dict = {
         "QuestionID": question_data[0],
         "ExamID": question_data[1],
@@ -421,7 +438,8 @@ def get_question_with_details(question_id, db):
         "QuestionDifficulty": question_data[3],
         "ImageUrl": question_data[4],
         "ImageDependent": question_data[5],
-        "ImageDescription": question_data[6]
+        "ImageDescription": question_data[6],
+        "GradeClassificationID": question_data[7]  
     }
     
     options = []
@@ -441,11 +459,21 @@ def get_question_with_details(question_id, db):
             "Description": area[2],
             "Discipline": area[3]
         })
+    
+    grade_classification = None
+    if grade_classification_data:
+        grade_classification = {
+            "GradeClassificationID": grade_classification_data[0],
+            "ClassificationName": grade_classification_data[1],
+            "UnitType": grade_classification_data[2],
+            "ClassOfferingID": grade_classification_data[3]
+        }
         
     result = {
         "Question": question_dict,
         "Options": options,
-        "ContentAreas": content_areas
+        "ContentAreas": content_areas,
+        "GradeClassification": grade_classification  
     }
     
     return result
@@ -543,6 +571,7 @@ def convert_question_to_text(question_response: dict) -> str:
     question = question_response['Question']
     option = question_response['Options']
     content_areas = question_response['ContentAreas']
+    grade_classification = question_response.get('GradeClassification')
     
     prompt = question['Prompt']
     
@@ -554,13 +583,18 @@ def convert_question_to_text(question_response: dict) -> str:
     difficulty = question.get('QuestionDifficulty', 'Unknown')
     content_names = [ca["ContentName"] for ca in content_areas]
     # If multiple content areas combine them into a single string
-    content_area_line = ', '.join(content_names) if content_names else "Uncatergorized"
+    content_area_line = ', '.join(content_names) if content_names else "Uncategorized"
     
     context_lines = [
         f"Difficulty: {difficulty}",
-        f"Content Areas: {content_area_line}",
-        ""
+        f"Content Areas: {content_area_line}"
     ]
+    
+    # Add grade classification if it exists
+    if grade_classification:
+        context_lines.append(f"Grade Classification: {grade_classification['ClassificationName']} ({grade_classification['UnitType']})")
+    
+    context_lines.append("") # Empty line before prompt
     
     text = "\n".join(context_lines + [prompt] + option_lines)
     
