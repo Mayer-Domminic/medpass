@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.models.chat_models import ChatConversation, ChatMessage, ChatContext, ChatMessageContext
 from app.schemas.chat_schemas import ChatContextModel, ChatMessageWithContextModel, ChatConversationSummary, ChatConversationDetail
 from datetime import datetime
-
+import json
 # ——————— API-key rotation ———————
 API_KEYS = [k.strip() for k in settings.GEMINI_API_KEYS.split(",") if k.strip()]
 if not API_KEYS:
@@ -42,14 +42,69 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
     return embeddings
 
 # ——————— Flash chat ———————
-def chat_flash(
-    messages: List[dict],          # [{"role": "user", "content": "..."}]
-    model: str = "gemini-2.5-flash"
-) -> str:
-    genai.configure(api_key=_select_api_key())
-    resp = genai.chat(model=model, messages=messages)
-    return resp["candidates"][0]["content"]
 
+
+def chat_model(
+    messages: List[dict],
+    model: str = "gemini-2.5-flash-preview-04-17",
+    use_chat_context: bool = True,
+    use_rag_doucments: bool = True,
+    rag_query: Optional[str] = None,
+    conversation_id: Optional[int] = None,
+    context_limit: int = 5,
+):
+    genai.configure(api_key=_select_api_key())
+    
+    chat_contexts = []
+    rag_content = []
+    
+    if use_chat_context and conversation_id:
+        chat_contexts = get_recent_chat_context(conversation_id, context_limit)
+    if use_rag_doucments and rag_query:
+        from app.services.rag_service import search_documents
+        rag_content = search_documents(rag_query, context_limit)
+        
+    system_prompt = construct_system_prompt(chat_contexts, rag_content)
+    #print("here is system context")
+    #print(system_prompt)
+    full_messages = []
+    
+    if system_prompt.strip():
+        full_messages.append({
+            "role": "user", 
+            "parts": [{"text": system_prompt}]
+        })
+    
+    for msg in messages:
+        full_messages.append({
+            "role": msg["role"],
+            "parts": [{"text": msg["content"]}]
+        })
+    
+    model_obj = genai.GenerativeModel(model)
+    chat_session = model_obj.start_chat(history=full_messages)
+    response = chat_session.send_message(content=messages[-1]["content"])
+
+    return response.candidates[0].content.parts[0].text
+
+
+def construct_system_prompt(chat_context: List[dict[str, str]], rag_documents: List[dict[str, str]]):
+    
+    prompt_parts = []
+    
+    if chat_context:
+        prompt_parts.append("Previous Chat Context:")
+        for context in chat_context:
+            prompt_parts.append(f"{context['title']}: {context['content']}")
+    
+    if rag_documents:
+        prompt_parts.append("Relevant Documents:")
+        for doc in rag_documents:
+            prompt_parts.append(f"{doc['title']}: {doc['content']}")
+            
+    final_prompt = "\n".join(prompt_parts)
+    
+    return final_prompt
 
 # Above are old functions keeping them for now
 
@@ -217,7 +272,7 @@ def create_conversation(
     title: Optional[str] = None, 
     metadata: Optional[Dict[str, Any]] = None,
     auto_process_context: bool = True
-    ) -> ChatConversation:
+    ):
     
     if title is not None:
         conversation_title = title
@@ -225,7 +280,7 @@ def create_conversation(
         conversation_title = generate_title(content)
         
     conversation = ChatConversation(
-        user_id=user_id,
+        userid=user_id,
         title=conversation_title,
         createdat=datetime.utcnow(),
     )
@@ -238,10 +293,47 @@ def create_conversation(
     
     message = create_message(db, conversation_id, content, sender_type, metadata)
     
+    '''
     if auto_process_context:
-        embed_and_create_context_messages(db, message)
-    
+        embed_and_create_context_messages(db, message.messageid)
+    Ignore for now
+    '''
     return message, conversation
+
+def generate_model_response(
+    db: Session,
+    user_message_id: int,
+    use_rag: bool = True,
+    rag_query: Optional[str] = None,
+    model: str = "gemini-2.5-flash-preview-04-17"
+):
+    
+    user_message = db.query(ChatMessage).filter(ChatMessage.messageid == user_message_id).first()
+    
+    if not user_message:
+        raise ValueError("Message nto found")
+    
+    conversation_id = user_message.conversationid
+    
+    model_response = chat_model(
+        messages = [{"role": "user", "content": user_message.content}],
+        use_chat_context = True,
+        use_rag_doucments = use_rag,
+        rag_query = rag_query or user_message.content,
+        conversation_id=conversation_id,
+        model=model
+    )
+    
+    
+    model_message = create_message(
+        db = db,
+        conversation_id = conversation_id,
+        content = model_response,
+        sender_type = "flash",
+        metadata=None
+    )
+    
+    return model_message
         
 def create_message(db, conversation_id, content, sender_type, metadata: Optional[Dict[str, Any]] = None) -> ChatMessage:
     
@@ -264,6 +356,8 @@ def create_message(db, conversation_id, content, sender_type, metadata: Optional
     db.add(new_message)
     db.commit()
     db.refresh(new_message)
+
+    embed_and_create_context_messages(db, new_message.messageid)
     
     conversation = db.query(ChatConversation).filter(ChatConversation.conversationid == conversation_id).first()
     
@@ -279,10 +373,17 @@ def create_message(db, conversation_id, content, sender_type, metadata: Optional
         
     return new_message
 
-def embed_and_create_context_messages(db, message):
+def embed_and_create_context_messages(db, message_id):
+    from app.models.chat_models import ChatMessage
+    from app.services.rag_service import generate_chat_message_embedding
+
+    message = db.query(ChatMessage).filter(ChatMessage.messageid == message_id).first()
+    
+    if not message:
+        return  # Optionally raise error or log
+    
     if len(message.content) >= MIN_EMBEDDING_LENGTH:
-        from app.services.rag_service import generate_chat_message_embedding
-        generate_chat_message_embedding(db, message)
+        generate_chat_message_embedding(db, message_id)
 
 # Function to check to create big context summaries (i.e greater than 5 messages)
 def check_create_context_summary(db, conversation_id):
@@ -326,4 +427,15 @@ def link_context_to_message(db, message_id, context_id):
     context_link = ChatMessageContext(messageid=message_id, contextid=context_id, wasused=True)
     db.add(context_link) 
     db.commit() 
-
+    
+def get_recent_chat_context(conversation_id, limit):
+    db = next(get_db())
+    
+    try:
+        context = db.query(ChatContext).filter(ChatContext.conversationid == conversation_id).order_by(desc(ChatContext.updatedat)).limit(limit).all()
+        return [{"title": ctx.title, "content": ctx.content} for ctx in context]
+    except Exception as e:
+        print(f"Error retrieving recent chat context: {e}")
+        return []
+    finally:
+        db.close()

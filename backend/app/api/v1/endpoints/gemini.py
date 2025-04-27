@@ -1,19 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
 from app.services.gemini_service import (
-    chat_flash,
     get_entire_chat,
     get_chat_history,
     create_message,
-    create_conversation
+    create_conversation,
+    embed_and_create_context_messages,
+    generate_model_response
 )
 from app.core.security import (
     get_current_active_user
 )
 from app.schemas.chat_schemas import (
-    ChatFlashRequest,   
+    FirstMessageRequest,   
     ChatConversationDetail,
     ChatConversationSummary,
     AddMessageResponse,
@@ -63,12 +64,24 @@ async def single_chat_history(
 
 @router.post('/chat', response_model=AddConversationResponse, status_code=status.HTTP_200_OK)
 async def start_chat(
-    title: str,
+    request: FirstMessageRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     
-    conversation = create_conversation(db, current_user.logininfoid, title)
+    message, conversation = create_conversation(
+        db,
+        user_id = current_user.logininfoid,
+        content = request.content,
+        sender_type = request.sender_type,
+        metadata = request.metadata,
+        auto_process_context = True
+    )
+    
+    background_tasks.add_task(
+        generate_model_response, db=db, user_message_id=message.messageid
+    )
     
     return conversation
 
@@ -76,6 +89,7 @@ async def start_chat(
 async def add_message(
     conversation_id: int,
     request: SendMessageRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     
@@ -89,7 +103,9 @@ async def add_message(
         
     message = create_message(db, conversation_id, request.content, request.sender_type, request.metadata)
     
-    # Add Embedding Here
+    background_tasks.add_task(
+        generate_model_response, db=db, user_message_id=message.messageid
+    )
     
     return message
     
