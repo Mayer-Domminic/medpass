@@ -20,11 +20,14 @@ from app.models import (
     QuestionOption,
     QuestionClassification,
     Option,
+    StudentQuestionPerformance,
     ContentArea,
     ChatContext,
     ChatMessage
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
+from app.schemas.question import ExamResultsCreate
+from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -312,6 +315,7 @@ def update_faculty_access(id, db, year: Optional[int] = None, students_ids: Opti
         db.rollback()
         return False, f"Database Error: {str(e)}"
 
+# Gets only existing content area IDs from names
 def get_content_areas(db, content_area_names: List[str]):
     """Get only existing content area IDs from names"""
     
@@ -336,6 +340,7 @@ def get_content_areas(db, content_area_names: List[str]):
     
     return name_to_id
 
+# Get basic question information by ID
 def get_question(db, question_id: int):
     """Get basic question information by ID"""
     question_data = db.query(
@@ -346,6 +351,7 @@ def get_question(db, question_id: int):
         Question.imageDependent,
         Question.imageDescription,
         Question.examid,
+        Question.gradeclassificationid,
         Exam.examname
     ).outerjoin(
         Exam, Question.examid == Exam.examid
@@ -364,11 +370,13 @@ def get_question(db, question_id: int):
         "ImageDependent": question_data[4],
         "ImageDescription": question_data[5],
         "ExamID": question_data[6],
-        "ExamName": question_data[7] if question_data[7] is not None else ""
+        "GradeClassificationID": question_data[7], 
+        "ExamName": question_data[8] if question_data[8] is not None else ""
     }
    
     return question_dict
 
+# Get question and all options by ID
 def get_question_with_details(question_id, db):
     
     question_data = db.query(
@@ -378,7 +386,8 @@ def get_question_with_details(question_id, db):
         Question.questionDifficulty,
         Question.imageUrl,
         Question.imageDependent,
-        Question.imageDescription
+        Question.imageDescription,
+        Question.gradeclassificationid  
     ).filter(
         Question.questionid == question_id
     ).first()
@@ -408,6 +417,20 @@ def get_question_with_details(question_id, db):
         QuestionClassification.questionid == question_id
     ).all()
     
+    #add grade classification data if it exists
+    grade_classification_data = None
+    if question_data[7]:  # If gradeclassificationid is not None
+        grade_classification_data = db.query(
+            GradeClassification.gradeclassificationid,
+            GradeClassification.classificationname,
+            GradeClassification.unittype,
+            ClassOffering.classofferingid
+        ).outerjoin(
+            ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid
+        ).filter(
+            GradeClassification.gradeclassificationid == question_data[7]
+        ).first()
+    
     question_dict = {
         "QuestionID": question_data[0],
         "ExamID": question_data[1],
@@ -415,7 +438,8 @@ def get_question_with_details(question_id, db):
         "QuestionDifficulty": question_data[3],
         "ImageUrl": question_data[4],
         "ImageDependent": question_data[5],
-        "ImageDescription": question_data[6]
+        "ImageDescription": question_data[6],
+        "GradeClassificationID": question_data[7]  
     }
     
     options = []
@@ -435,15 +459,158 @@ def get_question_with_details(question_id, db):
             "Description": area[2],
             "Discipline": area[3]
         })
+    
+    grade_classification = None
+    if grade_classification_data:
+        grade_classification = {
+            "GradeClassificationID": grade_classification_data[0],
+            "ClassificationName": grade_classification_data[1],
+            "UnitType": grade_classification_data[2],
+            "ClassOfferingID": grade_classification_data[3]
+        }
         
     result = {
         "Question": question_dict,
         "Options": options,
-        "ContentAreas": content_areas
+        "ContentAreas": content_areas,
+        "GradeClassification": grade_classification  
     }
     
-
     return result
+
+# Get all exam results and associated student question performances for a student
+def get_historical_performance(db, student_id=None, exam_id=None, skip=0, limit=100):
+    """
+    Get exam results with their associated student question performances.
+    
+    """
+    # Start with a base query for exam results
+    query = db.query(ExamResults)
+    
+    # Apply filters if provided
+    if student_id:
+        query = query.filter(ExamResults.studentid == student_id)
+    if exam_id:
+        query = query.filter(ExamResults.examid == exam_id)
+
+    # Order by timestamp desc, then by examresultsid desc if timestamp is NULL
+    query = query.order_by(
+        ExamResults.timestamp.desc().nulls_last(),
+        ExamResults.examresultsid.desc()
+    )
+        
+    # Apply pagination
+    query = query.offset(skip).limit(limit)
+    
+    # Execute the query to get all exam results
+    exam_results = query.all()
+    
+    if not exam_results:
+        return []
+    
+    # Build the response
+    result = []
+    
+    for er in exam_results:
+        # Get student name
+        student = db.query(Student).filter(Student.studentid == er.studentid).first()
+        student_name = f"{student.firstname} {student.lastname}" if student else "Unknown"
+        
+        # Get exam name
+        exam = db.query(Exam).filter(Exam.examid == er.examid).first()
+        exam_name = exam.examname if exam else "Unknown"
+        
+        # Get performances for this exam result
+        performances = db.query(
+            StudentQuestionPerformance
+        ).outerjoin(
+            Question, StudentQuestionPerformance.questionid == Question.questionid
+        ).filter(
+            StudentQuestionPerformance.examresultid == er.examresultsid
+        ).all()
+        
+        # Format performances
+        performance_list = []
+        for perf in performances:
+            # Get question details
+            question = db.query(Question).filter(
+                Question.questionid == perf.questionid
+            ).first()
+            
+            performance_list.append({
+                "StudentQuestionPerformanceID": perf.studentquestionperformanceid,
+                "ExamResultsID": perf.examresultid,
+                "QuestionID": perf.questionid,
+                "Result": perf.result,
+                "Confidence": perf.confidence,
+                "QuestionPrompt": question.prompt if question else None,
+                "QuestionDifficulty": question.questionDifficulty if question else None
+            })
+        
+        # Add to result
+        result.append({
+            "ExamResults": {
+                "ExamResultsID": er.examresultsid,
+                "StudentID": er.studentid,
+                "StudentName": student_name,
+                "ExamID": er.examid,
+                "ExamName": exam_name,
+                "Score": er.score,
+                "PassOrFail": er.passorfail,
+                "Timestamp": er.timestamp,
+                "ClerkshipID": er.clerkshipid
+            },
+            "Performances": performance_list
+        })
+    
+    return result
+
+#Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
+def convert_question_to_text(question_response: dict) -> str:
+    
+    question = question_response['Question']
+    option = question_response['Options']
+    content_areas = question_response['ContentAreas']
+    grade_classification = question_response.get('GradeClassification')
+    
+    prompt = question['Prompt']
+    
+    # This is for a way to format our options for context in a A, B, C, D format (chr 65 is a + 1 is each letter after)
+    option_lines = [
+        f"{chr(65 + i)}. {opt['OptionDescription']}" for i, opt in enumerate(option)
+    ]
+    
+    difficulty = question.get('QuestionDifficulty', 'Unknown')
+    content_names = [ca["ContentName"] for ca in content_areas]
+    # If multiple content areas combine them into a single string
+    content_area_line = ', '.join(content_names) if content_names else "Uncategorized"
+    
+    context_lines = [
+        f"Difficulty: {difficulty}",
+        f"Content Areas: {content_area_line}"
+    ]
+    
+    # Add grade classification if it exists
+    if grade_classification:
+        context_lines.append(f"Grade Classification: {grade_classification['ClassificationName']} ({grade_classification['UnitType']})")
+    
+    context_lines.append("") # Empty line before prompt
+    
+    text = "\n".join(context_lines + [prompt] + option_lines)
+    
+    return text
+
+def generate_question_embedding(question_id, db):
+    question_data = get_question_with_details(question_id, db)
+    if not question_data:
+        return None
+    question_text = convert_question_to_text(question_data)
+    # Use Gemini embedding
+    embedding = embed_text(question_text)
+    question = db.query(Question).filter(Question.questionid == question_id).first()
+    if question:
+        question.embedding = embedding
+        db.commit()
         
 # Chat Messages Embedding
 

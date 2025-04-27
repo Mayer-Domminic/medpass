@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-// Original format interfaces (what is passed from parent component)
+// Updated interfaces for the new format
 interface QuestionResponseData {
   Question: {
     QuestionID: number;
@@ -35,6 +35,11 @@ interface QuestionResponseData {
     Description: string;
     Discipline: string;
   }[];
+  GradeClassification: {
+    GradeClassificationID: number;
+    ClassificationName: string;
+    Description: string;
+  } | null;
 }
 
 interface QuestionProps {
@@ -126,7 +131,6 @@ const Question = ({
     }
   };
   
-  // UPDATED version of handleSubmit for multiple correct answers
   const handleSubmit = () => {
     console.log("Submit button clicked");
     console.log("Selected Answers:", selectedAnswers);
@@ -183,6 +187,18 @@ const Question = ({
         <div className="flex justify-between items-start w-full">
           <div className="text-2xl font-bold tracking-tight">Question</div>
           <div className="flex space-x-2">
+            {/* Display the GradeClassification if available */}
+            {questionData && questionData.GradeClassification && (
+              <Badge 
+                variant="outline"
+                className="bg-blue-900 text-blue-300"
+                title={questionData.GradeClassification.Description || ""}
+              >
+                {questionData.GradeClassification.ClassificationName}
+              </Badge>
+            )}
+            
+            {/* Still show ContentAreas if they exist (for backwards compatibility) */}
             {questionData && questionData.ContentAreas && questionData.ContentAreas.map(area => (
               <Badge 
                 key={area.ContentAreaID}
@@ -193,6 +209,7 @@ const Question = ({
                 {area.ContentName}
               </Badge>
             ))}
+            
             {questionData && questionData.Question && (
               <Badge 
                 variant="outline" 

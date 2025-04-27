@@ -45,6 +45,7 @@ class Question(Base):
     imageUrl = Column('imageurl', String(255))
     imageDependent = Column('imagedependent', Boolean)
     imageDescription = Column('imagedescription', String(255))
+    gradeclassificationid = Column('gradeclassificationid', Integer, ForeignKey('gradeclassification.gradeclassificationid'))
     
     embedding = Column(Vector(768), nullable=True)
 
@@ -52,6 +53,7 @@ class Question(Base):
     classification = relationship('QuestionClassification', back_populates='question')
     questionOptions = relationship('QuestionOption', back_populates='question')
     questionPerformance = relationship('StudentQuestionPerformance', back_populates='question')
+    gradeclassification = relationship("GradeClassification", back_populates="questions")
     
 class QuestionClassification(Base):
     __tablename__ = 'questionclassification'

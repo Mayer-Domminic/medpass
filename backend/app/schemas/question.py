@@ -24,7 +24,8 @@ class QuestionCreate(BaseModel):
     ImageDependent: Optional[bool] = Field(False)
     ImageDescription: Optional[str] = Field(None, max_length=255)
     Options: List[QuestionOptionCreate]
-    ContentAreas: List[str]  # List of content area names
+    ClassificationName: Optional[str] = None
+    GradeClassificationID: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -35,7 +36,7 @@ class QuestionData(BaseModel):
     Answers: Dict[str, str]
     CorrectOption: str
     ImageDescription: Optional[str] = None
-    ImageURL: Optional[str] = None
+    ImageUrl: Optional[str] = None
     Explanation: Optional[str] = None
     ImageDependent: bool = False
     Domain: str
@@ -50,6 +51,7 @@ class QuestionResponse(BaseModel):
     ImageDescription: Optional[str]
     ExamID: Optional[int]
     ExamName: Optional[str]
+    GradeClassificationID: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -58,83 +60,83 @@ class BulkQuestionResponse(BaseModel):
     Questions: List[QuestionResponse]
     TotalCreated: int
 
-    # Request Models for ExamResults and StudentQuestionPerformance
-class ExamResultCreate(BaseModel):
-    student_id: int
-    exam_id: int
-    score: int
-    clerkship_id: Optional[int] = None
-    pass_or_fail: Optional[bool] = None
-    timestamp: Optional[datetime] = None
+# Request Models for ExamResults and StudentQuestionPerformance
+class ExamResultsCreate(BaseModel):
+    StudentID: int
+    ExamID: int
+    Score: int
+    ClerkshipID: Optional[int] = None
+    PassOrFail: Optional[bool] = None
+    Timestamp: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
 class StudentQuestionPerformanceCreate(BaseModel):
-    question_id: int
-    result: bool
-    confidence: Optional[int] = None
+    QuestionID: int
+    Result: bool
+    Confidence: Optional[int] = None
     
     class Config:
         from_attributes = True
 
-class ExamResultWithPerformancesCreate(BaseModel):
-    student_id: int
-    exam_id: int
-    score: int
-    clerkship_id: Optional[int] = None
-    pass_or_fail: Optional[bool] = None
-    timestamp: Optional[datetime] = None
-    performances: List[StudentQuestionPerformanceCreate]
+class ExamResultsWithPerformancesCreate(BaseModel):
+    StudentID: int
+    ExamID: int
+    Score: int
+    ClerkshipID: Optional[int] = None
+    PassOrFail: Optional[bool] = None
+    Timestamp: Optional[datetime] = None
+    Performances: List[StudentQuestionPerformanceCreate]
     
     class Config:
         from_attributes = True
 
 # Response Models for ExamResults and StudentQuestionPerformance
-class ExamResultResponse(BaseModel):
-    exam_result_id: int
-    student_id: int
-    exam_id: int
-    score: int
-    pass_or_fail: Optional[bool]
-    timestamp: Optional[datetime]
-    clerkship_id: Optional[int]
+class ExamResultsResponse(BaseModel):
+    ExamResultsID: int  
+    StudentID: int
+    ExamID: int
+    Score: int
+    PassOrFail: Optional[bool]
+    Timestamp: Optional[datetime]
+    ClerkshipID: Optional[int]
     
     class Config:
         from_attributes = True
 
 class StudentQuestionPerformanceResponse(BaseModel):
-    performance_id: int
-    exam_result_id: int
-    question_id: int
-    result: bool
-    confidence: Optional[int]
+    StudentQuestionPerformanceID: int  
+    ExamResultsID: int  
+    QuestionID: int
+    Result: bool
+    Confidence: Optional[int]
     
     class Config:
         from_attributes = True
 
-class BulkExamResultResponse(BaseModel):
-    total_created: int
-    created_exam_results: List[ExamResultResponse]
-    total_failed: int
-    failed_exam_results: List[dict]
+class BulkExamResultsResponse(BaseModel):
+    TotalCreated: int
+    CreatedExamResults: List[ExamResultsResponse]
+    TotalFailed: int
+    FailedExamResults: List[dict]
     
     class Config:
         from_attributes = True
 
 class BulkStudentQuestionPerformanceResponse(BaseModel):
-    exam_result_id: int
-    total_created: int
-    created_performances: List[StudentQuestionPerformanceResponse]
-    total_failed: int
-    failed_performances: List[dict]
+    ExamResultsID: int  
+    TotalCreated: int
+    CreatedPerformances: List[StudentQuestionPerformanceResponse]
+    TotalFailed: int
+    FailedPerformances: List[dict]
     
     class Config:
         from_attributes = True
 
-class ExamResultWithPerformancesResponse(BaseModel):
-    exam_result: ExamResultResponse
-    performance_records: BulkStudentQuestionPerformanceResponse
+class ExamResultsWithPerformancesResponse(BaseModel):
+    ExamResults: ExamResultsResponse
+    PerformanceRecords: BulkStudentQuestionPerformanceResponse
     
     class Config:
         from_attributes = True
