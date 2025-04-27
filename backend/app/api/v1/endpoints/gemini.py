@@ -27,23 +27,6 @@ from datetime import datetime
 
 router = APIRouter(prefix="/gemini", tags=["gemini"])
 
-@router.post(
-    "/chat/flash",
-    response_model=ChatMessageResponse,
-    status_code=status.HTTP_200_OK
-)
-async def flash_chat(
-    req: ChatFlashRequest,
-    db: Session = Depends(get_db)
-):
-    reply = chat_flash(req.messages)
-    msg = append_and_store_message(req.conversation_id, "assistant", reply, db)
-    return ChatMessageResponse(
-        message_id=msg.messageid,
-        sender=msg.sendertype,
-        content=msg.content,
-        timestamp=msg.timestamp
-    )
 
 # Above is an old endpoint for the flash chat, leaving as I don't know our process for that. 
 
