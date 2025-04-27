@@ -7,6 +7,12 @@ class ChatFlashRequest(BaseModel):
     conversation_id: int
     messages: List[dict]  # [{"role": "...", "content": "..."}]
 
+# Intial Chat
+class FirstMessageRequest(BaseModel):
+    content: str
+    sender_type: str = Field("user", description="Type of sender: 'user' or 'flash'")
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="messagemetadata")
+    
 # New models Remove the Above Ones Later
 class ChatContextModel(BaseModel):
 
