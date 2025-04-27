@@ -37,6 +37,7 @@ class Question(BaseModel):
     ImageUrl: Optional[str] = Field(None, max_length=255)
     ImageDependent: Optional[bool] = Field(default=False)
     ImageDescription: Optional[str] = Field(None, max_length=255)
+    GradeClassificationID: Optional[int] = None
     
     class Config:
         from_attributes = True
