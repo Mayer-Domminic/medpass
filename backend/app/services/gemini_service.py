@@ -53,6 +53,11 @@ def chat_flash(
 
 # Above are old functions keeping them for now
 
+# Parameters for Min Chat Length and Embedding 
+MIN_CHAT_LENGTH = 5
+# Minimum Embedding Length is important, we don't want to embedded "ok" or "yes"
+MIN_EMBEDDING_LENGTH = 50
+
 # Cost Functions, simple but will be constantly used
 # This isn't needed if we are able to retrive the cost from the API call itself
 
@@ -66,7 +71,27 @@ def calculate_message_cost(tokens_input, tokens_output):
     # Change cost to the actual cost of final model
     # Is currently using 2.5 flash token cost 
     return (tokens_input * 0.00000015) + (tokens_output * 0.0000035)
+
+def generate_title(content):
     
+    # If the content is less than 30 already just reutrn it as the title
+    if len(content) <= 50:
+        return content
+    
+    # If the user is nice enough to leave a period
+    period_position = content.find(".")
+    if 0 < period_position < 50:
+        return content[:period_position + 1].strip()
+    
+    # No period just use the space before a word gets cut off
+    last_space = content.rfind(" ", 0, 50)
+    if last_space > 0:  
+        return content[:last_space].strip() + "..."
+    
+    # Case just in case someone tries to blow up the system and have no spaces. 
+    
+    return content[:50].strip() + "..."
+
 
 def get_chat_history(db, logininfoid, active_only: bool = True):
     
@@ -184,17 +209,40 @@ def get_entire_chat(db, conversation_id, since_timestamp: Optional[datetime] = N
         
     return result
 
-def create_conversation(db, user_id, title, metadata: Optional[Dict[str, Any]] = None) -> ChatConversation:
+def create_conversation(
+    db, 
+    user_id,
+    content,
+    sender_type, 
+    title: Optional[str] = None, 
+    metadata: Optional[Dict[str, Any]] = None,
+    auto_process_context: bool = True
+    ) -> ChatConversation:
     
+    if title is not None:
+        conversation_title = title
+    else:
+        conversation_title = generate_title(content)
+        
     conversation = ChatConversation(
-        userid=user_id,
-        title=title,
+        user_id=user_id,
+        title=conversation_title,
+        createdat=datetime.utcnow(),
     )
+    
     db.add(conversation)
     db.commit()
     db.refresh(conversation)
-    return conversation
-
+    
+    conversation_id = conversation.conversationid
+    
+    message = create_message(db, conversation_id, content, sender_type, metadata)
+    
+    if auto_process_context:
+        embed_and_create_context_messages(db, message)
+    
+    return message, conversation
+        
 def create_message(db, conversation_id, content, sender_type, metadata: Optional[Dict[str, Any]] = None) -> ChatMessage:
     
     tokens = calculate_token_usage(content)
@@ -230,3 +278,52 @@ def create_message(db, conversation_id, content, sender_type, metadata: Optional
         db.commit()
         
     return new_message
+
+def embed_and_create_context_messages(db, message):
+    if len(message.content) >= MIN_EMBEDDING_LENGTH:
+        from app.services.rag_service import generate_chat_message_embedding
+        generate_chat_message_embedding(db, message)
+
+# Function to check to create big context summaries (i.e greater than 5 messages)
+def check_create_context_summary(db, conversation_id):
+    count = db.query(ChatMessage).filter(ChatMessage.conversationid == conversation_id).count()
+    return count % MIN_CHAT_LENGTH == 0
+
+def create_context_from_recent_message(db, conversation_id, user_id):
+    # Gets the last x (min chat length) messages to create a context
+    messages = db.query(ChatMessage).filter(ChatMessage.conversationid == conversation_id).order_by(ChatMessage.timestamp).limit(MIN_CHAT_LENGTH).all()
+    if not messages:
+        return None
+    
+    user_id = db.query(ChatMessage).filter(ChatMessage.conversationid == conversation_id).first().userid
+    
+    content_summary = "\n".join(
+        [f"{msg.sendertype}: {msg.content}" for msg in messages]
+    )
+    title = generate_title((messages[0].content))    
+    context = ChatContext(
+        conversationid=conversation_id,
+        title=title,
+        content=content_summary,
+        createdat=datetime.utcnow(),
+        updatedat=datetime.utcnow(),
+        isactive=True,  
+        createdby=user_id,  
+    )
+    db.add(context)
+    db.commit()
+    db.refresh(context)
+    
+    for msg in messages:
+        link_context_to_message(db, msg.messageid, context.contextid)
+    
+    from app.services.rag_service import generate_chat_context_embedding, generate_chat_message_embedding
+    generate_chat_context_embedding(db, context.contextid)
+    
+    return context
+        
+def link_context_to_message(db, message_id, context_id):
+    context_link = ChatMessageContext(messageid=message_id, contextid=context_id, wasused=True)
+    db.add(context_link) 
+    db.commit() 
+

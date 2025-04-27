@@ -1,5 +1,5 @@
 from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
-from ..services.rag_service import ingest_document, search_documents
+from ..services.rag_service import ingest_document, search_documents, search_chat_contexts
 from ..services.gemini_service import get_chat_history, get_entire_chat
 import os
 
@@ -45,9 +45,10 @@ if __name__ == "__main__":
     #docnumber0 = ingest_document(db, filepath)
     #docnumber1 = ingest_document(db, filepath1)
     #print(text2[1])
-    query = "What are the parts of a penis?"
-    rag_result = search_documents(query)
+    #query = "What are the parts of a penis?"
+    #rag_result = search_documents(query)
     #print(rag_result)
+    
     
     def split_list(lst, batch_size):
         for i in range(0, len(lst), batch_size):
@@ -68,6 +69,17 @@ if __name__ == "__main__":
     db = next(get_db())
     #conversation = get_chat_history(db, 11)
     
-    chat1 = get_entire_chat(db, 1)
+    #chat1 = get_entire_chat(db, 1)
     
-    print(chat1)
+    #print(chat1)
+    
+    chat_result = search_chat_contexts(db, 11, "What are some study strategies?")
+    
+    for batch in split_list(chat_result, batch_size=2):
+        print("\n=== Bron CHAT RAG Service ===\n")
+        for result in batch:
+            print(f"Document ID: {result['contextid']}")
+            print(f"Title: {result['title']}")
+            print(f"Similarity: {result['similarity']:.3f}")
+            print(f"Content Preview:\n{result['content'][:1000]}...\n")
+    
