@@ -1,7 +1,7 @@
 from ..schemas.pydantic_base_models import chat_schemas
 from app.models import ChatConversation, ChatMessageContext, ChatContext, ChatMessage
 from ..core.database import get_db
-from ..services.rag_service import generate_chatcontext_embedding, generate_chatmessage_embedding
+from ..services.rag_service import generate_chatcontext_embedding_SCRIPT, generate_chatmessage_embedding_SCRIPT
 import datetime
 from decimal import Decimal
 
@@ -268,9 +268,9 @@ if __name__ == "__main__":
     try:
         db = next(get_db())
         for i in range(1, 4):
-            generate_chatcontext_embedding(i, db)
+            generate_chatcontext_embedding_SCRIPT(i, db)
         for y in range(1, 5):
-            generate_chatmessage_embedding(y, db)
+            generate_chatmessage_embedding_SCRIPT(y, db)
     finally:
         db.close()
 

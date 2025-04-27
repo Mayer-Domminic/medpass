@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from app.models import (
     Question,
@@ -121,7 +121,12 @@ def generate_messagecontext_text(message: dict) -> str:
     
     return text
 
-def generate_chatcontext_embedding(chatcontext_id, db):
+# ----------- WARNING ---------------------
+#These Chat Embedding Functions are used to populate on ingest of the chat context and message in the fake script
+# DO NOT USE THESE IN MAIN FUNCTIONALITY
+# Will be removed in the future, but for now they are used to populate the database with embeddings
+
+def generate_chatcontext_embedding_SCRIPT(chatcontext_id, db):
     context_data = get_chat_context(chatcontext_id, db) 
     if not context_data:
         return None
@@ -134,7 +139,7 @@ def generate_chatcontext_embedding(chatcontext_id, db):
         db.commit()
     
         
-def generate_chatmessage_embedding(chatmessage_id, db):
+def generate_chatmessage_embedding_SCRIPT(chatmessage_id, db):
     message_data = get_chat_message(chatmessage_id, db)
     if not message_data:
         return None
@@ -145,6 +150,8 @@ def generate_chatmessage_embedding(chatmessage_id, db):
     if message:
         message.embedding = embedding
         db.commit()
+
+# ----------- WARNING ---------------------
 
 def extract_text_pdf(filepath: str) -> str:
     
@@ -319,5 +326,72 @@ def search_documents(query: str, limit: int = 5, faculty_id: int = None, similia
     except Exception as e:
         print(f"Error connecting to database: {e}")
         return None
+    
+# Chat Embedding
+def generate_chat_context_embedding(db, chatcontext_id):
+    
+    context = db.query(ChatContext).filter(ChatContext.contextid == chatcontext_id).first()
+    
+    if not context:
+        return None
+    
+    # Format Context Text Package by Packaging  Title, Content, and Metadata
+    
+    context_parts = [context.title, context.content]
+    if context.chatmetadata:
+        context_parts.append(str(context.chatmetadata))
+
+    context_text = "\n".join(context_parts)
+    
+    embedding = embed_text(context_text)
+    
+    context.embedding = embedding
+    db.commit()
+    
+    return embedding
+
+def generate_chat_message_embedding(db, chatmessage_id):
+    
+    message = db.query(ChatMessage).filter(ChatMessage.messageid == chatmessage_id).first()
+    
+    if not message:
+        return None
+    
+    embedding = embed_text(message.content)
+    
+    message.embedding = embedding
+    db.commit() 
+    return embedding
+
+def search_chat_contexts(db, user_id, query: str, limit: int = 5, similiarity_threshold: float = .5 ):
+    
+    query_embedding = embed_text(query)
+    
+    results = db.execute(
+        select(
+            ChatContext, (1 - ChatContext.embedding.cosine_distance(query_embedding)).label("similarity")
+        ).where(
+            ChatContext.createdby == user_id, ChatContext.isactive == True
+        ).order_by(
+            desc("similarity")
+        ).where(
+            (1 - ChatContext.embedding.cosine_distance(query_embedding)) >= similiarity_threshold
+        ).limit(limit)
+    ).all()
+    
+    formatted_results = [
+        {
+            "contextid": result.ChatContext.contextid,
+            "content": result.ChatContext.content,
+            "title": result.ChatContext.title,
+            "author": result.ChatContext.createdby,
+            "similarity": result.similarity
+        }
+        for result in results
+    ]
+    
+    return formatted_results
+    
+    
     
     

@@ -2,11 +2,12 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-
-class ChatFlashRequest(BaseModel):
-    conversation_id: int
-    messages: List[dict]  # [{"role": "...", "content": "..."}]
-
+# Intial Chat
+class FirstMessageRequest(BaseModel):
+    content: str
+    sender_type: str = Field("user", description="Type of sender: 'user' or 'flash'")
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="messagemetadata")
+    
 # New models Remove the Above Ones Later
 class ChatContextModel(BaseModel):
 
@@ -70,9 +71,10 @@ class CreateConversationRequest(BaseModel):
 
 class AddConversationResponse(BaseModel):
     
-    conversation_id: int = Field(..., alias="conversationid")
+    conversation_id: int 
     title: str
-    created_at: datetime = Field(..., alias="createdat")
+    created_at: datetime 
+    
 
 class SendMessageRequest(BaseModel):
 
@@ -82,15 +84,16 @@ class SendMessageRequest(BaseModel):
 
 
 class AddMessageResponse(BaseModel):
-    message_id: int = Field(..., alias="messageid")
-    conversation_id: int = Field(..., alias="conversationid")
-    sender_type: str = Field(..., alias="sendertype")
+    message_id: int 
+    conversation_id: int 
     content: str
+    sender_type: str 
     timestamp: datetime
-    tokens_input: int = Field(0, alias="tokensinput")
-    tokens_output: int = Field(0, alias="tokensoutput")
-    message_cost: float = Field(0.0, alias="messagecost")
     metadata: Optional[Dict[str, Any]] = Field(None, alias="messagemetadata")
     
     class Config:
         from_attributes = True
+        
+class AddConversationAndModelResponse(BaseModel):
+    model_response: AddMessageResponse
+    conversation: AddConversationResponse    
