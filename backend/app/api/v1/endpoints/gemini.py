@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -20,7 +20,7 @@ from app.schemas.chat_schemas import (
     AddMessageResponse,
     SendMessageRequest,
     AddConversationResponse,
-    CreateConversationRequest
+    AddConversationAndModelResponse
 )
 
 from app.models import LoginInfo as User
@@ -62,10 +62,9 @@ async def single_chat_history(
 
 # New Messages
 
-@router.post('/chat', response_model=AddConversationResponse, status_code=status.HTTP_200_OK)
+@router.post('/chat', response_model=AddConversationAndModelResponse, status_code=status.HTTP_200_OK)
 async def start_chat(
     request: FirstMessageRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -79,17 +78,33 @@ async def start_chat(
         auto_process_context = True
     )
     
-    background_tasks.add_task(
-        generate_model_response, db=db, user_message_id=message.messageid
+    model_response = generate_model_response(db=db, user_message_id=message.messageid)
+    
+    # Messy but ORM mode wasn't working properly so manually mapping it
+    add_message_response = AddMessageResponse(
+        message_id=model_response.messageid,
+        conversation_id=model_response.conversationid,
+        sender_type=model_response.sendertype,
+        content=model_response.content,
+        timestamp=model_response.timestamp,
+        metadata=model_response.messagemetadata
+    )
+
+    add_conversation_response = AddConversationResponse(
+        conversation_id=conversation.conversationid,
+        title=conversation.title,
+        created_at=conversation.createdat
     )
     
-    return conversation
+    return AddConversationAndModelResponse(
+        model_response=add_message_response,
+        conversation=add_conversation_response
+    )
 
 @router.post('/chat/{conversation_id}/messages', response_model=AddMessageResponse, status_code=status.HTTP_200_OK)
 async def add_message(
     conversation_id: int,
     request: SendMessageRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     
@@ -103,10 +118,17 @@ async def add_message(
         
     message = create_message(db, conversation_id, request.content, request.sender_type, request.metadata)
     
-    background_tasks.add_task(
-        generate_model_response, db=db, user_message_id=message.messageid
+    model_response = generate_model_response(db=db, user_message_id=message.messageid)
+    
+    add_message_response = AddMessageResponse(
+        message_id=model_response.messageid,
+        conversation_id=model_response.conversationid,
+        sender_type=model_response.sendertype,
+        content=model_response.content,
+        timestamp=model_response.timestamp,
+        metadata=model_response.messagemetadata
     )
     
-    return message
+    return add_message_response
     
     
