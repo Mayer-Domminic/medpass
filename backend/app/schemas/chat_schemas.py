@@ -2,25 +2,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-class ChatSessionRequest(BaseModel):
-    user_id: int
-    initial_message: str
-
-class ChatSessionResponse(BaseModel):
-    conversation_id: int
 
 class ChatFlashRequest(BaseModel):
     conversation_id: int
     messages: List[dict]  # [{"role": "...", "content": "..."}]
-
-class ChatMessageResponse(BaseModel):
-    message_id: int
-    sender: str
-    content: str
-    timestamp: datetime
-
-class ChatHistoryResponse(BaseModel):
-    messages: List[dict]  # match get_chat_history output
 
 # New models Remove the Above Ones Later
 class ChatContextModel(BaseModel):
@@ -77,6 +62,11 @@ class SearchConversationsRequest(BaseModel):
     """Schema for conversation search request"""
     search_term: str = Field(..., description="Text to search for in conversation titles and messages")
     
+# Adding Chat & Message
+
+class CreateConversationRequest(BaseModel):
+    
+    title: str
 
 class AddConversationResponse(BaseModel):
     

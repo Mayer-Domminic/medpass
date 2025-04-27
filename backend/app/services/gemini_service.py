@@ -50,41 +50,6 @@ def chat_flash(
     resp = genai.chat(model=model, messages=messages)
     return resp["candidates"][0]["content"]
 
-# ——————— Persistence helpers ———————
-def start_and_store_conversation(
-    user_id: int,
-    initial_prompt: str,
-    db: Optional[Session] = None
-) -> int:
-    if db is None:
-        from app.core.database import get_db
-        db = next(get_db())
-    convo = ChatConversation(
-        userid=user_id,
-        title="Gemini Chat",
-        isactive=True
-    )
-    db.add(convo); db.commit(); db.refresh(convo)
-    append_and_store_message(convo.conversationid, "user", initial_prompt, db)
-    return convo.conversationid
-
-def append_and_store_message(
-    conversation_id: int,
-    sender: str,
-    content: str,
-    db: Optional[Session] = None
-) -> ChatMessage:
-    if db is None:
-        from app.core.database import get_db
-        db = next(get_db())
-    msg = ChatMessage(
-        conversationid=conversation_id,
-        sendertype=sender,
-        content=content,
-        timestamp=datetime.datetime.utcnow()
-    )
-    db.add(msg); db.commit(); db.refresh(msg)
-    return msg
 
 # Above are old functions keeping them for now
 

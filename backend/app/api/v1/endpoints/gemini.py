@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
 from app.services.gemini_service import (
-    start_and_store_conversation,
-    append_and_store_message,
     chat_flash,
     get_entire_chat,
     get_chat_history,
@@ -15,9 +13,7 @@ from app.core.security import (
     get_current_active_user
 )
 from app.schemas.chat_schemas import (
-    ChatSessionRequest, ChatSessionResponse,
-    ChatFlashRequest,   ChatMessageResponse,
-    ChatHistoryResponse,
+    ChatFlashRequest,   
     ChatConversationDetail,
     ChatConversationSummary,
     AddMessageResponse,
