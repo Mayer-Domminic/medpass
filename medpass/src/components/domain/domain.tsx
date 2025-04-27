@@ -31,15 +31,12 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
         <h2 className="text-lg font-semibold text-gray-300">{examResult.ExamName}</h2>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-400">
-            {examResult.StudentName && (
-              <span className="mr-4">{examResult.StudentName}</span>
-            )}
             {examResult.Timestamp && (
               <span className="mr-4">
                 {new Date(examResult.Timestamp).toLocaleDateString()}
               </span>
             )}
-            <span>{examResult.Score}%</span>
+            <span>Score: {examResult.Score}</span>
             <span className={examResult.PassOrFail ? 'text-green-500' : 'text-red-500'}>
               {examResult.PassOrFail ? ' (Pass)' : ' (Fail)'}
             </span>
