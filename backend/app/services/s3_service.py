@@ -1,6 +1,5 @@
 import os
 import uuid
-from dotenv import load_dotenv
 from app.core.config import settings
 import boto3
 
