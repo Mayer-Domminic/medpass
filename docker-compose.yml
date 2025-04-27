@@ -30,6 +30,8 @@ services:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       GEMINI_API_KEYS: ${GEMINI_API_KEYS}
+      AWS_S3_ACCESS: ${AWS_S3_ACCESS}
+      AWS_S3_DEV: ${AWS_S3_DEV}
     depends_on:
       - postgres
     networks:

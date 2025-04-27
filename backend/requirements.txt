@@ -68,3 +68,4 @@ langchain-text-splitters==0.3.8
 langchain==0.3.24
 gunicorn
 google-generativeai
+boto3
