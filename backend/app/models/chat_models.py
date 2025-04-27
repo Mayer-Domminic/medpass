@@ -29,7 +29,7 @@ class ChatContext(Base):
     title = Column('title', String(255), nullable=False)
     # Using Text as it does not have a limit
     content = Column('content', Text, nullable=False)
-    embedding = Column('embedding', Vector(3072), nullable=True)
+    embedding = Column('embedding', Vector(768), nullable=True)
     createdat = Column('createdat', DateTime, default=func.now())
     updatedat = Column('updatedat', DateTime, default=func.now(), onupdate=func.now())
     isactive = Column('isactive', Boolean, default=True)
@@ -51,7 +51,7 @@ class ChatMessage(Base):
     # This is a flag to determine if it's the user or the model sending a message
     sendertype = Column('sendertype', String(20), nullable=False)
     content = Column('content', Text, nullable=False)
-    embedding = Column('embedding', Vector(3072), nullable=True)
+    embedding = Column('embedding', Vector(768), nullable=True)
     timestamp = Column('timestamp', DateTime, default=func.now())
     tokensinput = Column('tokensinput', Integer, default=0)
     tokensoutput = Column('tokensoutput', Integer, default=0)

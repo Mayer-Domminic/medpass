@@ -1,6 +1,7 @@
 from ..schemas.pydantic_base_models import chat_schemas
 from app.models import ChatConversation, ChatMessageContext, ChatContext, ChatMessage
-from ..core.database import get_db, generate_chatcontext_embedding, generate_chatmessage_embedding
+from ..core.database import get_db
+from ..services.rag_service import generate_chatcontext_embedding, generate_chatmessage_embedding
 import datetime
 from decimal import Decimal
 

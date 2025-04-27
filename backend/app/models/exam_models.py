@@ -46,7 +46,7 @@ class Question(Base):
     imageDependent = Column('imagedependent', Boolean)
     imageDescription = Column('imagedescription', String(255))
     
-    embedding = Column(Vector(3072), nullable=True)
+    embedding = Column(Vector(768), nullable=True)
 
     exam = relationship('Exam', back_populates='questions')
     classification = relationship('QuestionClassification', back_populates='question')

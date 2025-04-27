@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Identity, Text, DateTime, func
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 from app.core.base import Base
 
 
@@ -23,3 +24,27 @@ class Extracurricular(Base):
     weeklyHourCommitment = Column('weeklyhourcommitment', Integer)
     
     student = relationship('Student', back_populates='extracurriculars')
+    
+class Document(Base):
+    __tablename__ = 'document'
+    
+    documentid = Column('documentid', Integer, Identity(start=1, increment=1), primary_key=True)
+    title = Column('title', String(255))
+    author = Column('author', String(255))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    facultyid = Column('facultyid', Integer, ForeignKey('faculty.facultyid'))
+    
+    faculty = relationship('Faculty', back_populates='documents')
+    chunks = relationship('DocumentChunk', back_populates='documents')
+    
+class DocumentChunk(Base):
+    __tablename__ = 'documentchunk'
+    
+    documentchunkid = Column('documentchunkid', Integer, Identity(start=1, increment=1), primary_key=True)
+    documentid = Column('documentid', Integer, ForeignKey('document.documentid'))
+    chunkindex = Column('chunkindex', Integer)
+    content = Column('content', Text)
+    embedding = Column('embedding', Vector(768), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    documents = relationship('Document', back_populates='chunks')

@@ -1,6 +1,7 @@
 from ..schemas.pydantic_base_models import exam_schemas
 from app.models import ContentArea, Option, Question, QuestionClassification, QuestionOption
-from ..core.database import get_db, generate_question_embedding
+from ..core.database import get_db
+from ..services.rag_service import generate_question_embedding
 
 def ingest_content_area(content_area_data):
     

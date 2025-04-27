@@ -54,6 +54,7 @@ class Faculty(Base):
     loginInfo = relationship('LoginInfo', back_populates='faculty')
     offering = relationship('ClassOffering', back_populates='faculty')
     facultyAccess = relationship('FacultyAccess', back_populates='faculty')
+    documents = relationship('Document', back_populates='faculty')
     
 class FacultyAccess(Base):
     __tablename__ = 'facultyaccess'
