@@ -17,7 +17,7 @@ interface DashboardProps {
 // mapping of domains to systems
 const DOMAIN_TO_SYSTEMS: Record<string, SystemName[]> = {
   "Human Development": ["reproductive", "endocrine"],
-  "Biostatistics & Epidemiology/Population Health": [],
+  "Biostatistics & Epidemiology/Population Health": ["integumentary"],
   "Social Sciences: Communication and Interpersonal Skills": ["nervous", "endocrine"],
   "Cardiovascular System": ["cardiovascular"],
   "Respiratory & Renal/Urinary Systems": ["respiratory", "urinary"],
