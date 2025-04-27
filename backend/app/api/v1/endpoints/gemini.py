@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Any, Dict
 from app.core.database import get_db
@@ -114,7 +114,6 @@ async def start_chat(
 async def add_message(
     conversation_id: int,
     request: SendMessageRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     
