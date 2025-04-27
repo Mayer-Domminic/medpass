@@ -1,5 +1,5 @@
 from ..schemas.pydantic_base_models import exam_schemas
-from app.models import ContentArea, Option, Question, QuestionClassification, QuestionOption
+from app.models import ContentArea, Option, Question, QuestionClassification, QuestionOption, GradeClassification
 from ..core.database import get_db
 from sqlalchemy import func
 from ..services.rag_service import generate_question_embedding
