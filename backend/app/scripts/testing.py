@@ -1,6 +1,6 @@
 from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
 from ..services.rag_service import ingest_document, search_documents, search_chat_contexts
-from ..services.gemini_service import get_chat_history, get_entire_chat
+from ..services.gemini_service import get_chat_history, get_entire_chat, chat_model
 import os
 
 def convert_question_to_text(question_response: dict) -> str:
@@ -73,6 +73,7 @@ if __name__ == "__main__":
     
     #print(chat1)
     
+    '''
     chat_result = search_chat_contexts(db, 11, "What are some study strategies?")
     
     for batch in split_list(chat_result, batch_size=2):
@@ -82,4 +83,12 @@ if __name__ == "__main__":
             print(f"Title: {result['title']}")
             print(f"Similarity: {result['similarity']:.3f}")
             print(f"Content Preview:\n{result['content'][:1000]}...\n")
+    '''
     
+    messages = [{"role": "user", "content": "What is a clinical rotation?"}]
+    
+    rag_query = "What is a clinical rotation?"
+    
+    model_message = chat_model(messages=messages, rag_query=rag_query, conversation_id=1)
+    
+    print(model_message)

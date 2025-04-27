@@ -2,11 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-
-class ChatFlashRequest(BaseModel):
-    conversation_id: int
-    messages: List[dict]  # [{"role": "...", "content": "..."}]
-
 # Intial Chat
 class FirstMessageRequest(BaseModel):
     content: str
