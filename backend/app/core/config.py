@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     NEXT_PUBLIC_API_BASE_URL: str
     
     GEMINI_API_KEYS: Optional[str] = None
+    AWS_S3_ACCESS: str
+    AWS_S3_DEV: str
 
     class Config:
         env_file = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
