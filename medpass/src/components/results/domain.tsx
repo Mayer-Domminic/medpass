@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Subdomain from './subdomain';
-import { DomainProps, Question, Performance, Attempt } from '@/types/domain';
+import { DomainProps, Question, Performance, Attempt } from '@/types/results';
 
 const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
   // All hooks must be called at the top level

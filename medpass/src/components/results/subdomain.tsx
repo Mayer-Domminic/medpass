@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Check, X } from 'lucide-react';
-import { SubdomainType, Question, SubdomainProps, Attempt } from '@/types/domain';
+import { SubdomainType, Question, SubdomainProps, Attempt } from '@/types/results';
 import PreviewQuestion from './previewQuestion';
 
 const Subdomain: React.FC<SubdomainProps> = ({
@@ -15,30 +15,30 @@ const Subdomain: React.FC<SubdomainProps> = ({
 
   // Modified function to get the most recent attempt for a question
   const getMostRecentAttemptForQuestion = (questionId: string): Attempt | null => {
-  console.log(`Checking attempts for question ${questionId}:`);
-  console.log(`  attempts object:`, attempts);
-  console.log(`  attempts for this question:`, attempts[questionId]);
-  
-  if (!attempts || !attempts[questionId] || attempts[questionId].length === 0) {
-    console.log(`  No attempts found for question ${questionId}`);
-    return null;
-  }
+    console.log(`Checking attempts for question ${questionId}:`);
+    console.log(`  attempts object:`, attempts);
+    console.log(`  attempts for this question:`, attempts[questionId]);
 
-  // Sort attempts by date (most recent first)
-  const sortedAttempts = [...attempts[questionId]].sort((a, b) => {
-    // Convert dates to timestamps for comparison
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    console.log(`  Comparing dates: ${a.date} (${dateA}) vs ${b.date} (${dateB})`);
-    return dateB - dateA; // Most recent first
-  });
+    if (!attempts || !attempts[questionId] || attempts[questionId].length === 0) {
+      console.log(`  No attempts found for question ${questionId}`);
+      return null;
+    }
 
-  console.log(`  Sorted attempts:`, sortedAttempts);
-  console.log(`  Most recent attempt:`, sortedAttempts[0]);
-  
-  // Return the most recent attempt
-  return sortedAttempts[0];
-};
+    // Sort attempts by date (most recent first)
+    const sortedAttempts = [...attempts[questionId]].sort((a, b) => {
+      // Convert dates to timestamps for comparison
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      console.log(`  Comparing dates: ${a.date} (${dateA}) vs ${b.date} (${dateB})`);
+      return dateB - dateA; // Most recent first
+    });
+
+    console.log(`  Sorted attempts:`, sortedAttempts);
+    console.log(`  Most recent attempt:`, sortedAttempts[0]);
+
+    // Return the most recent attempt
+    return sortedAttempts[0];
+  };
 
   // Function to get all attempts for a question (for preview purposes)
   const getAllAttemptsForQuestion = (questionId: string): Attempt[] => {

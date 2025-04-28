@@ -314,7 +314,7 @@ export default function ReviewPage() {
 
       {/* Progress header */}
       <div className="flex justify-between items-center mb-6 px-2">
-        <h1 className="text-4xl font-bold ml-20">Review</h1>
+        <h1 className="text-2xl font-bold ml-20">Review</h1>
 
         {/* Right side: Progress information and user info */}
         <div className="flex items-center">

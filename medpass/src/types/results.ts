@@ -1,4 +1,19 @@
-// domain.ts - Types for the application
+export interface ApiResponseItem {
+  ExamResults: {
+    ExamResultsID: number;
+    StudentID?: number;
+    StudentName?: string;
+    ExamID?: number;
+    ExamName?: string;
+    Score?: number;
+    PassOrFail?: boolean;
+    Timestamp?: string | null;
+    ClerkshipID?: number | null;
+  };
+  Performances: Performance[];
+}
+
+
 export type Performance = {
   StudentQuestionPerformanceID: number;
   ExamResultsID: number;
@@ -113,7 +128,7 @@ export type PreviewQuestionProps = {
 export type SubdomainType = {
   id: string;
   title: string;
-  name?: string;  // Added to support classificationName
+  name?: string; 
   questions: Question[];
   isLatestConf: boolean;
 };

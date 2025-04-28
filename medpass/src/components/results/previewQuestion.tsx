@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Clock, BarChart2 } from 'lucide-react';
-import questionService from '@/lib/QuestionService';
-import { Attempt } from '@/types/domain';
-import { useSession } from 'next-auth/react'; 
+import questionService from '@/lib/resultsUtils';
+import { Attempt } from '@/types/results';
+import { useSession } from 'next-auth/react';
 
 interface QuestionOption {
     id: string;
