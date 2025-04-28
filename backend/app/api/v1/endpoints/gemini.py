@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict
 from app.core.database import get_db
+from app.core.security import get_current_active_user
+from app.services.gemini_service import generate_domain_questions as generate_questions
+from app.models import LoginInfo as User, Student
+from typing import List, Optional
 from app.services.gemini_service import (
     chat_flash,
     get_entire_chat,
     get_chat_history,
     create_message,
-    create_conversation
-)
-from app.core.security import (
-    get_current_active_user
+    create_conversation,
 )
 from app.schemas.chat_schemas import (
     ChatFlashRequest,   
@@ -22,7 +23,6 @@ from app.schemas.chat_schemas import (
     CreateConversationRequest
 )
 
-from app.models import LoginInfo as User
 from datetime import datetime
 
 router = APIRouter(prefix="/gemini", tags=["gemini"])
@@ -93,4 +93,38 @@ async def add_message(
     
     return message
     
-    
+@router.post("/generate-questions", status_code=status.HTTP_200_OK)
+async def generate_domain_questions(
+    request: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    domain = request.get("domain", "")
+    subdomain = request.get("subdomain", "")
+    count = request.get("count", 10)
+    additional_context = request.get("additionalContext", "")
+
+    if not domain or not subdomain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain and subdomain are required"
+        )
+
+    student_id = (
+        db.query(Student.studentid)
+        .filter(Student.logininfoid == current_user.logininfoid)
+        .scalar()
+    )
+    if not student_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found"
+        )
+
+    return await generate_questions(
+        domain,
+        subdomain,
+        student_id,
+        count,
+        additional_context
+    )

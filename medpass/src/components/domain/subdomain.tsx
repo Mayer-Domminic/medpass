@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SubdomainType } from './domain';
 import { ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import DomainQuestions from './DomainQuestions';
 
 // Updated types to include difficulty and points
 export type subdomainQuestion = {
@@ -16,13 +17,15 @@ interface SubdomainProps {
   isExpanded: boolean;
   onToggle: () => void;
   onQuestionToggle?: (questionId: string, isChecked: boolean) => void;
+  domainName: string;
 }
 
 const Subdomain: React.FC<SubdomainProps> = ({ 
   subdomain, 
   isExpanded, 
   onToggle, 
-  onQuestionToggle
+  onQuestionToggle,
+  domainName
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
   
@@ -174,6 +177,15 @@ const Subdomain: React.FC<SubdomainProps> = ({
                 </div>
               );
             })}
+          </div>
+
+          {/* Add the Practice Questions section */}
+          <div className="mt-8 pt-6 border-t border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-300 mb-4">Practice Questions</h3>
+            <DomainQuestions 
+              domain={domainName}
+              subdomain={subdomain.title}
+            />
           </div>
         </div>
       )}
