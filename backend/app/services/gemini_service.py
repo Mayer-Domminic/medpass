@@ -435,7 +435,7 @@ STRICTLY return ONLY the JSON object. DO NOT include any other text, formatting,
             }
         ]
         
-        response_text = chat_flash(messages)
+        response_text = chat_model(messages)
 
         print(f"Raw response from Gemini API: {response_text[:2000]}...") 
 
@@ -622,7 +622,7 @@ STRICTLY return ONLY the JSON object. DO NOT include any other text, formatting,
             }
         ]
         
-        response_text = chat_flash(messages)
+        response_text = chat_model(messages)
 
         print(f"Raw response from Gemini API: {response_text[:2000]}...") 
 
