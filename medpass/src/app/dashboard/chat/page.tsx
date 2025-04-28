@@ -14,6 +14,7 @@ interface Message {
   timestamp: string;
 }
 
+//Note: make sure to add the the pull if chat already exists and you are coming back. Since only handles intial run
 export default function ChatPage() {
   const { data: session, status } = useSession({
     required: true,
@@ -29,7 +30,6 @@ export default function ChatPage() {
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL + "/gemini";
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -134,6 +134,7 @@ export default function ChatPage() {
     </div>
   );
 
+  //Band-Aid Solution for handeling time, techincally date-time is stored in database. But on first message send they don't have access to that until stored in the database
   const getTimeString = (timestamp: string, sender: "user" | "assistant") => {
     const date = new Date(timestamp);
     
@@ -179,6 +180,8 @@ export default function ChatPage() {
                       >
                         <div 
                           className="mb-2 leading-relaxed text-white" 
+                          //Scary name, but just makes sures the response is given back properly
+                          //On JSON package response model likes to give a lot of \n
                           dangerouslySetInnerHTML={{ 
                             __html: m.content
                               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
