@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Identity, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Identity, DateTime, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.core.base import Base
+from datetime import datetime
 
 class Class(Base):
     __tablename__ = 'class'
@@ -45,3 +47,23 @@ class ClassDomain(Base):
     
     classInfo = relationship('Class', back_populates='domainIntersection')
     domainInfo = relationship('Domain', back_populates='domainIntersection')
+
+class GeneratedQuestion(Base):
+    __tablename__ = 'generated_questions'
+
+    id = Column('id', Integer, Identity(start=1, increment=1), primary_key=True)
+    student_id = Column('student_id', Integer, ForeignKey('student.studentid'), nullable=False)
+    domain = Column('domain', String(255), nullable=False)
+    subdomain = Column('subdomain', String(255), nullable=False)
+    question_text = Column('question_text', Text, nullable=False)
+    options = Column('options', JSONB, nullable=False)
+    correct_option = Column('correct_option', String(50), nullable=False)
+    explanation = Column('explanation', Text)
+    difficulty = Column('difficulty', String(50))
+    created_at = Column('created_at', DateTime, default=datetime.utcnow)
+    
+    #stats
+    times_practiced = Column('times_practiced', Integer, default=0)
+    times_correct = Column('times_correct', Integer, default=0)
+    
+    student = relationship('Student', back_populates='generated_questions')

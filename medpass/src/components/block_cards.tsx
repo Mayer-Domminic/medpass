@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,12 +22,25 @@ export interface StepOverviewProps {
   onCardMouseLeave?: () => void;
 }
 
+const domainToSlug = (domain: string): string =>
+  domain
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[\/\\]/g, '-')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
 const StepOverview: React.FC<StepOverviewProps> = ({ 
   data,
   onCardMouseEnter,
   onCardMouseLeave
 }) => {
-  if (!data.length) return <div>Loading…</div>;
+  const router = useRouter();
+  
+  if (!data || data.length === 0) {
+    return <div className="text-gray-400">No domains available</div>;
+  }
   
   const byDomain = data.reduce<Record<string, DomainRecord[]>>((acc, rec) => {
     const list = (acc[rec.domain] ||= []);
@@ -40,14 +54,20 @@ const StepOverview: React.FC<StepOverviewProps> = ({
     return acc;
   }, {});
   
+  const handleDomainClick = (domain: string) => {
+    const slug = domainToSlug(domain);
+    router.push(`/dashboard/domain/${slug}`);
+  };
+  
   return (
     <div className="grid grid-cols-3 gap-4 bg-gray-900">
       {Object.entries(byDomain).map(([domain, records]) => (
         <div 
           key={domain} 
-          className="w-full bg-gray-800 rounded-xl p-4 transition-colors duration-25 hover:bg-gray-700 cursor-pointer"
+          className="w-full bg-gray-800 rounded-xl p-4 transition-colors duration-250 hover:bg-gray-700 cursor-pointer"
           onMouseEnter={() => onCardMouseEnter?.(domain)}
           onMouseLeave={onCardMouseLeave}
+          onClick={() => handleDomainClick(domain)}
         >
           <h3 className="text-xl font-bold text-white mb-2">
             {domain}

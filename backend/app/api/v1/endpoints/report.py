@@ -2,36 +2,38 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import or_
-from app.core.database import (get_db, 
-    generateStudentInformationReport, 
-    generateGradeReport, 
+from typing import Optional, List
+import json
+from app.core.database import (
+    get_db,
+    generateStudentInformationReport,
+    generateGradeReport,
     generateExamReport,
     generateDomainReport
 )
-from app.core.security import (
-    get_current_active_user
-)
-from app.models import LoginInfo as User
+from app.core.security import get_current_active_user
 from app.models import (
+    LoginInfo as User,
     Student,
     ClassRoster,
     FacultyAccess,
     Faculty,
-    GraduationStatus
+    GraduationStatus,
+    Domain,
+    ClassDomain,
+    ClassOffering,
+    GradeClassification
 )
-from app.schemas.reportschema import StudentCompleteReport, DomainReport, DomainGrouping, AccessibleStudentInfo
-
-import pandas as pd
-from typing import Optional, List
-from datetime import datetime
-import json
-
+from app.schemas.reportschema import (
+    StudentCompleteReport,
+    DomainGrouping,
+    AccessibleStudentInfo
+)
 
 router = APIRouter()
 
 #Checks if a faculty member has access to a specific student (either by year or month)
-def check_faculty_access(faculty_id, student_id, db):
-
+def check_faculty_access(faculty_id, student_id, db: Session) -> bool:
     student_year = db.query(GraduationStatus.rosteryear).filter(
         GraduationStatus.studentid == student_id
     ).scalar()
@@ -142,6 +144,30 @@ async def generate_domain_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request"
         )
+
+#return all subdomains (classification names) under a given domain
+@router.get(
+    "/domains/{domain_name}/subdomains",
+    response_model=List[str],
+    status_code=status.HTTP_200_OK
+)
+async def get_domain_subdomains(
+    domain_name: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> List[str]:
+    dom = db.query(Domain).filter(Domain.domainname == domain_name).first()
+    if not dom:
+        raise HTTPException(status_code=404, detail="Domain not found")
+    rows = (
+        db.query(GradeClassification.classificationname)
+        .join(ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid)
+        .join(ClassDomain, ClassDomain.classid == ClassOffering.classid)
+        .filter(ClassDomain.domainid == dom.domainid)
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
         
 @router.get("/faculty_report", response_model=StudentCompleteReport)
 async def generate_faculty_report(
