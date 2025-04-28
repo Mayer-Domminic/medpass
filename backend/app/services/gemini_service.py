@@ -1,5 +1,7 @@
 import random
 import datetime
+import re
+import json
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta import GenerativeServiceClient
 from typing import List, Optional, Dict, Any, Tuple
@@ -372,6 +374,125 @@ def create_message(db, conversation_id, content, sender_type, metadata: Optional
         db.commit()
         
     return new_message
+
+async def generate_domain_questions(domain: str, subdomain: str, student_id: int, count: int = 10, additional_context: str = ""):
+    try:
+        prompt = f"""Generate exactly {count} multiple-choice medical questions for the domain "{domain}" and subdomain "{subdomain}".
+
+Each question must strictly follow these rules:
+1. Be directly relevant to the subdomain topic.
+2. Have exactly 4 possible answers (labeled A, B, C, D).
+3. Have only one correct answer among the 4 options.
+4. Include a brief explanation for why the correct answer is right.
+5. Vary in difficulty (easy, medium, hard).
+6. The entire response MUST be a single, COMPLETE and VALID JSON object.
+7. The JSON object MUST have a single key: "questions".
+8. The value associated with the "questions" key MUST be a JSON array containing EXACTLY {count} question objects.
+9. Each element in the "questions" array MUST be a JSON object representing a question.
+10. Each question object MUST have the following keys and value types:
+    - "id": string (e.g., "1", "2", etc.)
+    - "text": string (the question text)
+    - "options": array of JSON objects. Each object in this array MUST have exactly these three keys:
+        - "id": string (e.g., "A", "B", "C", "D")
+        - "text": string (the option text)
+        - "isCorrect": boolean (true if this is the correct answer, false otherwise)
+        NOTE: The keys within each option object MUST be separated by commas.
+    - "explanation": string (explanation for the correct answer)
+    - "difficulty": string ("easy", "medium", or "hard")
+    - "category": string (should be the subdomain name: "{subdomain}")
+
+Ensure all strings within the JSON are properly escaped (e.g., double quotes inside strings are backslash-escaped).
+
+{additional_context}
+
+STRICTLY return ONLY the JSON object. DO NOT include any other text, formatting, or conversational elements before or after the JSON. The JSON must be the entire response and must be correctly formatted. Example format:
+```json
+{{
+  "questions": [
+    {{
+      "id": "1",
+      "text": "Question text here?",
+      "options": [
+        {{"id": "A", "text": "Option A", "isCorrect": false}},
+        {{"id": "B", "text": "Option B", "isCorrect": true}},
+        {{"id": "C", "text": "Option C", "isCorrect": false}},
+        {{"id": "D", "text": "Option D", "isCorrect": false}}
+      ],
+      "explanation": "Explanation of correct answer",
+      "difficulty": "medium",
+      "category": "{subdomain}"
+    }}
+    // ... {count} total questions
+  ]
+}}
+```
+"""
+
+        messages = [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+        
+        response_text = chat_flash(messages)
+
+        print(f"Raw response from Gemini API: {response_text[:2000]}...") 
+
+        # look for a JSON block first, then try  parsing
+        json_match = re.search(r'```(?:json)?\s*({\s*"questions"[\s\S]*?})\s*```', response_text)
+        
+        if json_match:
+            json_string = json_match.group(1)
+            print("Found JSON code block, attempting to parse...")
+            try:
+                return json.loads(json_string)
+            except json.JSONDecodeError as e:
+                 print(f"JSON decode error from code block: {e}")
+                 pass
+        
+        print("No JSON code block found or parsing failed, attempting direct parse...")
+        try:
+            start_index = response_text.find('{')
+            end_index = response_text.rfind('}')
+            
+            if start_index != -1 and end_index != -1 and end_index > start_index:
+                cleaned_response_text = response_text[start_index:end_index + 1]
+                print(f"Attempting to parse cleaned text: {cleaned_response_text[:1000]}...")
+            else:
+                 print("Could not find valid JSON start/end markers in the response.")
+                 print(f"Full raw response (no JSON markers): {response_text}")
+                 raise ValueError("Could not find valid JSON structure in API response.")
+
+            data = json.loads(cleaned_response_text)
+            if isinstance(data, dict) and "questions" in data and isinstance(data["questions"], list):
+                 print("Direct JSON parse successful and structure seems valid.")
+                 return data
+            else:
+                 print("Direct JSON parse successful but structure is invalid.")
+                 raise ValueError("Invalid JSON structure received from API")
+        except json.JSONDecodeError as e:
+            print(f"Direct JSON decode error: {e}")
+            return {
+                "error": f"Failed to generate valid JSON questions. JSON Decode Error: {e}",
+                "questions": [],
+                "raw_response": response_text[:1000]
+            }
+        except ValueError as e:
+             print(f"Validation error after direct JSON parse: {e}")
+             return {
+                "error": f"Failed to generate valid questions. Validation Error: {e}",
+                "questions": [],
+                "raw_response": response_text[:1000]
+            }
+
+
+    except Exception as e:
+        print(f"Error generating questions: {str(e)}")
+        return {
+            "error": f"Error generating questions: {str(e)}",
+            "questions": []
+        }
 
 def embed_and_create_context_messages(db, message_id):
     from app.models.chat_models import ChatMessage

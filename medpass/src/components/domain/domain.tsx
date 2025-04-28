@@ -36,6 +36,7 @@ const Domain: React.FC<DomainProps> = ({ title, subdomains }) => {
             subdomain={subdomain}
             isExpanded={expandedSubdomain === subdomain.id}
             onToggle={() => toggleSubdomain(subdomain.id)}
+            domainName={title}
           />
         ))}
       </div>
