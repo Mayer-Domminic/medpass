@@ -3,15 +3,17 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {  
+import {
   Home,
   LineChart,
-  User,
-  Calendar, 
+  MessageSquare,
+  FileText,
+  Calendar,
   Settings,
+  User,
   LogOut,
-} from "lucide-react";
-import { signOut } from "next-auth/react";
+} from 'lucide-react';
+import { signOut } from 'next-auth/react';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -24,30 +26,21 @@ const NavItem = ({ icon, label, href, onClick }: NavItemProps) => {
   const pathname = usePathname();
   const isActive = href ? pathname === href : false;
 
-  return (
-    href ? (
-      <Link
-        href={href}
-        className={`w-full h-12 flex items-center justify-center 
-          hover:bg-gray-800/40 rounded-lg transition-colors duration-200`}
-        title={label}
-      >
-        {React.cloneElement(icon as React.ReactElement, {
-          className: `w-5 h-5 text-gray-400 hover:text-white`
-        })}
-      </Link>
-    ) : (
-      <button
-        onClick={onClick}
-        className="w-full h-12 flex items-center justify-center 
-          hover:bg-gray-800/40 rounded-lg transition-colors duration-200"
-        title={label}
-      >
-        {React.cloneElement(icon as React.ReactElement, {
-          className: `w-5 h-5 text-gray-400 hover:text-white`
-        })}
-      </button>
-    )
+  const classes =
+    'w-full h-12 flex items-center justify-center hover:bg-gray-800/40 rounded-lg transition-colors duration-200';
+
+  return href ? (
+    <Link href={href} className={classes} title={label}>
+      {React.cloneElement(icon as React.ReactElement, {
+        className: 'w-5 h-5 text-gray-400 hover:text-white',
+      })}
+    </Link>
+  ) : (
+    <button onClick={onClick} className={classes} title={label}>
+      {React.cloneElement(icon as React.ReactElement, {
+        className: 'w-5 h-5 text-gray-400 hover:text-white',
+      })}
+    </button>
   );
 };
 
@@ -60,15 +53,16 @@ const Sidebar = () => (
 
     {/* Main Navigation */}
     <div className="flex-1 flex flex-col items-center gap-2 px-3 py-3">
-      <NavItem icon={<Home />}    label="Dashboard" href="/dashboard" />
+      <NavItem icon={<Home />} label="Dashboard" href="/dashboard" />
       <NavItem icon={<LineChart />} label="Analytics" href="/dashboard/analytics" />
-      <NavItem icon={<User />}    label="Student"   href="/dashboard/block" />
-      <NavItem icon={<Calendar />} label="Calendar"  href="/dashboard/calendar" />
-      <NavItem icon={<Settings />} label="Settings"  href="/dashboard/settings" />
+      <NavItem icon={<MessageSquare />} label="Chat" href="/dashboard/chat" />
+      <NavItem icon={<FileText />} label="Notes" href="/dashboard/notes" />
+      <NavItem icon={<Calendar />} label="Calendar" href="/dashboard/calendar" />
     </div>
 
-    {/* Logout */}
-    <div className="px-3 py-4">
+    {/* Footer Navigation */}
+    <div className="px-3 py-4 flex flex-col items-center gap-2">
+    <NavItem icon={<Settings />} label="Settings" href="/dashboard/settings" />
       <NavItem
         icon={<LogOut />}
         label="Logout"

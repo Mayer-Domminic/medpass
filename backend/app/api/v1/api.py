@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auth, risk, settings, student, report, faculty, about, question, calendar, gemini, rag, practice_questions
+from .endpoints import auth, risk, settings, student, report, faculty, about, question, calendar, gemini, rag, practice_questions, notes
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -21,3 +21,4 @@ api_router.include_router(about.router, prefix="/about", tags=["about"])
 api_router.include_router(rag.router, prefix="/rag", tags=["rag"])
 api_router.include_router(gemini.router)
 api_router.include_router(practice_questions.router)
+api_router.include_router(notes.router, prefix="/notes")
