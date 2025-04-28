@@ -11,12 +11,6 @@ from app.services.gemini_service import (
     get_chat_history,
     create_message,
     create_conversation,
-    embed_and_create_context_messages,
-    generate_model_response
-)
-from app.core.security import (
-    get_current_active_user
-    embed_and_create_context_messages,
     generate_model_response
 )
 from app.core.security import (

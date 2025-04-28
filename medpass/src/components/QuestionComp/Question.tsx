@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge";
 
 // Import from shared interface and utility files
 import { QuestionProps, confidenceLevels } from '@/types/review';
-import { checkIfCorrect, getCorrectAnswerCount, shouldDisplayImage } from '@/lib/reviewUtils';
+import {
+  checkIfCorrect,
+  getCorrectAnswerCount,
+  shouldDisplayImage,
+  getGradeClassificationName,
+} from '@/lib/reviewUtils';
 
 // extends window to include custom attribute, currentQuestionIndex
 declare global {
@@ -118,27 +123,14 @@ const Question = ({
           <div className="flex space-x-2">
             {/* Display the GradeClassification if available */}
             {questionData && questionData.GradeClassification && (
-              <Badge 
+              <Badge
                 variant="outline"
                 className="bg-blue-900 text-blue-300"
-                title={questionData.GradeClassification.Description || ""}
               >
-                {questionData.GradeClassification.ClassificationName}
+                {getGradeClassificationName(questionData)}
               </Badge>
             )}
-            
-            {/* Still show ContentAreas if they exist (for backwards compatibility) */}
-            {questionData && questionData.ContentAreas && questionData.ContentAreas.map(area => (
-              <Badge
-                key={area.ContentAreaID}
-                variant="outline"
-                className="bg-slate-700 text-slate-300"
-                title={area.Description}
-              >
-                {area.ContentName}
-              </Badge>
-            ))}
-            
+
             {questionData && questionData.Question && (
               <Badge
                 variant="outline"
@@ -231,8 +223,8 @@ const Question = ({
                 >
                   {isSelected && (
                     <div className={`${getCorrectAnswerCount(questionData) > 1
-                        ? 'w-3 h-3 flex items-center justify-center text-xs'
-                        : 'w-3 h-3 rounded-full'
+                      ? 'w-3 h-3 flex items-center justify-center text-xs'
+                      : 'w-3 h-3 rounded-full'
                       } ${isShowingFeedback && isCorrectOption
                         ? 'bg-green-500'
                         : (isShowingFeedback && !isCorrectOption ? 'bg-red-500' : 'bg-blue-500')
@@ -244,8 +236,8 @@ const Question = ({
                   )}
                   {isShowingFeedback && isCorrectOption && !isSelected && (
                     <div className={`${getCorrectAnswerCount(questionData) > 1
-                        ? 'w-3 h-3 flex items-center justify-center text-xs'
-                        : 'w-3 h-3 rounded-full'
+                      ? 'w-3 h-3 flex items-center justify-center text-xs'
+                      : 'w-3 h-3 rounded-full'
                       } bg-slate-500`}>
                       {getCorrectAnswerCount(questionData) > 1 && (
                         <span className="text-white">✓</span>
@@ -265,8 +257,8 @@ const Question = ({
                   {/* Show explanation when feedback is shown */}
                   {isShowingFeedback && (
                     <p className={`mt-1 text-sm ${isCorrectOption
-                        ? isSelected ? 'text-green-400' : 'text-slate-500'
-                        : 'text-slate-400'
+                      ? isSelected ? 'text-green-400' : 'text-slate-500'
+                      : 'text-slate-400'
                       }`}>
                       {option.Explanation}
                     </p>
@@ -286,8 +278,8 @@ const Question = ({
               <Button
                 key={level.id}
                 className={`flex-1 font-medium flex flex-col items-center justify-center py-4 h-auto transition-all duration-200 ${confidenceLevel === level.id
-                    ? 'bg-slate-600 text-slate-100 ring-2 ring-white'
-                    : 'bg-slate-800 text-slate-300'
+                  ? 'bg-slate-600 text-slate-100 ring-2 ring-white'
+                  : 'bg-slate-800 text-slate-300'
                   } ${isShowingFeedback && confidenceLevel !== level.id ? 'opacity-80 hover:bg-slate-800 hover:text-slate-300' : 'hover:bg-slate-700'}`}
                 onClick={() => !isShowingFeedback && setConfidenceLevel(level.id)}
                 disabled={isShowingFeedback}
@@ -303,10 +295,10 @@ const Question = ({
         <div className="mt-6">
           <Button
             className={`w-full py-2 transition-all duration-200 ${isShowingFeedback
-                ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
-                : selectedAnswers.length > 0 && confidenceLevel
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
+              : selectedAnswers.length > 0 && confidenceLevel
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
               }`}
             onClick={handleSubmit}
             disabled={selectedAnswers.length === 0 || !confidenceLevel || isShowingFeedback}

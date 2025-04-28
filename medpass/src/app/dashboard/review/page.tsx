@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import Sidebar from '@/components/navbar';
 import Question from '@/components/QuestionComp/Question';
+import UserGreeting from '@/components/UserGreeting';
 import {
   QuestionResponseData,
   UserAnswer,
@@ -23,7 +24,13 @@ import {
   fetchQuizQuestions,
   submitQuizResultsToDatabase,
   saveQuizState,
-  loadQuizState
+  loadQuizState,
+  getCorrectAnswerCount,
+  countCorrectAnswers,
+  calculateTotalPossiblePoints,
+  calculateUserScore,
+  checkIfCorrect,
+  fetchStudentInfo
 } from '@/lib/reviewUtils';
 
 export default function ReviewPage() {
@@ -36,9 +43,36 @@ export default function ReviewPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
   const [score, setScore] = useState(0);
+  const [totalPossiblePoints, setTotalPossiblePoints] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('idle');
-  const [studentId, setStudentId] = useState<number>(1); // Default studentId
+  const [studentId, setStudentId] = useState<number | null>(null);
+  const [loadingStudentInfo, setLoadingStudentInfo] = useState(false);
+  const [studentInfoError, setStudentInfoError] = useState<string | null>(null);
+
+  // Load student information
+  useEffect(() => {
+    const getStudentInfo = async () => {
+      try {
+        setLoadingStudentInfo(true);
+        setStudentInfoError(null);
+        const studentData = await fetchStudentInfo();
+        if (studentData && studentData.StudentID !== undefined) {
+          setStudentId(studentData.StudentID);
+          console.log("Retrieved student ID:", studentData.StudentID);
+        } else {
+          throw new Error("Student ID not found in response");
+        }
+      } catch (err) {
+        console.error("Failed to fetch student information:", err);
+        setStudentInfoError("Failed to retrieve student information. Please try again later.");
+      } finally {
+        setLoadingStudentInfo(false);
+      }
+    };
+
+    getStudentInfo();
+  }, []);
 
   // Load questions from API
   useEffect(() => {
@@ -50,6 +84,12 @@ export default function ReviewPage() {
         const questionIds = [10, 11, 12]; // Example IDs
         const loadedQuestions = await fetchQuizQuestions(questionIds);
         setQuestions(loadedQuestions);
+
+        // Calculate total possible points immediately after loading questions
+        const possiblePoints = calculateTotalPossiblePoints(loadedQuestions);
+        console.log(`Total possible points calculated: ${possiblePoints}`);
+        setTotalPossiblePoints(possiblePoints);
+
         setLoading(false);
       } catch (err) {
         setError('Failed to load questions. Please try again later.');
@@ -70,6 +110,11 @@ export default function ReviewPage() {
         setUserAnswers(savedState.userAnswers);
         setAnsweredQuestions(savedState.answeredQuestions);
         setScore(savedState.score);
+
+        // If totalPossiblePoints was saved, restore it too
+        if (savedState.totalPossiblePoints) {
+          setTotalPossiblePoints(savedState.totalPossiblePoints);
+        }
       }
     }
   }, [questions, loading]);
@@ -77,47 +122,84 @@ export default function ReviewPage() {
   // save state whenever key state variables changes
   useEffect(() => {
     if (questions.length > 0) {
-      saveQuizState(currentQuestionIndex, userAnswers, answeredQuestions, score);
+      saveQuizState(
+        currentQuestionIndex,
+        userAnswers,
+        answeredQuestions,
+        score,
+        totalPossiblePoints
+      );
     }
-  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, questions]);
+  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, totalPossiblePoints, questions]);
 
   // update global window prop to track current question index
   useEffect(() => {
     window.currentQuestionIndex = currentQuestionIndex;
   }, [currentQuestionIndex]);
 
-  // question answered event listener - UPDATED FOR MULTIPLE CORRECT ANSWERS
+  // question answered event listener - USING REIMPLEMENTED FUNCTIONS
   useEffect(() => {
     const handleQuestionAnswered = (event: CustomEvent<any>) => {
       console.log("Question answered event received", event.detail);
 
-      const { questionIndex, isCorrect, selectedAnswers, confidenceLevel } = event.detail;
+      const { questionIndex, selectedAnswers, confidenceLevel } = event.detail;
+      const question = questions[questionIndex];
 
-      console.log("Current answeredQuestions state:", answeredQuestions);
+      if (!question || !question.Options) {
+        console.error("Question or options not found");
+        return;
+      }
+
+      // Calculate points earned using utility function
+      const pointsEarned = countCorrectAnswers(selectedAnswers, question.Options);
+      const possiblePoints = getCorrectAnswerCount(question);
+      console.log(`Points earned: ${pointsEarned} out of ${possiblePoints} possible`);
+
+      // Check if the answer is fully correct using utility function
+      const isFullyCorrect = pointsEarned === possiblePoints;
 
       // updates answered questions tracking if not already included
       setAnsweredQuestions(prev => {
         if (!prev.includes(questionIndex)) {
-          // Only increment score if this is a new correct answer
-          if (isCorrect) {
-            setScore(prevScore => prevScore + 1);
-            console.log("Incrementing score because answer is correct");
-          }
+          // First time answering - add points to score
+          setScore(prevScore => prevScore + pointsEarned);
+          console.log(`Adding ${pointsEarned} points to score`);
           return [...prev, questionIndex];
         }
-        return prev;
+        // Already answered - update score with difference
+        else {
+          // Find previous answer to adjust score
+          const prevAnswer = userAnswers.find(a => a.questionIndex === questionIndex);
+          if (prevAnswer) {
+            // Get previous points earned
+            let prevPoints = 0;
+            if (prevAnswer.pointsEarned !== undefined) {
+              prevPoints = prevAnswer.pointsEarned;
+            } else {
+              // Fallback for legacy answers
+              prevPoints = countCorrectAnswers(prevAnswer.selectedAnswers, question.Options);
+            }
+
+            // Update score by adding the difference
+            const pointsDifference = pointsEarned - prevPoints;
+            setScore(prevScore => prevScore + pointsDifference);
+            console.log(`Adjusting score by ${pointsDifference} points (${prevPoints} → ${pointsEarned})`);
+          }
+          return prev;
+        }
       });
 
       // stores user answer data - always updates even if question was previously answered
       setUserAnswers(prev => {
         // removes any existing answer for this question
         const filteredAnswers = prev.filter(answer => answer.questionIndex !== questionIndex);
-        // adds new answer
+        // adds new answer with pointsEarned
         const newAnswers = [...filteredAnswers, {
           questionIndex,
-          isCorrect,
-          selectedAnswers, // Now using array of selected answers
-          confidenceLevel
+          isCorrect: isFullyCorrect,
+          selectedAnswers,
+          confidenceLevel,
+          pointsEarned
         }];
         console.log("New userAnswers state:", newAnswers);
         return newAnswers;
@@ -132,7 +214,7 @@ export default function ReviewPage() {
     return () => {
       window.removeEventListener('questionAnswered', handleQuestionAnswered as EventListener);
     };
-  }, []);  // Empty dependency array - IMPORTANT FIX
+  }, [questions, userAnswers]);
 
   //--- navigation Functions ---
   const handleNextQuestion = () => {
@@ -160,13 +242,28 @@ export default function ReviewPage() {
     localStorage.removeItem('reviewSessionState');
   };
 
+  // Calculate current score using reimplemented function
+  const calculateCurrentScore = (): number => {
+    return calculateUserScore(userAnswers, questions);
+  };
+
   //--- calculated properties ---
   const progressPercentage = questions.length ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isCurrentQuestionAnswered = answeredQuestions.includes(currentQuestionIndex);
   const isQuizCompleted = questions.length > 0 && answeredQuestions.length === questions.length;
 
+  // Calculate score percentage based on total possible points
+  const scorePercentage = totalPossiblePoints > 0 ? Math.round((score / totalPossiblePoints) * 100) : 0;
+
   // Handler for submitting quiz results
   const handleSubmitResults = async () => {
+    // Make sure we have a student ID
+    if (!studentId) {
+      setSubmissionStatus('error');
+      setStudentInfoError("Cannot submit without student ID. Please refresh and try again.");
+      return;
+    }
+
     // Update submission status
     setSubmissionStatus('submitting');
 
@@ -177,12 +274,39 @@ export default function ReviewPage() {
       userAnswers,
       questions,
       score,
-      answeredQuestions
+      answeredQuestions,
+      totalPossiblePoints  // Pass totalPossiblePoints to ensure consistency
     );
 
     // Update state based on result
     setSubmissionStatus(result.success ? 'success' : 'error');
+
+    if (!result.success) {
+      setStudentInfoError(result.message || "Failed to submit results. Please try again.");
+    }
   };
+
+  // Verify score consistency - automatically fix inconsistencies
+  useEffect(() => {
+    const calculatedScore = calculateCurrentScore();
+    if (calculatedScore !== score && userAnswers.length > 0) {
+      console.warn(`Score inconsistency detected: state=${score}, calculated=${calculatedScore}`);
+      // Automatically fix the score to ensure consistency
+      setScore(calculatedScore);
+    }
+  }, [score, userAnswers, questions]);
+
+  // Verify total possible points consistency
+  useEffect(() => {
+    if (questions.length > 0) {
+      const calculatedTotalPoints = calculateTotalPossiblePoints(questions);
+      if (calculatedTotalPoints !== totalPossiblePoints) {
+        console.warn(`Total possible points inconsistency detected: state=${totalPossiblePoints}, calculated=${calculatedTotalPoints}`);
+        // Automatically fix the total possible points
+        setTotalPossiblePoints(calculatedTotalPoints);
+      }
+    }
+  }, [questions, totalPossiblePoints]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
@@ -190,8 +314,7 @@ export default function ReviewPage() {
 
       {/* Progress header */}
       <div className="flex justify-between items-center mb-6 px-2">
-        {/* Left side: Title - Positioned correctly to align with navbar */}
-        <h1 className="text-4xl font-bold ml-8">Review: BLOCK 1</h1>
+        <h1 className="text-4xl font-bold ml-20">Review</h1>
 
         {/* Right side: Progress information and user info */}
         <div className="flex items-center">
@@ -205,14 +328,13 @@ export default function ReviewPage() {
             ></div>
           </div>
           <span className="text-slate-400 mr-4">
-            Score: {score}/{answeredQuestions.length}
+            Score: {score}/{totalPossiblePoints}
           </span>
 
           {/* User info */}
-          <span className="text-xl font-bold">Bron</span>!
-          <span className="ml-3 text-sm bg-emerald-900 text-green-300 px-3 py-1 rounded-full">
-            Junior
-          </span>
+          <div className="flex items-center">
+            <UserGreeting className="text-xl font-bold" />
+          </div>
         </div>
       </div>
 
@@ -239,7 +361,7 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {/* Current Question - Adjusted for better centering */}
+      {/* Current Question */}
       {!loading && !error && questions.length > 0 && (
         <div className="container mx-auto mb-6 max-w-4xl">
           <Question
@@ -281,28 +403,30 @@ export default function ReviewPage() {
             </CardHeader>
             <CardContent>
               <p className="text-xl mb-4">
-                Your final score: {score}/{questions.length} ({Math.round((score / questions.length) * 100)}%)
+                Your final score: {score}/{totalPossiblePoints} ({scorePercentage}%)
               </p>
 
-              {/* Student ID Selector */}
-              <div className="mb-4 p-4 bg-slate-800 rounded-md">
-                <label htmlFor="student-id" className="block text-sm font-medium mb-2">
-                  Student ID (for database submission)
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    id="student-id"
-                    value={studentId}
-                    onChange={(e) => setStudentId(Number(e.target.value))}
-                    className="w-24 bg-slate-700 text-white border border-slate-600 rounded px-3 py-2 mr-2"
-                    min="1"
-                  />
-                  <span className="text-sm text-slate-400">
-                    Change this to match an existing student in your database
-                  </span>
+              {/* Student ID info (display only) */}
+              {loadingStudentInfo ? (
+                <div className="mb-4 p-4 bg-slate-800 rounded-md">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
+                    <span className="text-slate-400">Loading student information...</span>
+                  </div>
                 </div>
-              </div>
+              ) : studentId ? (
+                <div className="mb-4 p-4 bg-slate-800 rounded-md">
+                  <p className="text-sm text-slate-400">
+                    Results will be saved for student ID: <span className="text-white font-medium">{studentId}</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="mb-4 p-4 bg-red-800/50 rounded-md">
+                  <p className="text-sm text-slate-300">
+                    {studentInfoError || "Could not retrieve student information. Please refresh the page."}
+                  </p>
+                </div>
+              )}
 
               {/* Question Summary */}
               <div className="mt-6">
@@ -310,15 +434,31 @@ export default function ReviewPage() {
                 <div className="space-y-2">
                   {questions.map((q, index) => {
                     const answer = userAnswers.find(a => a.questionIndex === index);
+                    const totalQuestionPoints = getCorrectAnswerCount(q);
+
+                    // Get points earned from answer or recalculate using utility function
+                    let pointsEarned = 0;
+                    if (answer) {
+                      pointsEarned = answer.pointsEarned !== undefined
+                        ? answer.pointsEarned
+                        : countCorrectAnswers(answer.selectedAnswers, q.Options);
+                    }
+
                     return (
                       <div key={index} className="flex items-center space-x-2">
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center ${answer
-                            ? (answer.isCorrect ? "bg-green-600" : "bg-red-600")
-                            : "bg-slate-700"
+                          ? (pointsEarned === totalQuestionPoints ? "bg-green-600" :
+                            pointsEarned > 0 ? "bg-yellow-600" : "bg-red-600")
+                          : "bg-slate-700"
                           }`}>
                           {index + 1}
                         </div>
-                        <span className="truncate max-w-md">{q.Question.Prompt.substring(0, 60)}...</span>
+                        <span className="truncate max-w-md">
+                          {q.Question.Prompt.substring(0, 60)}...
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {answer ? `${pointsEarned}/${totalQuestionPoints} points` : 'Not answered'}
+                        </span>
                       </div>
                     );
                   })}
@@ -328,14 +468,14 @@ export default function ReviewPage() {
             <CardFooter className="flex flex-col space-y-2">
               <Button
                 className={`w-full ${submissionStatus === 'idle' ? 'bg-green-600 hover:bg-green-700' :
-                    submissionStatus === 'submitting' ? 'bg-blue-500' :
-                      submissionStatus === 'success' ? 'bg-green-700' :
-                        'bg-red-600 hover:bg-red-700'
+                  submissionStatus === 'submitting' ? 'bg-blue-500' :
+                    submissionStatus === 'success' ? 'bg-green-700' :
+                      'bg-red-600 hover:bg-red-700'
                   } text-white mb-2`}
                 onClick={handleSubmitResults}
-                disabled={submissionStatus === 'submitting' || submissionStatus === 'success'}
+                disabled={submissionStatus === 'submitting' || submissionStatus === 'success' || !studentId}
               >
-                {submissionStatus === 'idle' && 'Save Results to Database'}
+                {submissionStatus === 'idle' && 'Save Results'}
                 {submissionStatus === 'submitting' && 'Submitting...'}
                 {submissionStatus === 'success' && 'Results Saved ✓'}
                 {submissionStatus === 'error' && 'Save Failed - Try Again'}
