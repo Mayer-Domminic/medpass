@@ -16,6 +16,9 @@ from app.services.gemini_service import (
 from app.core.security import (
     get_current_active_user
 )
+from app.core.security import (
+    get_current_active_user
+)
 from app.schemas.chat_schemas import (
     FirstMessageRequest,   
     FirstMessageRequest,   
