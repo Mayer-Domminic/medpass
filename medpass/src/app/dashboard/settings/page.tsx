@@ -14,6 +14,8 @@ import Sidebar from '@/components/navbar';
 import EditableText from '@/components/EditableText';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/AlertDialog";
 
+const apiBase = `${process.env.NEXT_PUBLIC_API_BASE_URL}`;
+
 // interfaces for studentInfo and user update request/response
 interface StudentInfo {
   StudentID: number;
@@ -139,31 +141,19 @@ export default function SettingsPage() {
     const fetchStudentInfo = async () => {
       try {
         setLoading(true);
-
-        const API_URL =
-            typeof window === "undefined"
-              ? "http://backend:8000"
-              : "http://localhost:8000";
-          
-          // Updated API endpoint from /api/v1/report to /api/v1/student/info
-          const response = await fetch(`${API_URL}/api/v1/student/info`, {
-            headers: {
-              Authorization: `Bearer ${session?.accessToken}`,
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`Error: ${response.status}`);
-          }
-
+        const response = await fetch(`${apiBase}/student/info`, {
+          headers: {
+            Authorization: `Bearer ${session?.accessToken}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
         const data = await response.json();
         console.log("Student Info:", data);
-        
-        // Updated to match the new API response structure
-        // Assuming the new endpoint directly returns StudentInfo object
-        // instead of nested inside data.StudentInfo
+
         setStudentInfo(data);
-        
+
         //populating form with initial studentInfo data
         if (data) {
           setFormData(prev => ({
@@ -174,7 +164,6 @@ export default function SettingsPage() {
             username: data.username || '',
           }));
         }
-
         setError(null);
       } catch (error) {
         console.error("Error fetching student info:", error);
@@ -187,7 +176,7 @@ export default function SettingsPage() {
     if (session?.accessToken && !session.user.issuperuser) {
       fetchStudentInfo();
     }
-  }, [session]);
+  }, [session, apiBase]);
 
   // Form handlers
   const handleUpdate = (field: string, value: string) => {
@@ -237,13 +226,8 @@ export default function SettingsPage() {
       setIsSubmitting(true);
       setError(null);
       setUpdateSuccess(null);
-
-      const API_URL =
-        typeof window === "undefined"
-          ? "http://backend:8000"
-          : "http://localhost:8000";
       
-      const response = await fetch(`${API_URL}/api/v1/settings/update`, {
+      const response = await fetch(`${apiBase}/settings/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
