@@ -1,6 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 import math
+from decimal import Decimal
+from datetime import datetime
+
 
 #optional statements are present as dataset is incomplete or students are in progress
 class StudentReport(BaseModel):
@@ -69,3 +72,15 @@ class AccessibleStudentInfo(BaseModel):
     
     class Config:
         from_attributes = True
+
+class ExamDate(BaseModel):
+    examresultsid: int
+    timestamp: datetime
+    score: int
+
+class StudentStatistics(BaseModel):
+    total_exams_taken: int 
+    average_score: Decimal 
+    total_questions_answered: Decimal
+    correct_answer_percentage: Decimal
+    exam_dates: List[ExamDate] = []

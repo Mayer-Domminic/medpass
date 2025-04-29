@@ -1,5 +1,5 @@
-from ..core.database import get_question_with_details, get_db, get_question, get_content_areas, get_latest_student_review_performance_data
-from ..services.rag_service import ingest_document, search_documents, search_chat_contexts
+from ..core.database import get_question_with_details, get_db, get_question, get_content_areas, get_latest_student_review_performance_data, get_student_statistics
+from ..services.rag_service import ingest_document, search_documents, search_chat_contexts, ingest_document_from_s3
 from ..services.gemini_service import get_chat_history, get_entire_chat, chat_model
 import os
 
@@ -94,7 +94,14 @@ if __name__ == "__main__":
     
     print(model_message)
     '''
-    performance_data = get_latest_student_review_performance_data(db, 5, 298)
     
-    print(performance_data)
+
+    #performance_data = get_latest_student_review_performance_data(db, 5, 298)
     
+    #print(performance_data)
+
+    #statistics = get_student_statistics(db, 298)
+    #print(statistics)
+    
+    id = ingest_document_from_s3(db, "medpassunr", "notes/mpuser/Test.pdf", 11)
+    print(id)

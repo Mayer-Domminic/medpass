@@ -1,10 +1,9 @@
-//using for demo purposes
-//implement 
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Area, AreaChart } from 'recharts';
-import { Brain, Clock, Target, Book, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Brain, Clock, Target, Book, ArrowUp, ArrowDown } from 'lucide-react';
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 interface StatCardProps {
   title: string;
@@ -15,6 +14,18 @@ interface StatCardProps {
     value: number;
     label: string;
   };
+}
+
+interface StudentStatistics {
+  total_exams_taken: number;
+  average_score: string;
+  total_questions_answered: string;
+  correct_answer_percentage: string;
+  exam_dates?: Array<{
+    examresultsid: number;
+    timestamp: string;
+    score: number;
+  }>;
 }
 
 const StatCard = ({ title, value, subtitle, icon, trend }: StatCardProps) => (
@@ -46,87 +57,161 @@ const StatCard = ({ title, value, subtitle, icon, trend }: StatCardProps) => (
   </Card>
 );
 
-const timeRanges = ['1W', '1M', '3M', '6M', 'ALL'] as const;
-type TimeRange = typeof timeRanges[number];
-
-const generateData = (days: number) => {
-  const data = [];
-  for (let i = 0; i < days; i++) {
-    data.push({
-      date: `Day ${i + 1}`,
-      hours: Math.floor(Math.random() * 6) + 2,
-      questions: Math.floor(Math.random() * 100) + 50,
-      score: Math.floor(Math.random() * 30) + 70,
+const generateChartData = (stats: StudentStatistics) => {
+  const baseQuestions = parseInt(stats.total_questions_answered) / stats.total_exams_taken;
+  const correctPercentage = parseFloat(stats.correct_answer_percentage);
+  
+  if (stats.exam_dates && stats.exam_dates.length > 0) {
+    const sortedDates = [...stats.exam_dates].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    return sortedDates.map((exam, index) => {
+      const examLabel = `Exam ${index + 1}`;
+      const date = new Date(exam.timestamp);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      
+      // Weird string issues with the API added type checking
+      const examScore = typeof exam.score === 'number' ? exam.score : parseInt(exam.score as unknown as string, 10);
+      
+      return {
+        date: examLabel,
+        displayDate: formattedDate,
+        timestamp: exam.timestamp,
+        score: examScore,
+        questions: Math.round(baseQuestions),
+        correctPercentage: correctPercentage
+      };
     });
   }
+  
+  // Just in case database decides to blow up
+  const data = [];
+  const baseScore = parseFloat(stats.average_score);
+  
+  for (let i = 0; i < stats.total_exams_taken; i++) {
+    data.push({
+      date: `Exam ${i + 1}`,
+      displayDate: "Date not available",
+      score: baseScore,
+      questions: Math.round(baseQuestions),
+      correctPercentage: correctPercentage
+    });
+  }
+  
   return data;
 };
 
-const timeRangeMap = {
-  '1W': 7,
-  '1M': 30,
-  '3M': 90,
-  '6M': 180,
-  'ALL': 365,
-};
-
 const StudyAnalytics = () => {
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1W');
-  const [selectedMetric, setSelectedMetric] = useState<'hours' | 'questions' | 'score'>('hours');
-
-  const studyData = useMemo(() => 
-    generateData(timeRangeMap[selectedTimeRange]), 
-    [selectedTimeRange]
-  );
-
-  const metricLabels = {
-    hours: 'Study Hours',
-    questions: 'Questions Completed',
-    score: 'Average Score (%)'
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated: () => redirect('/auth/login'),
+  });
+  
+  const [statistics, setStatistics] = useState<StudentStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  
+  const fetchStatistics = async () => {
+    if (!session?.accessToken) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${apiBase}/statistics-average-report`, {
+        headers: { 
+          Authorization: `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setStatistics(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch statistics');
+      console.error('Error fetching statistics:', err);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const calculateTrend = (data: any[], key: string) => {
-    if (data.length < 2) return 0;
-    const latest = data[data.length - 1][key];
-    const previous = data[data.length - 2][key];
-    return Number((((latest - previous) / previous) * 100).toFixed(1));
-  };
+  
+  useEffect(() => {
+    if (session?.accessToken) {
+      fetchStatistics();
+    }
+  }, [session?.accessToken]);
+  
+  const studyData = useMemo(() => {
+    if (!statistics) {
+      return generateChartData({
+        total_exams_taken: 6,
+        average_score: "41.67",
+        total_questions_answered: "18",
+        correct_answer_percentage: "11.11",
+        exam_dates: Array(6).fill(0).map((_, i) => ({
+          examresultsid: i + 1,
+          timestamp: "1970-01-01T00:00:05Z",
+          score: (i + 1) * 10 
+        }))
+      });
+    }
+    
+    console.log("Statistics data:", statistics);
+    const chartData = generateChartData(statistics);
+    console.log("Generated chart data:", chartData);
+    return chartData;
+  }, [statistics]);
 
   const stats = useMemo(() => {
-    const totalHours = studyData.reduce((sum, day) => sum + day.hours, 0);
-    const totalQuestions = studyData.reduce((sum, day) => sum + day.questions, 0);
-    const avgScore = studyData.reduce((sum, day) => sum + day.score, 0) / studyData.length;
+    if (!statistics) return [];
 
     return [
       {
-        title: "Study Hours",
-        value: `${totalHours}h`,
-        subtitle: `Last ${timeRangeMap[selectedTimeRange]} days`,
-        icon: <Clock className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'hours'), label: "vs previous" }
-      },
-      {
-        title: "Questions Completed",
-        value: totalQuestions.toLocaleString(),
-        subtitle: `Last ${timeRangeMap[selectedTimeRange]} days`,
-        icon: <Brain className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'questions'), label: "vs previous" }
+        title: "Quizzes Taken",
+        value: statistics.total_exams_taken.toString(),
+        subtitle: "Total Quizzes",
+        icon: <Book className="w-6 h-6 text-blue-400" />,
       },
       {
         title: "Average Score",
-        value: `${avgScore.toFixed(1)}%`,
-        subtitle: "Practice tests",
+        value: `${statistics.average_score}%`,
+        subtitle: "All Quizzes",
         icon: <Target className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'score'), label: "improvement" }
       },
       {
-        title: "Study Sessions",
-        value: `${studyData.length}`,
-        subtitle: "Completed sessions",
-        icon: <Book className="w-6 h-6 text-blue-400" />
+        title: "Questions Answered",
+        value: statistics.total_questions_answered,
+        subtitle: "All Quizzes",
+        icon: <Brain className="w-6 h-6 text-blue-400" />,
+      },
+      {
+        title: "Correct Answer Rate",
+        value: `${statistics.correct_answer_percentage}%`,
+        subtitle: "Accuracy rate",
+        icon: <Clock className="w-6 h-6 text-blue-400" />,
       }
     ];
-  }, [studyData, selectedTimeRange]);
+  }, [statistics]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">
+      <p className="text-gray-400">Loading statistics...</p>
+    </div>;
+  }
+
+  if (error) {
+    return <div className="flex justify-center items-center h-64">
+      <p className="text-red-400">Error loading statistics. Please try again later.</p>
+    </div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -139,33 +224,7 @@ const StudyAnalytics = () => {
       <Card className="bg-white/5 border-gray-800">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white">Performance Analytics</CardTitle>
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value as 'hours' | 'questions' | 'score')}
-                className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {Object.entries(metricLabels).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-              <div className="flex gap-1">
-                {timeRanges.map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setSelectedTimeRange(range)}
-                    className={`px-3 py-1 text-sm rounded-lg ${
-                      selectedTimeRange === range
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <CardTitle className="text-white">Exam Performance History</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -173,7 +232,7 @@ const StudyAnalytics = () => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={studyData}>
                 <defs>
-                  <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                   </linearGradient>
@@ -185,7 +244,10 @@ const StudyAnalytics = () => {
                 />
                 <YAxis 
                   stroke="#6B7280"
-                  tick={{ fill: '#6B7280' }}
+                  tick={true}  
+                  axisLine={true}  
+                  tickLine={false}
+                  domain={[0, 'dataMax']}
                 />
                 <Tooltip
                   contentStyle={{ 
@@ -195,13 +257,29 @@ const StudyAnalytics = () => {
                   }}
                   labelStyle={{ color: '#E5E7EB' }}
                   itemStyle={{ color: '#E5E7EB' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length > 0) {
+                      return (
+                        <div className="p-2 bg-gray-800 border border-gray-700 rounded shadow-lg">
+                          <p className="text-gray-200 font-medium">
+                            {`${label} (Date taken: ${payload[0].payload.displayDate})`}
+                          </p>
+                          <p className="text-blue-400">
+                            Score: {payload[0].payload.score}%
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
                 />
                 <Area
                   type="monotone"
-                  dataKey={selectedMetric}
+                  dataKey="score"
+                  name="Score"
                   stroke="#3B82F6"
                   fillOpacity={1}
-                  fill="url(#colorMetric)"
+                  fill="url(#colorScore)"
                 />
               </AreaChart>
             </ResponsiveContainer>

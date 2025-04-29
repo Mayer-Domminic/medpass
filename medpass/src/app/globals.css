@@ -105,3 +105,17 @@ body {
     background-color: #1e293b !important;
   }
 }
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* Edge Support */
+  scrollbar-width: none; /* Firefox Support */
+}
+
+.scrollbar-hide-track::-webkit-scrollbar-track {
+  background: transparent;
+}

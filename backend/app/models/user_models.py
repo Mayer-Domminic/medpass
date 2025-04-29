@@ -43,6 +43,7 @@ class Student(Base):
     facultyAccess = relationship('FacultyAccess', back_populates='student')
     #for saving questions and question stats
     generated_questions = relationship('GeneratedQuestion', back_populates='student')
+    documents = relationship('Document', back_populates='student')
 
 class Faculty(Base):
     __tablename__ = 'faculty'
