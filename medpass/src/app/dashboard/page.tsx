@@ -8,7 +8,7 @@ if (session?.user?.issuperuser) {
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import {Dashboard} from '@/components/Dashboard';
+import { Dashboard } from '@/components/Dashboard';
 import { DomainRecord } from '@/components/block_cards';
 
 export default function DashboardPage() {
@@ -26,19 +26,15 @@ export default function DashboardPage() {
       .then(res => res.json())
       .then(raw => {
         const domains = (raw.Domains || {}) as Record<string, any>;
-        
-  
+
         const allRecords: DomainRecord[] = Object.entries(domains).flatMap(
           ([domain, entries]) =>
             (Array.isArray(entries) ? entries : Object.values(entries)).map((entry: any) => {
-              // if entry is an array: [?, subject, attempted, mastered]
               let subject = entry[1] as string;
               let attempted = entry[2] as number;
               let mastered = entry[3] as number;
-              
-      
+
               if (typeof entry === 'object' && !Array.isArray(entry)) {
-                // For medical education data structure
                 if (entry.ClassificationName !== undefined && entry.PointsAvailable !== undefined) {
                   subject = entry.ClassificationName;
                   attempted = entry.PointsAvailable;
@@ -49,7 +45,7 @@ export default function DashboardPage() {
                   mastered = entry.mastered;
                 }
               }
-              
+
               return {
                 domain,
                 subject,
@@ -58,7 +54,7 @@ export default function DashboardPage() {
               };
             })
         );
-        
+
         // Group records by domain
         const recordsByDomain: Record<string, DomainRecord[]> = {};
         allRecords.forEach(record => {
@@ -67,20 +63,15 @@ export default function DashboardPage() {
           }
           recordsByDomain[record.domain].push(record);
         });
-        
-        // Make things cleaner by sorted by smaller batches
-        // For not the best looking is keep the top 5 domains (with the most points) The incomplete datasets includes a lot of empty data
-        const limitedRecords: DomainRecord[] = Object.entries(recordsByDomain).flatMap(
+
+        // ✅ NO MORE LIMITING - return all records sorted
+        const allRecordsUncapped: DomainRecord[] = Object.entries(recordsByDomain).flatMap(
           ([domain, records]) => {
-            // Sort by attempted points in descending order
-            const sortedRecords = [...records].sort((a, b) => b.attempted - a.attempted);
-            
-            // Take only the top 5 records
-            return sortedRecords.slice(0, 5);
+            return [...records].sort((a, b) => b.attempted - a.attempted);
           }
         );
-        
-        setDomainData(limitedRecords);
+
+        setDomainData(allRecordsUncapped);
       })
       .catch(console.error);
   }, [session]);
