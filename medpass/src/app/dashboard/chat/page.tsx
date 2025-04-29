@@ -46,54 +46,109 @@ export default function ChatPage() {
       fetch(`${apiBase}/history?active_only=true`, {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       })
-        .then(res => res.ok ? res.json() : Promise.reject(res.status))
-        .then(data => setHistory(data))
-        .catch(console.error);
+        .then(res => {
+          if (!res.ok) {
+            return Promise.reject(res.status);
+          }
+          return res.json();
+        })
+        .then(data => {
+          setHistory(data); // Store the fetched data in state
+        })
+        .catch(error => {
+          console.error("Error fetching history:", error);
+        });
     }
   }, [showHistory, session?.accessToken]);
+  
+
+  const startNewChat = async () => {
+    setConversationId(null);
+    setMessages([]);
+    setChatTitle("New Conversation");
+  };
+
+  const loadChatHistory = async (conversationId: number) => {
+    setConversationId(conversationId);
+    const res = await fetch(`${apiBase}/${conversationId}/history`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${session?.accessToken}`,
+      },
+    });
+    if (res.ok) {
+      const conversation = await res.json();
+      setMessages(conversation.messages);
+      setChatTitle(conversation.title);
+    }
+  };
 
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!draft.trim() || !session?.accessToken) return;
+
+    // Add user message locally
     const userMsg: Message = { sender: "user", content: draft, timestamp: new Date().toISOString() };
     setMessages(ms => [...ms, userMsg]);
     setDraft("");
     setIsLoading(true);
+
     try {
-      const url = conversationId == null ? apiBase : `${apiBase}/${conversationId}/messages`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", Authorization:`Bearer ${session.accessToken}` },
-        body: JSON.stringify({ content: draft, sender_type: "user", metadata: {} }),
-      });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      const data = await res.json();
-      if (conversationId == null && data.conversation?.conversation_id) {
-        setConversationId(data.conversation.conversation_id);
-        setChatTitle(data.conversation.title || draft.slice(0,30));
+      if (conversationId === null) {
+        // Start new conversation
+        const res = await fetch(apiBase, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+          body: JSON.stringify({ content: draft, sender_type: "user", metadata: {} }),
+        });
+        if (!res.ok) throw new Error(`Failed to start chat: ${res.status}`);
+        const data = await res.json();
+        if (data.conversation?.conversation_id) {
+          setConversationId(data.conversation.conversation_id);
+          setChatTitle(data.conversation.title || draft);
+          const assistantMsg: Message = {
+            sender: "assistant",
+            content: data.model_response.content,
+            timestamp: data.model_response.timestamp,
+          };
+          setMessages(ms => [...ms, assistantMsg]);
+        } else {
+          console.error("Conversation ID missing:", data);
+        }
+      } else {
+        // Continue existing conversation
+        const res = await fetch(`${apiBase}/${conversationId}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+          body: JSON.stringify({ content: draft, sender_type: "user", metadata: {} }),
+        });
+        if (!res.ok) throw new Error(`Failed to send message: ${res.status}`);
+        const data = await res.json();
+        const assistantMsg: Message = {
+          sender: "assistant",
+          content: data.content,
+          timestamp: data.timestamp,
+        };
+        setMessages(ms => [...ms, assistantMsg]);
       }
-      const assistantMsg: Message = {
-        sender: "assistant",
-        content: data.model_response?.content ?? data.content,
-        timestamp: data.model_response?.timestamp ?? data.timestamp,
-      };
-      setMessages(ms => [...ms, assistantMsg]);
-    } catch(err) {
-      console.error(err);
+    } catch (error) {
+      console.error("Error sending message:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getTimeString = (ts: string, sender: "user"|"assistant") => {
+  const getTimeString = (ts: string, sender: "user" | "assistant") => {
     const date = new Date(ts);
     if (sender === "assistant") date.setHours(date.getHours() + 5);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-  if (status === 'loading') {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">Loading...</div>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex">
@@ -102,6 +157,7 @@ export default function ChatPage() {
         <header className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#151b2c]">
           <h1 className="text-2xl font-bold text-gray-100">Medpass AI Mentor</h1>
           <div className="flex items-center space-x-2">
+            <Button size="sm" onClick={startNewChat}>New Chat</Button>
             <Button size="sm" onClick={() => setShowHistory(prev => !prev)}>
               {showHistory ? "Hide History" : "Show History"}
             </Button>
@@ -122,9 +178,7 @@ export default function ChatPage() {
                     key={h.conversationid}
                     className="p-2 mb-1 rounded hover:bg-gray-700 cursor-pointer text-white"
                     onClick={() => {
-                      setConversationId(h.conversationid);
-                      setChatTitle(h.title);
-                      // TODO: load conversation messages
+                      loadChatHistory(h.conversationid);
                     }}
                   >
                     <div className="truncate">{h.title}</div>
@@ -140,20 +194,22 @@ export default function ChatPage() {
                 <CardContent className="flex-1 p-0 flex flex-col">
                   <ScrollArea className="flex-1 px-6 py-4">
                     <div className="flex flex-col space-y-6 pb-4">
-                      {messages.map((m,i) => (
-                        <div key={i} className={`flex ${m.sender===
-                          "user"?"justify-end":"justify-start"}`}>
-                          <div className={`max-w-3xl p-4 rounded-lg shadow-lg ${m.sender===
-                            "user"?"bg-blue-600 text-white":"bg-[#1e293b] border border-gray-700 text-white"}`}>
-                            <div className="mb-2 leading-relaxed" dangerouslySetInnerHTML={{
-                              __html: m.content.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br/>')
-                            }} />
-                            <div className={`text-xs flex justify-between ${m.sender===
-                              "user"?"text-blue-100":"text-gray-400"}`}>
-                              <span>{getTimeString(m.timestamp,m.sender)}</span>
+                      {messages.map((m, i) => (
+                        <div key={i} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-3xl p-4 rounded-lg shadow-lg ${m.sender === "user" ? "bg-blue-600 text-white" : "bg-[#1e293b] border border-gray-700 text-white"}`}>
+                            <div
+                              className="mb-2 leading-relaxed"
+                              dangerouslySetInnerHTML={{
+                                __html: m.content
+                                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                  .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                  .replace(/\n/g, '<br/>'),
+                              }}
+                            />
+                            <div className={`text-xs flex justify-between ${m.sender === "user" ? "text-blue-100" : "text-gray-400"}`}> 
+                              <span>{getTimeString(m.timestamp, m.sender)}</span>
                               <span className="ml-2 px-2 py-0.5 rounded-full uppercase bg-gray-700 text-gray-300 text-[10px]">
-                                {m.sender===
-                                "user"?"You":"Medpass AI Tutor"}
+                                {m.sender === "user" ? "You" : "Medpass AI Tutor"}
                               </span>
                             </div>
                           </div>
@@ -164,8 +220,9 @@ export default function ChatPage() {
                           <div className="bg-[#1e293b] border border-gray-700 text-white p-4 rounded-lg shadow-lg max-w-xs">
                             <div className="flex items-center space-x-2">
                               <div className="flex space-x-1">
-                                {[0,300,600].map((delay)=><div key={delay} className="h-2 w-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay:
-                                  `${delay}ms`}} />)}
+                                {[0,300,600].map(delay => (
+                                  <div key={delay} className="h-2 w-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+                                ))}
                               </div>
                               <p className="text-sm text-gray-300">AI is thinking...</p>
                             </div>
@@ -181,10 +238,10 @@ export default function ChatPage() {
                         className="flex-1 bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
                         placeholder="Type a message…"
                         value={draft}
-                        onChange={e=>setDraft(e.target.value)}
+                        onChange={e => setDraft(e.target.value)}
                       />
                       <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={!draft.trim() || isLoading}>
-                        {isLoading?"Sending...":"Send"}
+                        {isLoading ? "Sending..." : "Send"}
                       </Button>
                     </div>
                   </form>
