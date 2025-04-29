@@ -9,7 +9,8 @@ from app.core.database import (
     generateStudentInformationReport,
     generateGradeReport,
     generateExamReport,
-    generateDomainReport
+    generateDomainReport,
+    get_student_statistics
 )
 from app.core.security import get_current_active_user
 from app.models import (
@@ -22,12 +23,15 @@ from app.models import (
     Domain,
     ClassDomain,
     ClassOffering,
-    GradeClassification
+    GradeClassification,
+    ExamResults
 )
 from app.schemas.reportschema import (
     StudentCompleteReport,
     DomainGrouping,
-    AccessibleStudentInfo
+    AccessibleStudentInfo,
+    StudentStatistics,
+    ExamDate
 )
 
 router = APIRouter()
@@ -386,6 +390,55 @@ async def get_accessible_students(
             for s in all_students
         ]
         
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+        
+@router.get("/statistics-average-report", response_model=StudentStatistics)
+async def get_stats_average(
+    current_user: User = Depends(get_current_active_user), 
+    db: Session = Depends(get_db)
+):
+    
+    try:
+        if current_user.issuperuser:
+            raise HTTPException(
+                status_code=403,
+                detail="Admins accounts can not access student review performance route"
+            )
+
+        studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
+        if not studentid:
+            raise HTTPException(
+                status_code=404,
+                detail="Login Info is not Attached to a Student"
+            )
+        
+        average_statistics = get_student_statistics(db, studentid)
+        if not average_statistics:
+            raise HTTPException(
+                status_code=404,
+                detail="Student Average Data Info Not Found"
+            )
+        
+        db_exam_dates = db.query(ExamResults.examresultsid, ExamResults.examid).filter(
+            ExamResults.studentid == studentid, ExamResults.examid == 5
+        ).order_by(
+            ExamResults.timestamp
+        )
+        
+        exam_dates = [ExamDate(examresultsid=result[0], timestamp=result[1]) for result in db_exam_dates]
+        
+        average_statistics.exam_dates = exam_dates
+        
+        return average_statistics
+            
     except HTTPException:
         raise
     

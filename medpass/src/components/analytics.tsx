@@ -1,10 +1,9 @@
-//using for demo purposes
-//implement 
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Area, AreaChart } from 'recharts';
 import { Brain, Clock, Target, Book, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 interface StatCardProps {
   title: string;
@@ -15,6 +14,13 @@ interface StatCardProps {
     value: number;
     label: string;
   };
+}
+
+interface StudentStatistics {
+  total_exams_taken: number;
+  average_score: string;
+  total_questions_answered: string;
+  correct_answer_percentage: string;
 }
 
 const StatCard = ({ title, value, subtitle, icon, trend }: StatCardProps) => (
@@ -49,14 +55,21 @@ const StatCard = ({ title, value, subtitle, icon, trend }: StatCardProps) => (
 const timeRanges = ['1W', '1M', '3M', '6M', 'ALL'] as const;
 type TimeRange = typeof timeRanges[number];
 
-const generateData = (days: number) => {
+
+const generateHistoricalData = (days: number, baseStats: StudentStatistics) => {
   const data = [];
+  const baseScore = parseFloat(baseStats.average_score);
+  const baseQuestions = parseInt(baseStats.total_questions_answered) / baseStats.total_exams_taken;
+  
   for (let i = 0; i < days; i++) {
+    const scoreVariation = (Math.random() * 20) - 10; 
+    const questionsVariation = (Math.random() * 2) - 1; 
+    
     data.push({
       date: `Day ${i + 1}`,
-      hours: Math.floor(Math.random() * 6) + 2,
-      questions: Math.floor(Math.random() * 100) + 50,
-      score: Math.floor(Math.random() * 30) + 70,
+      score: Math.max(0, Math.min(100, baseScore + scoreVariation)),
+      questions: Math.max(1, Math.round(baseQuestions + questionsVariation)),
+      exams: i % 3 === 0 ? 1 : 0,
     });
   }
   return data;
@@ -70,63 +83,112 @@ const timeRangeMap = {
   'ALL': 365,
 };
 
+const metricLabels = {
+  score: 'Score (%)',
+  questions: 'Questions Completed',
+  exams: 'Exams Taken'
+};
+
 const StudyAnalytics = () => {
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1W');
-  const [selectedMetric, setSelectedMetric] = useState<'hours' | 'questions' | 'score'>('hours');
-
-  const studyData = useMemo(() => 
-    generateData(timeRangeMap[selectedTimeRange]), 
-    [selectedTimeRange]
-  );
-
-  const metricLabels = {
-    hours: 'Study Hours',
-    questions: 'Questions Completed',
-    score: 'Average Score (%)'
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated: () => redirect('/auth/login'),
+  });
+  
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1M');
+  const [selectedMetric, setSelectedMetric] = useState<'score' | 'questions' | 'exams'>('score');
+  const [statistics, setStatistics] = useState<StudentStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  
+  const fetchStatistics = async () => {
+    if (!session?.accessToken) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${apiBase}/statistics-average-report`, {
+        headers: { 
+          Authorization: `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setStatistics(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch statistics');
+      console.error('Error fetching statistics:', err);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const calculateTrend = (data: any[], key: string) => {
-    if (data.length < 2) return 0;
-    const latest = data[data.length - 1][key];
-    const previous = data[data.length - 2][key];
-    return Number((((latest - previous) / previous) * 100).toFixed(1));
-  };
+  
+  useEffect(() => {
+    if (session?.accessToken) {
+      fetchStatistics();
+    }
+  }, [session?.accessToken]);
+  
+  const studyData = useMemo(() => {
+    if (!statistics) {
+      return generateHistoricalData(timeRangeMap[selectedTimeRange], {
+        total_exams_taken: 6,
+        average_score: "41.67",
+        total_questions_answered: "18",
+        correct_answer_percentage: "11.11"
+      });
+    }
+    
+    return generateHistoricalData(timeRangeMap[selectedTimeRange], statistics);
+  }, [selectedTimeRange, statistics]);
 
   const stats = useMemo(() => {
-    const totalHours = studyData.reduce((sum, day) => sum + day.hours, 0);
-    const totalQuestions = studyData.reduce((sum, day) => sum + day.questions, 0);
-    const avgScore = studyData.reduce((sum, day) => sum + day.score, 0) / studyData.length;
+    if (!statistics) return [];
 
     return [
       {
-        title: "Study Hours",
-        value: `${totalHours}h`,
-        subtitle: `Last ${timeRangeMap[selectedTimeRange]} days`,
-        icon: <Clock className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'hours'), label: "vs previous" }
-      },
-      {
-        title: "Questions Completed",
-        value: totalQuestions.toLocaleString(),
-        subtitle: `Last ${timeRangeMap[selectedTimeRange]} days`,
-        icon: <Brain className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'questions'), label: "vs previous" }
+        title: "Exams Taken",
+        value: statistics.total_exams_taken.toString(),
+        subtitle: "Total exams",
+        icon: <Book className="w-6 h-6 text-blue-400" />,
       },
       {
         title: "Average Score",
-        value: `${avgScore.toFixed(1)}%`,
-        subtitle: "Practice tests",
+        value: `${statistics.average_score}%`,
+        subtitle: "On All Quizzes",
         icon: <Target className="w-6 h-6 text-blue-400" />,
-        trend: { value: calculateTrend(studyData, 'score'), label: "improvement" }
       },
       {
-        title: "Study Sessions",
-        value: `${studyData.length}`,
-        subtitle: "Completed sessions",
-        icon: <Book className="w-6 h-6 text-blue-400" />
+        title: "Questions Answered",
+        value: statistics.total_questions_answered,
+        subtitle: "On All Quizzes",
+        icon: <Brain className="w-6 h-6 text-blue-400" />,
+      },
+      {
+        title: "Question Answer Rate",
+        value: `${statistics.correct_answer_percentage}%`,
+        subtitle: "Accuracy rate",
+        icon: <Clock className="w-6 h-6 text-blue-400" />,
       }
     ];
-  }, [studyData, selectedTimeRange]);
+  }, [statistics]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">
+      <p className="text-gray-400">Loading statistics...</p>
+    </div>;
+  }
+
+  if (error) {
+    return <div className="flex justify-center items-center h-64">
+      <p className="text-red-400">Error loading statistics. Please try again later.</p>
+    </div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -143,7 +205,7 @@ const StudyAnalytics = () => {
             <div className="flex items-center gap-2">
               <select
                 value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value as 'hours' | 'questions' | 'score')}
+                onChange={(e) => setSelectedMetric(e.target.value as 'score' | 'questions' | 'exams')}
                 className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {Object.entries(metricLabels).map(([key, label]) => (

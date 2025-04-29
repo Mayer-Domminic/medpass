@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, inspect, MetaData, text
+from sqlalchemy import create_engine, inspect, MetaData, text, func, case, select
 from sqlalchemy.orm import sessionmaker
 from typing import Optional, List
 from .config import settings
 from .base import Base
+from decimal import Decimal
 
 from app.models import (
     Student,
@@ -25,7 +26,7 @@ from app.models import (
     ChatContext,
     ChatMessage
 )
-from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
+from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport, StudentStatistics
 from app.schemas.question import ExamResultsCreate, StudentQuestionPerformanceResponseReview
 from app.schemas.pydantic_base_models import user_schemas
 
@@ -702,3 +703,27 @@ def get_latest_student_review_performance_data(db, exam_id, student_id):
         ))
         
     return performance_data
+
+
+def get_student_statistics(db, student_id):
+    query = db.query(
+        func.count(func.distinct(ExamResults.examresultsid)).label('total_exams_taken'),
+        func.round(func.avg(ExamResults.score), 2).label('average_score'),
+        func.count(StudentQuestionPerformance.studentquestionperformanceid).label('total_questions_answered'),
+        func.round(100.0 * func.sum(case((StudentQuestionPerformance.result == True, 1), else_=0)) / func.count('*'), 2).label('correct_answer_percentage')
+    ).join(
+        StudentQuestionPerformance, StudentQuestionPerformance.examresultid == ExamResults.examresultsid
+    ).filter(
+        ExamResults.studentid == student_id
+    )
+    
+    result = query.first()
+    
+    final_result = StudentStatistics(
+        total_exams_taken=result[0],
+        average_score=result[1],
+        total_questions_answered=result[2],
+        correct_answer_percentage=result[3]
+    )
+    
+    return final_result
