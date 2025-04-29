@@ -17,7 +17,14 @@ import {
     GradeClassification,
     QuestionData
 } from '@/types/results';
-import { formatDate, getQuestionDetails } from '@/lib/resultsUtils';
+import {
+    formatDate,
+    getQuestionDetails,
+    getHistoricalPerformance,
+    getOptionLetter,
+    combineAttempts,
+    calculatePerformanceMetrics
+} from '@/lib/resultsUtils';
 import PreviewQuestion from './previewQuestion';
 
 // Define local types
@@ -39,6 +46,14 @@ const QuestionPerformance: React.FC = () => {
     const [resultFilter, setResultFilter] = useState<string>('all');
     const [previewQuestion, setPreviewQuestion] = useState<QuestionData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // New state for historical attempts
+    const [historicalAttempts, setHistoricalAttempts] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+    const [performanceMetrics, setPerformanceMetrics] = useState({
+        totalAttempts: 0,
+        successRate: 0,
+        avgConfidence: 0
+    });
     const router = useRouter();
     const { data: session } = useSession();
 
@@ -150,21 +165,79 @@ const QuestionPerformance: React.FC = () => {
         });
     };
 
-    // Handle preview question
     const handleQuestionClick = async (questionId: number) => {
+        console.log(`[handleQuestionClick] Starting for questionId: ${questionId}`);
         setPreviewQuestionId(questionId);
+        setLoadingHistory(true);
+        setHistoricalAttempts([]); // Reset previous attempts
 
         try {
+            // Fetch question details for the preview modal
+            console.log(`[handleQuestionClick] Fetching question details for questionId: ${questionId}`);
             const details = await getQuestionDetails(questionId.toString());
 
             if (details) {
+                console.log('[handleQuestionClick] Question details received:', details);
                 setPreviewQuestion(details);
             } else {
+                console.error(`[handleQuestionClick] Could not load details for question ${questionId}`);
                 setError(`Could not load details for question ${questionId}`);
             }
+
+            // Fetch historical attempts for this question ID
+            if (session?.accessToken) {
+                console.log(`[handleQuestionClick] Fetching historical performance with accessToken: ${session.accessToken.substring(0, 10)}...`);
+
+                const historyData = await getHistoricalPerformance(
+                    session.accessToken,
+                    questionId.toString()
+                );
+
+                console.log('[handleQuestionClick] Raw history data received:', historyData);
+                console.log(`[handleQuestionClick] Number of history records: ${historyData.length}`);
+
+                // Check each record to understand what data is missing
+                historyData.forEach((record, index) => {
+                    console.log(`[handleQuestionClick] Record ${index} details:`, {
+                        hasSelectedOptionID: record.SelectedOptionID !== undefined,
+                        selectedOptionID: record.SelectedOptionID,
+                        result: record.Result,
+                        confidence: record.Confidence,
+                        recordKeys: Object.keys(record)
+                    });
+                });
+
+                // IMPORTANT: Changed the filter logic to not filter out records!
+                // The API is returning the correct StudentQuestionPerformance objects but they might not have
+                // a SelectedOptionID property as expected
+                setHistoricalAttempts(historyData);
+
+                // Calculate performance metrics for this question
+                const attempts = historyData.map(histAttempt => {
+                    const mappedAttempt = {
+                        answer: histAttempt.SelectedOptionID,
+                        correct: histAttempt.Result === true,
+                        confidence: histAttempt.Confidence || 0,
+                        date: formatDate(histAttempt.ExamDate || histAttempt.Timestamp),
+                        examName: histAttempt.ExamName || 'Unknown exam',
+                        examId: histAttempt.ExamResultsID
+                    };
+                    console.log('[handleQuestionClick] Mapped attempt:', mappedAttempt);
+                    return mappedAttempt;
+                });
+
+                const metrics = calculatePerformanceMetrics(attempts);
+                console.log('[handleQuestionClick] Calculated metrics:', metrics);
+                setPerformanceMetrics(metrics);
+            } else {
+                console.error('[handleQuestionClick] No access token available');
+            }
         } catch (error) {
-            console.error('Error fetching question preview:', error);
+            console.error('[handleQuestionClick] Error:', error);
             setError('Failed to load question details');
+        } finally {
+            setLoadingHistory(false);
+            console.log('[handleQuestionClick] Completed');
         }
     };
 
@@ -172,6 +245,7 @@ const QuestionPerformance: React.FC = () => {
     const closePreview = () => {
         setPreviewQuestionId(null);
         setPreviewQuestion(null);
+        setHistoricalAttempts([]);
     };
 
     // Handle select all questions
@@ -238,14 +312,6 @@ const QuestionPerformance: React.FC = () => {
 
         // Clear any localStorage data that might interfere with the new quiz
         localStorage.removeItem('reviewSessionState');
-        
-        // localStorage.removeItem('quizState');
-        // localStorage.removeItem('currentQuestionIndex');
-        // localStorage.removeItem('selectedAnswers');
-        // localStorage.removeItem('quizResults');
-        // localStorage.removeItem('userAnswersArray');
-        // localStorage.removeItem('answeredQuestionsArray');
-        // localStorage.removeItem('currentQuestionIndex');
     };
 
     // Get difficulty color
@@ -282,7 +348,7 @@ const QuestionPerformance: React.FC = () => {
             </CardHeader>
 
             <CardContent>
-                {/* Preview Question Modal */}
+                {/* Modified Preview Question Modal with Attempt History */}
                 {previewQuestionId && previewQuestion && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
                         <div className="max-w-4xl w-3/4 mx-auto">
@@ -297,7 +363,7 @@ const QuestionPerformance: React.FC = () => {
                                 </button>
 
                                 <div className="w-full">
-                                    {/* Show question preview */}
+                                    {/* Switch to showing question details and historical attempts */}
                                     <div className="bg-gray-800 rounded-lg p-6 shadow-xl">
                                         <div className="mb-4">
                                             <Badge className={`${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).bg} ${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).text} border ${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).color}`}>
@@ -308,44 +374,87 @@ const QuestionPerformance: React.FC = () => {
                                             </Badge>
                                         </div>
 
-                                        <h3 className="text-xl font-medium text-white mb-6">
+                                        <h3 className="text-xl font-semibold text-white mb-6">
                                             {previewQuestion.Question.Prompt}
                                         </h3>
 
-                                        <div className="space-y-4">
-                                            {previewQuestion.Options.map((option) => (
-                                                <div
-                                                    key={option.OptionID}
-                                                    className={`p-4 rounded-lg border ${option.CorrectAnswer ? 'border-green-500 bg-green-900/20' : 'border-gray-700 bg-gray-800'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center">
-                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${option.CorrectAnswer ? 'bg-green-500' : 'bg-gray-700'
-                                                            }`}>
-                                                            {option.CorrectAnswer && <Check className="w-4 h-4 text-white" />}
-                                                        </div>
-                                                        <span className="text-white">{option.OptionDescription}</span>
-                                                    </div>
+                                        {/* Historical Attempts Section */}
+                                        <div className="mt-4 border-t border-gray-700 pt-4">
+                                            <h3 className="text-md text-white font-semibold mb-4">Attempt History</h3>
 
-                                                    {option.Explanation && (
-                                                        <div className="mt-2 pl-9 text-sm text-gray-400">
-                                                            <span className="font-medium text-gray-300">Explanation:</span> {option.Explanation}
-                                                        </div>
-                                                    )}
+                                            {loadingHistory ? (
+                                                <div className="py-2 text-center text-gray-500">Loading attempt history...</div>
+                                            ) : historicalAttempts.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-400 mb-2">
+                                                        <div>DATE</div>
+                                                        <div>EXAM</div>
+                                                        <div className="text-center">ANSWER</div>
+                                                        <div className="text-center">RESULT</div>
+                                                        <div className="text-center">CONFIDENCE</div>
+                                                    </div>
+                                                    {historicalAttempts.map((attempt, index) => {
+                                                        // Safely extract data, providing defaults for missing properties
+                                                        const examDate = attempt.ExamDate || attempt.Timestamp || 'Unknown';
+                                                        const examName = attempt.ExamName || "N/A";
+                                                        const selectedOption = attempt.SelectedOptionID;
+                                                        const result = attempt.Result;
+                                                        const confidence = attempt.Confidence !== undefined ? attempt.Confidence : '-';
+
+                                                        return (
+                                                            <div key={index} className="grid grid-cols-5 gap-2 py-2 border-b border-gray-800 text-sm">
+                                                                <div className="text-gray-400">{formatDate(examDate)}</div>
+                                                                <div className="text-gray-300">{examName}</div>
+                                                                <div className="text-center">
+                                                                    <span className="px-2 py-1 bg-gray-800 rounded-full text-xs text-white">
+                                                                        {selectedOption !== undefined
+                                                                            ? getOptionLetter(selectedOption - 1)
+                                                                            : '-'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    {result ? (
+                                                                        <Check className="w-5 h-5 text-green-500 mx-auto" />
+                                                                    ) : (
+                                                                        <X className="w-5 h-5 text-red-500 mx-auto" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-gray-300">{confidence}</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                            ))}
+                                            ) : (
+                                                <div className="py-4 text-center text-gray-500">No attempt history found</div>
+                                            )}
                                         </div>
 
-                                        {/* Content areas */}
-                                        {previewQuestion.ContentAreas && previewQuestion.ContentAreas.length > 0 && (
-                                            <div className="mt-6 pt-4 border-t border-gray-700">
-                                                <h4 className="text-sm font-medium text-gray-400 mb-2">CONTENT AREAS</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {previewQuestion.ContentAreas.map((area) => (
-                                                        <Badge key={area.ContentAreaID} variant="outline" className="bg-gray-700/50 text-white border-gray-600">
-                                                            {area.ContentName} - {area.Discipline}
-                                                        </Badge>
-                                                    ))}
+                                        {/* Performance Analytics Section */}
+                                        {historicalAttempts.length > 0 && (
+                                            <div className="mt-6 border-t border-gray-700 pt-4 text-white">
+                                                <h3 className="text-md font-semibold mb-4">Performance Analytics</h3>
+
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div className="bg-gray-800/50 p-3 rounded-lg">
+                                                        <div className="text-xs text-gray-400 mb-1">TOTAL ATTEMPTS</div>
+                                                        <div className="text-xl font-semibold">{performanceMetrics.totalAttempts}</div>
+                                                    </div>
+
+                                                    <div className="bg-gray-800/50 p-3 rounded-lg">
+                                                        <div className="text-xs text-gray-400 mb-1">SUCCESS RATE</div>
+                                                        <div className="text-xl font-semibold">
+                                                            {performanceMetrics.successRate}%
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-gray-800/50 p-3 rounded-lg">
+                                                        <div className="text-xs text-gray-400 mb-1">AVG CONFIDENCE</div>
+                                                        <div className="text-xl font-semibold">
+                                                            {performanceMetrics.avgConfidence}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}

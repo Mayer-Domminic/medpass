@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Clock, BarChart2 } from 'lucide-react';
+import { Check, X, Clock } from 'lucide-react';
 import { QuestionOption, PreviewQuestionProps } from '@/types/results';
-import { getQuestionDetails, getHistoricalPerformance, getOptionLetter, combineAttempts } from '@/lib/resultsUtils';
-import { Attempt } from '@/types/results';
+import { getQuestionDetails, getOptionLetter } from '@/lib/resultsUtils';
 import { useSession } from 'next-auth/react';
 
 const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
@@ -10,245 +9,162 @@ const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
     classificationName,
     attempts = []
 }) => {
-    const { data: session } = useSession(); // Get authentication session
-    const [options, setOptions] = useState<QuestionOption[]>([]);
+    const { data: session } = useSession();
+    const [questionData, setQuestionData] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(true);
-    const [historicalAttempts, setHistoricalAttempts] = useState<any[]>([]);
-    const [combinedAttempts, setCombinedAttempts] = useState<any[]>([]);
-    const [loadingHistory, setLoadingHistory] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // Helper function to format dates consistently
-    const formatDate = (dateInput: string | Date): string => {
-        if (!dateInput) return 'Unknown date';
-
-        const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
-
-        // Check if date is valid
-        if (isNaN(date.getTime())) return 'Invalid date';
-
-        // Format as MM/DD/YYYY
-        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-    };
-
-    // Fetch question details (options) on component mount
+    // Fetch question details on component mount
     useEffect(() => {
         const fetchQuestionDetails = async () => {
+            console.log(`[PreviewQuestion] Fetching details for question ID: ${question.id}`);
             setLoading(true);
-            const details = await getQuestionDetails(question.id);
-            if (details && details.options) {
-                setOptions(details.options);
+            try {
+                const details = await getQuestionDetails(question.id);
+                console.log(`[PreviewQuestion] Received details:`, details);
+
+                if (details) {
+                    setQuestionData(details);
+                } else {
+                    setError("Could not load question details");
+                }
+            } catch (err) {
+                console.error(`[PreviewQuestion] Error fetching question details:`, err);
+                setError("Error loading question details");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         fetchQuestionDetails();
     }, [question.id]);
 
-    // Fetch historical performance data for this question
-    useEffect(() => {
-        const fetchHistoricalPerformance = async () => {
-            // Return early if no access token is available
-            if (!session?.accessToken) {
-                setLoadingHistory(false);
-                return;
-            }
+    // Get difficulty color
+    const getDifficultyColor = (difficulty?: string) => {
+        if (!difficulty) return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
 
-            setLoadingHistory(true);
-            // Pass the access token to the service instead of a hardcoded ID
-            const historyData = await getHistoricalPerformance(
-                session.accessToken,
-                question.id
-            );
-            setHistoricalAttempts(historyData);
-            setLoadingHistory(false);
-        };
-
-        fetchHistoricalPerformance();
-    }, [question.id, session]); // Add session as a dependency
-
-    // Helper function to create a unique identifier for an attempt
-    const getAttemptId = (attempt: any): string => {
-        // Create a unique ID based on date and answer
-        const date = attempt.date || attempt.ExamDate;
-        const answer = attempt.answer || attempt.SelectedOptionID;
-        return `${date}-${answer}`;
-    };
-
-    // Combine current attempts with historical attempts
-    useEffect(() => {
-        // First, normalize current attempts to ensure they have properly formatted dates
-        const normalizedCurrentAttempts = attempts.map(attempt => ({
-            ...attempt,
-            date: formatDate(attempt.date),
-            attemptId: getAttemptId(attempt)
-        }));
-
-        // Process historical attempts into the same format as current attempts
-        const processedHistorical = historicalAttempts.map(histAttempt => {
-            const normalizedAttempt = {
-                answer: histAttempt.SelectedOptionID || 2,
-                correct: histAttempt.Result || false,
-                confidence: histAttempt.Confidence || 0,
-                date: formatDate(histAttempt.ExamDate),
-                examName: histAttempt.ExamName || 'Unknown exam',
-                attemptId: getAttemptId(histAttempt)
-            };
-            return normalizedAttempt;
-        });
-
-        // Create a map to track unique attempts
-        const uniqueAttemptsMap = new Map();
-
-        // Add current attempts to the map
-        normalizedCurrentAttempts.forEach(attempt => {
-            uniqueAttemptsMap.set(attempt.attemptId, attempt);
-        });
-
-        // Add historical attempts to the map (will overwrite duplicates)
-        processedHistorical.forEach(attempt => {
-            // Only add if not already in the map
-            if (!uniqueAttemptsMap.has(attempt.attemptId)) {
-                uniqueAttemptsMap.set(attempt.attemptId, attempt);
-            }
-        });
-
-        // Convert map back to array
-        const allUniqueAttempts = Array.from(uniqueAttemptsMap.values());
-
-        // Sort by date (most recent first)
-        const sortedAttempts = allUniqueAttempts.sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return dateB - dateA; // Most recent first
-        });
-
-        setCombinedAttempts(sortedAttempts);
-    }, [attempts, historicalAttempts]);
-
-    // Helper to map option index to letter
-    const getOptionLetter = (index: number) => {
-        return String.fromCharCode(65 + index); // 0 -> A, 1 -> B, etc.
+        switch (difficulty.toLowerCase()) {
+            case 'easy':
+                return { color: 'border-green-500', bg: 'bg-green-500/10', text: 'text-green-500' };
+            case 'medium':
+                return { color: 'border-yellow-500', bg: 'bg-yellow-500/10', text: 'text-yellow-500' };
+            case 'hard':
+                return { color: 'border-red-500', bg: 'bg-red-500/10', text: 'text-red-500' };
+            default:
+                return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
+        }
     };
 
     return (
         <div className="bg-gray-900 rounded-xl p-6 text-white shadow-lg max-w-3xl mx-auto">
-            {/* Classification */}
-            <div className="mb-4">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    {classificationName}
-                </span>
-            </div>
-
-            {/* Question text */}
-            <div className="mb-6">
-                <h2 className="text-lg font-semibold">{question.text}</h2>
-            </div>
-
-            {/* Options */}
-            {loading ? (
-                <div className="py-4 text-center text-gray-500">Loading question options...</div>
-            ) : (
-                <div className="space-y-3 mb-8">
-                    {options.map((option, index) => (
-                        <div
-                            key={option.id}
-                            className={`p-3 rounded-lg flex items-start ${option.isCorrect ? 'bg-green-800/20 border border-green-600' : 'bg-gray-800/50 border border-gray-700'
-                                }`}
-                        >
-                            <div className="flex-shrink-0 mr-3">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${option.isCorrect ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'
-                                    }`}>
-                                    {getOptionLetter(index)}
-                                </div>
-                            </div>
-                            <div className="flex-grow">
-                                <p className="text-sm text-gray-300">{option.text}</p>
-                            </div>
-                            {option.isCorrect && (
-                                <div className="flex-shrink-0 ml-2">
-                                    <Check className="w-5 h-5 text-green-500" />
-                                </div>
-                            )}
-                        </div>
-                    ))}
+            {/* Show error if there is one */}
+            {error && (
+                <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded-lg">
+                    <p className="text-red-400">{error}</p>
                 </div>
             )}
 
-            {/* Historical Attempts Section */}
-            <div className="mt-8 border-t border-gray-700 pt-4">
-                <h3 className="text-md font-semibold mb-4 flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Attempt History
-                </h3>
+            {/* Classification */}
+            {classificationName && (
+                <div className="mb-4">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        {classificationName}
+                    </span>
+                </div>
+            )}
 
-                {!session?.accessToken ? (
-                    <div className="py-4 text-center text-gray-500">Please sign in to view your attempt history</div>
-                ) : loadingHistory ? (
-                    <div className="py-2 text-center text-gray-500">Loading attempt history...</div>
-                ) : combinedAttempts.length > 0 ? (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-400 mb-2">
-                            <div>DATE</div>
-                            <div>EXAM</div>
-                            <div className="text-center">ANSWER</div>
-                            <div className="text-center">RESULT</div>
-                            <div className="text-center">CONFIDENCE</div>
+            {loading ? (
+                <div className="py-10 text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent"></div>
+                    <p className="mt-4 text-gray-400">Loading question details...</p>
+                </div>
+            ) : questionData ? (
+                <>
+                    {/* Classification and difficulty badges */}
+                    <div className="mb-4 flex flex-wrap gap-2">
+                        {questionData.Question.QuestionDifficulty && (
+                            <div className={`px-3 py-1 rounded-full border ${getDifficultyColor(questionData.Question.QuestionDifficulty).color} ${getDifficultyColor(questionData.Question.QuestionDifficulty).bg}`}>
+                                <span className={`${getDifficultyColor(questionData.Question.QuestionDifficulty).text} text-xs font-medium`}>
+                                    {questionData.Question.QuestionDifficulty}
+                                </span>
+                            </div>
+                        )}
+                        {questionData.GradeClassification && !classificationName && (
+                            <span className="text-xs px-3 py-1 rounded-full bg-gray-700 text-gray-300">
+                                {questionData.GradeClassification.ClassificationName}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Question text */}
+                    <div className="mb-6">
+                        <h2 className="text-lg font-semibold">{questionData.Question.Prompt || question.text}</h2>
+                    </div>
+
+                    {/* Question image if it exists */}
+                    {questionData.Question.ImageUrl && (
+                        <div className="mb-6">
+                            <img
+                                src={questionData.Question.ImageUrl}
+                                alt={questionData.Question.ImageDescription || "Question image"}
+                                className="max-w-full h-auto rounded-lg border border-gray-700"
+                            />
+                            {questionData.Question.ImageDescription && (
+                                <p className="mt-2 text-sm text-gray-400">
+                                    {questionData.Question.ImageDescription}
+                                </p>
+                            )}
                         </div>
-                        {combinedAttempts.map((attempt, index) => (
-                            <div key={index} className="grid grid-cols-5 gap-2 py-2 border-b border-gray-800 text-sm">
-                                <div className="text-gray-400">{attempt.date}</div>
-                                <div className="text-gray-300">{attempt.examName || "N/A"}</div>
-                                <div className="text-center">
-                                    <span className="px-2 py-1 bg-gray-800 rounded-full text-xs">
-                                        {getOptionLetter(attempt.answer - 1)}
-                                    </span>
+                    )}
+
+                    {/* Options */}
+                    <div className="space-y-3 mb-8">
+                        {questionData.Options && questionData.Options.map((option: { OptionID: React.Key | null | undefined; CorrectAnswer: any; OptionDescription: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; Explanation: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }, index: number) => (
+                            <div
+                                key={option.OptionID}
+                                className={`p-3 rounded-lg flex items-start ${option.CorrectAnswer ? 'bg-green-800/20 border border-green-600' : 'bg-gray-800/50 border border-gray-700'}`}
+                            >
+                                <div className="flex-shrink-0 mr-3">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${option.CorrectAnswer ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                                        {getOptionLetter(index)}
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    {attempt.correct ? (
-                                        <Check className="w-5 h-5 text-green-500 mx-auto" />
-                                    ) : (
-                                        <X className="w-5 h-5 text-red-500 mx-auto" />
+                                <div className="flex-grow">
+                                    <p className="text-sm text-gray-300">{option.OptionDescription}</p>
+
+                                    {/* Explanation (only show if this is the correct answer or has explanation) */}
+                                    {option.Explanation && (
+                                        <div className="mt-2 text-sm text-gray-400 italic">
+                                            <span className="font-medium text-gray-300"></span> {option.Explanation}
+                                        </div>
                                     )}
                                 </div>
-                                <div className="text-center">
-                                    <span className="text-gray-300">{attempt.confidence}</span>
-                                </div>
+                                {option.CorrectAnswer && (
+                                    <div className="flex-shrink-0 ml-2">
+                                        <Check className="w-5 h-5 text-green-500" />
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
-                ) : (
-                    <div className="py-4 text-center text-gray-500">No attempt history found</div>
-                )}
-            </div>
 
-            {/* Performance Analytics Section */}
-            {combinedAttempts.length > 0 && (
-                <div className="mt-8 border-t border-gray-700 pt-4">
-                    <h3 className="text-md font-semibold mb-4 flex items-center">
-                        <BarChart2 className="w-4 h-4 mr-2" />
-                        Performance Analytics
-                    </h3>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-gray-800/50 p-3 rounded-lg">
-                            <div className="text-xs text-gray-400 mb-1">TOTAL ATTEMPTS</div>
-                            <div className="text-xl font-semibold">{combinedAttempts.length}</div>
-                        </div>
-
-                        <div className="bg-gray-800/50 p-3 rounded-lg">
-                            <div className="text-xs text-gray-400 mb-1">SUCCESS RATE</div>
-                            <div className="text-xl font-semibold">
-                                {Math.round((combinedAttempts.filter(a => a.correct).length / combinedAttempts.length) * 100)}%
+                    {/* Content areas */}
+                    {questionData.ContentAreas && questionData.ContentAreas.length > 0 && (
+                        <div className="mt-6 pt-4 border-t border-gray-700">
+                            <h4 className="text-sm font-medium text-gray-400 mb-2">CONTENT AREAS</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {questionData.ContentAreas.map((area: { ContentAreaID: React.Key | null | undefined; ContentName: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; Discipline: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }) => (
+                                    <span key={area.ContentAreaID} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-xs">
+                                        {area.ContentName} - {area.Discipline}
+                                    </span>
+                                ))}
                             </div>
                         </div>
-
-                        <div className="bg-gray-800/50 p-3 rounded-lg">
-                            <div className="text-xs text-gray-400 mb-1">AVG CONFIDENCE</div>
-                            <div className="text-xl font-semibold">
-                                {(combinedAttempts.reduce((acc, curr) => acc + curr.confidence, 0) / combinedAttempts.length).toFixed(1)}
-                            </div>
-                        </div>
-                    </div>
+                    )}
+                </>
+            ) : (
+                <div className="py-10 text-center">
+                    <p className="text-gray-400">Question data could not be loaded.</p>
                 </div>
             )}
         </div>
