@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -12,6 +11,7 @@ import {
   Settings,
   User,
   LogOut,
+  ClipboardList,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
@@ -25,10 +25,8 @@ interface NavItemProps {
 const NavItem = ({ icon, label, href, onClick }: NavItemProps) => {
   const pathname = usePathname();
   const isActive = href ? pathname === href : false;
-
   const classes =
     'w-full h-12 flex items-center justify-center hover:bg-gray-800/40 rounded-lg transition-colors duration-200';
-
   return href ? (
     <Link href={href} className={classes} title={label}>
       {React.cloneElement(icon as React.ReactElement, {
@@ -50,19 +48,18 @@ const Sidebar = () => (
     <div className="h-[72px] flex items-center justify-center border-b border-gray-800">
       <img src="/medpass_white.png" alt="Logo" className="w-12 h-12" />
     </div>
-
     {/* Main Navigation */}
     <div className="flex-1 flex flex-col items-center gap-2 px-3 py-3">
       <NavItem icon={<Home />} label="Dashboard" href="/dashboard" />
       <NavItem icon={<LineChart />} label="Analytics" href="/dashboard/analytics" />
+      <NavItem icon={<ClipboardList />} label="Results" href="/dashboard/results" />
       <NavItem icon={<MessageSquare />} label="Chat" href="/dashboard/chat" />
       <NavItem icon={<FileText />} label="Notes" href="/dashboard/notes" />
       <NavItem icon={<Calendar />} label="Calendar" href="/dashboard/calendar" />
     </div>
-
     {/* Footer Navigation */}
     <div className="px-3 py-4 flex flex-col items-center gap-2">
-    <NavItem icon={<Settings />} label="Settings" href="/dashboard/settings" />
+      <NavItem icon={<Settings />} label="Settings" href="/dashboard/settings" />
       <NavItem
         icon={<LogOut />}
         label="Logout"

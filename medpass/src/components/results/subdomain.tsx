@@ -10,17 +10,11 @@ const Subdomain: React.FC<SubdomainProps> = ({
   onQuestionToggle,
   attempts = {}
 }) => {
-  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set<string>());
   const [previewQuestionId, setPreviewQuestionId] = useState<string | null>(null);
 
   // Modified function to get the most recent attempt for a question
   const getMostRecentAttemptForQuestion = (questionId: string): Attempt | null => {
-    console.log(`Checking attempts for question ${questionId}:`);
-    console.log(`  attempts object:`, attempts);
-    console.log(`  attempts for this question:`, attempts[questionId]);
-
     if (!attempts || !attempts[questionId] || attempts[questionId].length === 0) {
-      console.log(`  No attempts found for question ${questionId}`);
       return null;
     }
 
@@ -29,12 +23,8 @@ const Subdomain: React.FC<SubdomainProps> = ({
       // Convert dates to timestamps for comparison
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
-      console.log(`  Comparing dates: ${a.date} (${dateA}) vs ${b.date} (${dateB})`);
       return dateB - dateA; // Most recent first
     });
-
-    console.log(`  Sorted attempts:`, sortedAttempts);
-    console.log(`  Most recent attempt:`, sortedAttempts[0]);
 
     // Return the most recent attempt
     return sortedAttempts[0];
@@ -58,43 +48,41 @@ const Subdomain: React.FC<SubdomainProps> = ({
     }));
   };
 
+  // Handle question selection
   const handleQuestionToggle = (questionId: string, event: React.MouseEvent) => {
     event.stopPropagation();
 
-    setSelectedQuestions(prev => {
-      const newSelected = new Set<string>(prev);
-      if (newSelected.has(questionId)) {
-        newSelected.delete(questionId);
-      } else {
-        newSelected.add(questionId);
+    if (onQuestionToggle) {
+      // We need to toggle the current state
+      // Since we don't have direct access to the selectedQuestions array,
+      // we determine if it's currently checked by the isChecked property
+      const question = subdomain.questions.find(q => q.id === questionId);
+      if (question) {
+        onQuestionToggle(questionId, !question.isChecked);
       }
-      if (onQuestionToggle) {
-        onQuestionToggle(questionId, newSelected.has(questionId));
-      }
-      return newSelected;
-    });
+    }
   };
 
+  // Handle preview question
   const handleQuestionClick = (questionId: string) => {
     setPreviewQuestionId(questionId);
   };
 
+  // Close preview modal
   const closePreview = () => {
     setPreviewQuestionId(null);
   };
 
+  // Handle select all questions
   const handleSelectAll = () => {
-    if (selectedQuestions.size === subdomain.questions.length) {
-      setSelectedQuestions(new Set<string>());
-      if (onQuestionToggle) {
-        subdomain.questions.forEach((q: Question) => onQuestionToggle(q.id, false));
-      }
-    } else {
-      const allIds = new Set<string>(subdomain.questions.map((q: Question) => q.id));
-      setSelectedQuestions(allIds);
-      if (onQuestionToggle) {
-        subdomain.questions.forEach((q: Question) => onQuestionToggle(q.id, true));
-      }
+    if (onQuestionToggle) {
+      // Check if all questions are already selected
+      const allChecked = subdomain.questions.every(q => q.isChecked);
+
+      // Toggle all questions based on current state
+      subdomain.questions.forEach(q => {
+        onQuestionToggle(q.id, !allChecked);
+      });
     }
   };
 
@@ -163,23 +151,12 @@ const Subdomain: React.FC<SubdomainProps> = ({
 
           <div className="space-y-3">
             {subdomain.questions.map((question: Question) => {
-              const isSelected = selectedQuestions.has(question.id);
-
               // Get the most recent attempt for this question
               const mostRecentAttempt = getMostRecentAttemptForQuestion(question.id);
-
-              // Debug logs
-              console.log(`Question ${question.id}: "${question.text.substring(0, 30)}..."`);
-              console.log(`  mostRecentAttempt:`, mostRecentAttempt);
-              console.log(`  question default isCorrect:`, question.isCorrect);
-              console.log(`  question default confidence:`, question.confidence);
 
               // Use data from the most recent attempt if available
               const isCorrect = mostRecentAttempt ? mostRecentAttempt.correct : question.isCorrect;
               const confidence = mostRecentAttempt ? mostRecentAttempt.confidence : question.confidence;
-
-              console.log(`  FINAL isCorrect:`, isCorrect);
-              console.log(`  FINAL confidence:`, confidence);
 
               let difficultyColor = "border-green-500";
               let difficultyTextColor = "text-green-500";
@@ -204,7 +181,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
                         className="w-5 h-5 mr-3 flex items-center justify-center border border-gray-600 rounded cursor-pointer hover:border-gray-400 transition-colors"
                         onClick={(e) => handleQuestionToggle(question.id, e)}
                       >
-                        {isSelected && <span className="w-3 h-3 bg-white rounded-sm"></span>}
+                        {question.isChecked && <span className="w-3 h-3 bg-white rounded-sm"></span>}
                       </div>
 
                       {/* Question text area - clicking this will open the preview */}

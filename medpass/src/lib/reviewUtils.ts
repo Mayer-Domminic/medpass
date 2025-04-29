@@ -1,4 +1,4 @@
-import { QuestionResponseData, UserAnswer } from '../types/review';
+import { QuestionResponseData, UserAnswer, SubmissionErrorResult, SubmissionSuccessResult, SubmissionResult } from '../types/review';
 import { useSession, getSession } from 'next-auth/react';
 
 // hook to get student name from session
@@ -32,7 +32,7 @@ export const getHeaders = async (): Promise<Record<string, string>> => {
     };
 };
 
-// API base URL determination
+// API base URL determination - keep the server-side check
 export const getApiBaseUrl = (): string => {
     return typeof window === "undefined"
         ? "http://backend:8000"
@@ -41,6 +41,11 @@ export const getApiBaseUrl = (): string => {
 
 // Function to fetch student information (including student_id)
 export const fetchStudentInfo = async (): Promise<any> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve(null);
+    }
+
     try {
         const API_URL = getApiBaseUrl();
         const headers = await getHeaders();
@@ -68,6 +73,11 @@ export const fetchStudentInfo = async (): Promise<any> => {
 
 // Function to fetch question details from API
 export const fetchQuestionDetails = async (questionId: number): Promise<QuestionResponseData> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve({} as QuestionResponseData);
+    }
+
     try {
         const API_URL = getApiBaseUrl();
         const headers = await getHeaders();
@@ -98,6 +108,11 @@ export const fetchQuestionDetails = async (questionId: number): Promise<Question
 
 // Function to fetch all questions needed for the quiz
 export const fetchQuizQuestions = async (questionIds: number[]): Promise<QuestionResponseData[]> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve([]);
+    }
+
     try {
         const questionsPromises = questionIds.map(id => fetchQuestionDetails(id));
         return await Promise.all(questionsPromises);
@@ -106,6 +121,207 @@ export const fetchQuizQuestions = async (questionIds: number[]): Promise<Questio
         throw error;
     }
 };
+
+export const fetchQuizQuestionsByDomain = async (
+    domain: string,
+    subdomain: string,
+    isPractice: boolean
+): Promise<QuestionResponseData[]> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve([]);
+    }
+
+    try {
+        console.log(`Fetching questions for domain: ${domain}, subdomain: ${subdomain}, practice mode: ${isPractice}`);
+
+        const API_URL = getApiBaseUrl();
+        const headers = await getHeaders();
+
+        // Add content-type header for JSON
+        headers['Content-Type'] = 'application/json';
+        headers['Accept'] = 'application/json';
+
+        // Construct appropriate API endpoint based on practice mode
+        // Use route parameter format instead of query parameters
+        const endpoint = isPractice
+            ? `/api/v1/question/practice/${encodeURIComponent(domain)}/${encodeURIComponent(subdomain)}`
+            : `/api/v1/question/review/${encodeURIComponent(domain)}/${encodeURIComponent(subdomain)}`;
+
+        console.log(`Making request to: ${API_URL}${endpoint}`);
+
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'GET',
+            headers
+        });
+
+        if (!response.ok) {
+            console.error(`Server responded with status: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Error details: ${errorText}`);
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Validate the response structure
+        if (!Array.isArray(data)) {
+            console.error("API returned unexpected data format:", data);
+            throw new Error("API returned invalid data format");
+        }
+
+        // If the API returned empty array, log warning
+        if (data.length === 0) {
+            console.warn(`No questions found for domain: ${domain}, subdomain: ${subdomain}`);
+        } else {
+            console.log(`Successfully fetched ${data.length} questions`);
+        }
+
+        return data as QuestionResponseData[];
+    } catch (error) {
+        console.error("Error fetching questions by domain:", error);
+        throw error; // Re-throw to be handled by the calling component
+    }
+};
+
+/**
+ * Alternative implementation using query parameters instead of route parameters
+ * Try this if the route parameter approach doesn't work
+ */
+export const fetchQuizQuestionsByDomainAlt = async (
+    domain: string,
+    subdomain: string,
+    isPractice: boolean
+): Promise<QuestionResponseData[]> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve([]);
+    }
+
+    try {
+        console.log(`Fetching questions for domain: ${domain}, subdomain: ${subdomain}, practice mode: ${isPractice}`);
+
+        const API_URL = getApiBaseUrl();
+        const headers = await getHeaders();
+
+        // Add content-type header for JSON
+        headers['Content-Type'] = 'application/json';
+        headers['Accept'] = 'application/json';
+
+        // Construct appropriate API endpoint with query parameters
+        const endpoint = isPractice
+            ? `/api/v1/question/practice`
+            : `/api/v1/question/review`;
+
+        // Build query parameters
+        const params = new URLSearchParams({
+            domain: domain,
+            subdomain: subdomain
+        });
+
+        const url = `${API_URL}${endpoint}?${params.toString()}`;
+        console.log(`Making request to: ${url}`);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers
+        });
+
+        if (!response.ok) {
+            console.error(`Server responded with status: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Error details: ${errorText}`);
+
+            // Try with POST method if GET fails with 422
+            if (response.status === 422) {
+                console.log("Trying with POST method instead...");
+                return await fetchQuizQuestionsByDomainPost(domain, subdomain, isPractice);
+            }
+
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Validate the response structure
+        if (!Array.isArray(data)) {
+            console.error("API returned unexpected data format:", data);
+            throw new Error("API returned invalid data format");
+        }
+
+        // If the API returned empty array, log warning
+        if (data.length === 0) {
+            console.warn(`No questions found for domain: ${domain}, subdomain: ${subdomain}`);
+        } else {
+            console.log(`Successfully fetched ${data.length} questions`);
+        }
+
+        return data as QuestionResponseData[];
+    } catch (error) {
+        console.error("Error fetching questions by domain:", error);
+        throw error; // Re-throw to be handled by the calling component
+    }
+};
+
+/**
+ * POST method implementation as a fallback
+ */
+export const fetchQuizQuestionsByDomainPost = async (
+    domain: string,
+    subdomain: string,
+    isPractice: boolean
+): Promise<QuestionResponseData[]> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return Promise.resolve([]);
+    }
+
+    try {
+        const API_URL = getApiBaseUrl();
+        const headers = await getHeaders();
+
+        // Add content-type header for JSON
+        headers['Content-Type'] = 'application/json';
+        headers['Accept'] = 'application/json';
+
+        // Construct appropriate API endpoint
+        const endpoint = isPractice
+            ? `/api/v1/question/practice`
+            : `/api/v1/question/review`;
+
+        console.log(`Making POST request to: ${API_URL}${endpoint}`);
+
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                domain: domain,
+                subdomain: subdomain
+            })
+        });
+
+        if (!response.ok) {
+            console.error(`Server responded with status: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Error details: ${errorText}`);
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Validate the response structure
+        if (!Array.isArray(data)) {
+            console.error("API returned unexpected data format:", data);
+            throw new Error("API returned invalid data format");
+        }
+
+        return data as QuestionResponseData[];
+    } catch (error) {
+        console.error("Error fetching questions by domain using POST:", error);
+        throw error;
+    }
+};
+
 
 export const getCorrectAnswerCount = (questionData: QuestionResponseData): number => {
     if (!questionData || !questionData.Options) return 0;
@@ -169,7 +385,15 @@ export const submitQuizResultsToDatabase = async (
     score: number,
     answeredQuestions: number[],
     totalPossiblePoints?: number
-) => {
+): Promise<SubmissionResult> => {
+    // Skip execution during SSR to prevent fetch errors
+    if (typeof window === "undefined") {
+        return {
+            success: false,
+            message: "Cannot submit during server-side rendering"
+        };
+    }
+
     try {
         // Convert confidence levels to integer values
         const confidenceToInt = (confidenceStr: string): number => {
@@ -228,20 +452,38 @@ export const submitQuizResultsToDatabase = async (
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Failed to submit quiz results:', errorText);
-            return { success: false, message: `Failed to submit: ${response.status}` };
+
+            // Return error with proper type
+            const errorResult: SubmissionErrorResult = {
+                success: false,
+                message: `Failed to submit: ${response.status}`
+            };
+            return errorResult;
         }
 
         const result = await response.json();
         console.log('Quiz results submitted successfully:', result);
-        return { success: true, data: result };
+
+        // Return success with proper type
+        const successResult: SubmissionSuccessResult = {
+            success: true,
+            data: result
+        };
+        return successResult;
 
     } catch (error) {
         console.error('Error submitting quiz results:', error);
-        return { success: false, message: String(error) };
+
+        // Return error with proper type
+        const errorResult: SubmissionErrorResult = {
+            success: false,
+            message: String(error)
+        };
+        return errorResult;
     }
 };
 
-// Local storage functions
+// Local storage functions - add SSR safety checks
 export const saveQuizState = (
     currentQuestionIndex: number,
     userAnswers: UserAnswer[],
@@ -249,25 +491,34 @@ export const saveQuizState = (
     score: number,
     totalPossiblePoints?: number
 ) => {
-    const quizState = {
-        currentQuestionIndex,
-        userAnswers,
-        answeredQuestions,
-        score,
-        totalPossiblePoints
-    };
-    localStorage.setItem('reviewSessionState', JSON.stringify(quizState));
+    // Skip during SSR
+    if (typeof window === "undefined") return;
+
+    try {
+        const quizState = {
+            currentQuestionIndex,
+            userAnswers,
+            answeredQuestions,
+            score,
+            totalPossiblePoints
+        };
+        localStorage.setItem('reviewSessionState', JSON.stringify(quizState));
+    } catch (error) {
+        console.error('Error saving quiz state to localStorage:', error);
+    }
 };
 
 export const loadQuizState = () => {
-    const savedState = localStorage.getItem('reviewSessionState');
-    if (savedState) {
-        try {
+    // Skip during SSR
+    if (typeof window === "undefined") return null;
+
+    try {
+        const savedState = localStorage.getItem('reviewSessionState');
+        if (savedState) {
             return JSON.parse(savedState);
-        } catch (error) {
-            console.error('Error parsing saved quiz state', error);
-            return null;
         }
+    } catch (error) {
+        console.error('Error parsing saved quiz state', error);
     }
     return null;
 };
