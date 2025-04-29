@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SubdomainType } from './domain';
 import { ChevronDown, ChevronRight, Check, X } from 'lucide-react';
-import DomainQuestions from './DomainQuestions';
+import { Button } from "@/components/ui/button";
+import { useSession } from 'next-auth/react';
 
 // Updated types to include difficulty and points
 export type subdomainQuestion = {
@@ -27,7 +29,83 @@ const Subdomain: React.FC<SubdomainProps> = ({
   onQuestionToggle,
   domainName
 }) => {
+  const router = useRouter();
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+  const [generatingAIQuestions, setGeneratingAIQuestions] = useState(false);
+  const { data: session } = useSession();
+  const [questions, setQuestions] = useState<subdomainQuestion[]>(subdomain.questions || []);
+  const [additionalContext, setAdditionalContext] = useState('');
+  
+  const fetchQuestions = async () => {
+    if (!session?.accessToken) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data.questions)) {
+        const formattedQuestions = data.questions.map((q: any) => ({
+          id: q.id,
+          text: q.text,
+          difficulty: q.difficulty === 'medium' ? 'med' : q.difficulty,
+          points: 5,
+          isChecked: false
+        }));
+        
+        setQuestions(formattedQuestions);
+      }
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+    }
+  };
+
+  useEffect(() => {
+    setQuestions(subdomain.questions || []);
+    
+    if (isExpanded && session?.accessToken) {
+      fetchQuestions();
+    }
+  }, [subdomain, isExpanded, session?.accessToken]);
+
+  const generateAIQuestions = async () => {
+    if (!session?.accessToken) return;
+    
+    setGeneratingAIQuestions(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/generate?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}&count=5&rag=true&additional_context=${encodeURIComponent(additionalContext)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.accessToken}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      await fetchQuestions();
+    } catch (error) {
+      console.error('Error generating AI questions:', error);
+    } finally {
+      setGeneratingAIQuestions(false);
+    }
+  };
   
   const handleQuestionToggle = (questionId: string) => {
     const newSelected = new Set(selectedQuestions);
@@ -46,22 +124,22 @@ const Subdomain: React.FC<SubdomainProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedQuestions.size === subdomain.questions.length) {
+    if (selectedQuestions.size === questions.length) {
       // Deselect all
       setSelectedQuestions(new Set());
       
       // Notify parent if needed
       if (onQuestionToggle) {
-        subdomain.questions.forEach(q => onQuestionToggle(q.id, false));
+        questions.forEach(q => onQuestionToggle(q.id, false));
       }
     } else {
       // Select all
-      const allIds = new Set(subdomain.questions.map(q => q.id));
+      const allIds = new Set(questions.map(q => q.id));
       setSelectedQuestions(allIds);
       
       // Notify parent if needed
       if (onQuestionToggle) {
-        subdomain.questions.forEach(q => onQuestionToggle(q.id, true));
+        questions.forEach(q => onQuestionToggle(q.id, true));
       }
     }
   };
@@ -76,116 +154,104 @@ const Subdomain: React.FC<SubdomainProps> = ({
           <span className="text-large font-semibold text-gray-300">{subdomain.title}</span>
           {subdomain.isLatestConf && <span className="ml-2 text-gray-400">- Latest Conf.</span>}
         </div>
-        <div className="flex items-center">
-          {isExpanded && <Check className="h-5 w-5 text-green-500 mr-2" />}
-          {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronRight className="h-5 w-5 text-gray-400" />
-          )}
+        
+        <div className="flex items-center gap-2 mr-4">
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-600/30"
+            onClick={(e) => {
+              e.stopPropagation();
+              generateAIQuestions();
+            }}
+            disabled={generatingAIQuestions}
+          >
+            {generatingAIQuestions ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                Generating...
+              </>
+            ) : (
+              "Generate AI Questions"
+            )}
+          </Button>
+          
+          <Button
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(
+                `/dashboard/review?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}&practice=true`
+              );
+            }}
+          >
+            Practice Questions
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-8 ml-auto">
+          <div className="flex items-center">
+            {isExpanded ? (
+              <ChevronDown className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
         </div>
       </button>
       
       {isExpanded && (
         <div className="p-4 bg-gray-800/30 rounded-b">
-          {/* Grid layout with 12 columns */}
-          <div className="grid grid-cols-12 gap-2 mb-6 items-center">
-            {/* SELECT ALL button takes 4 columns */}
-            <div className="col-span-4">
-              <button 
-                onClick={handleSelectAll}
-                className="px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-full text-xs font-medium text-gray-300 transition-colors"
+          <div className="mb-4">
+            <label htmlFor={`additionalContext-${subdomain.id}`} className="block text-sm font-medium text-gray-400 mb-1">
+              Additional Context (optional)
+            </label>
+            <div className="flex gap-2">
+              <textarea
+                id={`additionalContext-${subdomain.id}`}
+                value={additionalContext}
+                onChange={e => setAdditionalContext(e.target.value)}
+                className="flex-grow bg-gray-800 text-gray-300 border border-gray-700 rounded-md p-2"
+                placeholder="Any specific topics or areas you'd like to focus on"
+                rows={2}
+              />
+              <Button
+                onClick={generateAIQuestions}
+                disabled={generatingAIQuestions}
+                className="bg-blue-600 hover:bg-blue-700 text-white self-end"
               >
-                SELECT ALL
-              </button>
-            </div>
-            
-            {/* Empty space takes 2 columns */}
-            <div className="col-span-2"></div>
-            
-            {/* Column headers take 2 columns each */}
-            <div className="col-span-2 text-center text-xs font-medium text-gray-400">
-              <span>DIFFICULTY</span>
-              <div className="h-px bg-gray-600 mt-1"></div>
-            </div>
-            <div className="col-span-2 text-center text-xs font-medium text-gray-400">
-              <span>ANSWER</span>
-              <div className="h-px bg-gray-600 mt-1"></div>
-            </div>
-            <div className="col-span-2 text-center text-xs font-medium text-gray-400">
-              <span>CONF.</span>
-              <div className="h-px bg-gray-600 mt-1"></div>
+                {generatingAIQuestions ? 'Generating...' : 'Generate More'}
+              </Button>
             </div>
           </div>
           
-          {/* Questions */}
-          <div className="space-y-3">
-            {subdomain.questions.map((question) => {
-              const isSelected = selectedQuestions.has(question.id);
-              
-              // Determine difficulty color
-              let difficultyColor = "border-green-500";
-              let difficultyTextColor = "text-green-500";
-              let difficultyBg = "bg-green-500/10";
-              
-              if (question.difficulty === 'med') {
-                difficultyColor = "border-yellow-500";
-                difficultyTextColor = "text-yellow-500";
-                difficultyBg = "bg-yellow-500/10";
-              } else if (question.difficulty === 'hard') {
-                difficultyColor = "border-red-500";
-                difficultyTextColor = "text-red-500";
-                difficultyBg = "bg-red-500/10";
-              }
-              
-              return (
-                <div key={question.id} className="grid grid-cols-12 gap-2 items-center">
-                  {/* Question column - 6 columns */}
-                  <div className="col-span-6">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleQuestionToggle(question.id)}
-                        className="hidden"
-                      />
-                      <div className="w-5 h-5 mr-3 flex items-center justify-center border border-gray-500 rounded">
-                        {isSelected && <span className="w-3 h-3 bg-white rounded-sm"></span>}
-                      </div>
-                      <span className="text-xs text-gray-300">{question.text}</span>
-                    </label>
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-300 mb-4">
+              Questions ({questions.length})
+            </h3>
+            <div className="space-y-2">
+              {questions.length > 0 ? (
+                questions.map(question => (
+                  <div key={question.id} className="flex items-center gap-3 text-gray-300 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      question.difficulty === 'easy' 
+                        ? 'bg-green-900/30 text-green-400' 
+                        : question.difficulty === 'med' 
+                          ? 'bg-yellow-900/30 text-yellow-400' 
+                          : 'bg-red-900/30 text-red-400'
+                    }`}>
+                      {question.difficulty}
+                    </span>
+                    <span>{question.text}</span>
                   </div>
-                  
-                  {/* Metadata columns - each 2 columns */}
-                  <div className="col-span-2 flex justify-center">
-                    <div className={`px-3 py-1 rounded-full border ${difficultyColor} ${difficultyBg}`}>
-                      <span className={`${difficultyTextColor} text-xs`}>{question.difficulty}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-2 flex justify-center">
-                    {question.difficulty === 'hard' ? (
-                      <X className="text-red-500 w-5 h-5" />
-                    ) : (
-                      <Check className="text-green-500 w-5 h-5" />
-                    )}
-                  </div>
-                  
-                  <div className="col-span-2 flex justify-center">
-                    <span className="font-medium text-lg text-gray-300">{question.points}</span>
-                  </div>
+                ))
+              ) : (
+                <div className="text-gray-400 text-sm italic">
+                  No questions yet. Click "Generate AI Questions" to generate some.
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Add the Practice Questions section */}
-          <div className="mt-8 pt-6 border-t border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">Practice Questions</h3>
-            <DomainQuestions 
-              domain={domainName}
-              subdomain={subdomain.title}
-            />
+              )}
+            </div>
           </div>
         </div>
       )}

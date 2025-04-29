@@ -7,6 +7,9 @@ declare global {
   }
 }
 
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +36,16 @@ import {
   fetchStudentInfo
 } from '@/lib/reviewUtils';
 
-export default function ReviewPage() {
+// Main content component
+function ReviewPageContent() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const domain = searchParams.get('domain');
+  const subdomain = searchParams.get('subdomain');
+  const isPracticeMode = searchParams.get('practice') === 'true';
+  const allDomainQuestions = searchParams.get('allDomainQuestions') === 'true';
+
   // replace mock data with state for loaded questions
   const [questions, setQuestions] = useState<QuestionResponseData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +61,24 @@ export default function ReviewPage() {
   const [studentId, setStudentId] = useState<number | null>(null);
   const [loadingStudentInfo, setLoadingStudentInfo] = useState(false);
   const [studentInfoError, setStudentInfoError] = useState<string | null>(null);
+
+  const handleGenerateQuestions = () => {
+    if (domain) {
+      if (subdomain) {
+        router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}?expandedSubdomain=${encodeURIComponent(subdomain)}`);
+      } else {
+        router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}`);
+      }
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  useEffect(() => {
+    if (isPracticeMode) {
+      localStorage.removeItem('reviewSessionState');
+    }
+  }, [isPracticeMode]);
 
   // Load student information
   useEffect(() => {
@@ -79,17 +109,91 @@ export default function ReviewPage() {
     const loadQuestions = async () => {
       try {
         setLoading(true);
-        // Example question IDs - replace with your actual question IDs
-        // You might want to fetch these from another endpoint or have them predefined
-        const questionIds = [10, 11, 12]; // Example IDs
-        const loadedQuestions = await fetchQuizQuestions(questionIds);
-        setQuestions(loadedQuestions);
-
-        // Calculate total possible points immediately after loading questions
-        const possiblePoints = calculateTotalPossiblePoints(loadedQuestions);
-        console.log(`Total possible points calculated: ${possiblePoints}`);
-        setTotalPossiblePoints(possiblePoints);
-
+        
+        if (domain) {
+          // determine which API endpoint to use
+          let url = allDomainQuestions 
+            ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/domain-questions/?domain=${encodeURIComponent(domain)}&random=true`
+            : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/?domain=${encodeURIComponent(domain)}`;
+          
+          if (!allDomainQuestions && subdomain) {
+            url += `&subdomain=${encodeURIComponent(subdomain)}`;
+          }
+          
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${session?.accessToken}`
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log("API Response data:", data);
+          
+          if (Array.isArray(data.questions) && data.questions.length > 0) {
+            const formattedQuestions = data.questions.map((q: any) => {
+              let parsedOptions = [];
+              
+              try {
+                if (typeof q.options === 'string') {
+                  parsedOptions = JSON.parse(q.options);
+                } else if (Array.isArray(q.options)) {
+                  parsedOptions = q.options;
+                }
+              } catch (e) {
+                console.error("Error parsing options:", e);
+                parsedOptions = [];
+              }
+              
+              // map the answer options
+              const questionOptions = parsedOptions.map((opt: any, index: number) => ({
+                OptionID: opt.id || index + 1,
+                CorrectAnswer: !!opt.isCorrect,
+                Explanation: opt.isCorrect ? (q.explanation || "Correct answer") : "Incorrect option",
+                OptionDescription: opt.text
+              }));
+              
+              return {
+                Question: {
+                  QuestionID: q.id,
+                  ExamID: 1,
+                  Prompt: q.text,
+                  QuestionDifficulty: q.difficulty || "medium",
+                  ImageUrl: null,
+                  ImageDependent: false,
+                  ImageDescription: null,
+                  ExamName: domain
+                },
+                Options: questionOptions,
+                GradeClassification: {
+                  GradeClassificationID: 1,
+                  ClassificationName: q.category || subdomain || domain
+                }
+              };
+            });
+            
+            console.log("Formatted questions with options:", formattedQuestions);
+            setQuestions(formattedQuestions);
+            
+            const possiblePoints = calculateTotalPossiblePoints(formattedQuestions);
+            setTotalPossiblePoints(possiblePoints);
+          } else if (subdomain && !allDomainQuestions) {
+            setError(`No practice questions found for ${subdomain}. Please generate questions first.`);
+          } else {
+            setError(`No practice questions found for ${domain}. Please generate questions for specific subdomains first.`);
+          }
+        } else {
+          const questionIds = [10, 11, 12]; // Example IDs
+          const loadedQuestions = await fetchQuizQuestions(questionIds);
+          setQuestions(loadedQuestions);
+          
+          const possiblePoints = calculateTotalPossiblePoints(loadedQuestions);
+          setTotalPossiblePoints(possiblePoints);
+        }
+        
         setLoading(false);
       } catch (err) {
         setError('Failed to load questions. Please try again later.');
@@ -97,13 +201,15 @@ export default function ReviewPage() {
         console.error('Error loading questions:', err);
       }
     };
-
-    loadQuestions();
-  }, []);
+  
+    if (session?.accessToken) {
+      loadQuestions();
+    }
+  }, [session?.accessToken, domain, subdomain, allDomainQuestions]);
 
   // load saved state when component mounts and after questions are loaded
   useEffect(() => {
-    if (questions.length > 0 && !loading) {
+    if (questions.length > 0 && !loading && !isPracticeMode) {
       const savedState = loadQuizState();
       if (savedState) {
         setCurrentQuestionIndex(savedState.currentQuestionIndex);
@@ -117,11 +223,11 @@ export default function ReviewPage() {
         }
       }
     }
-  }, [questions, loading]);
+  }, [questions, loading, isPracticeMode]);
 
   // save state whenever key state variables changes
   useEffect(() => {
-    if (questions.length > 0) {
+    if (questions.length > 0 && !isPracticeMode) {
       saveQuizState(
         currentQuestionIndex,
         userAnswers,
@@ -130,7 +236,7 @@ export default function ReviewPage() {
         totalPossiblePoints
       );
     }
-  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, totalPossiblePoints, questions]);
+  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, totalPossiblePoints, questions, isPracticeMode]);
 
   // update global window prop to track current question index
   useEffect(() => {
@@ -267,7 +373,7 @@ export default function ReviewPage() {
     // Update submission status
     setSubmissionStatus('submitting');
 
-    const examId = questions[0].Question.ExamID;
+    const examId = questions[0]?.Question?.ExamID || 1;
     const result = await submitQuizResultsToDatabase(
       studentId,
       examId,
@@ -338,6 +444,35 @@ export default function ReviewPage() {
         </div>
       </div>
 
+      {domain && (
+        <div className="flex gap-2 ml-20 mb-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/dashboard')}
+            className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+          >
+            Back to Domains
+          </Button>
+          {subdomain && (
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}`)}
+              className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+            >
+              Back to {domain}
+            </Button>
+          )}
+          {!questions.length && (
+            <Button
+              onClick={handleGenerateQuestions}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Generate Questions
+            </Button>
+          )}
+        </div>
+      )}
+      
       {/* Loading state */}
       {loading && (
         <div className="container mx-auto text-center py-12">
@@ -352,6 +487,14 @@ export default function ReviewPage() {
           <div className="bg-red-800 text-white p-4 rounded-md mb-4 inline-block">
             <p>{error}</p>
           </div>
+          {domain && (
+            <Button
+              onClick={handleGenerateQuestions}
+              className="bg-blue-600 hover:bg-blue-700 text-white mr-3"
+            >
+              Go Generate Questions
+            </Button>
+          )}
           <Button
             onClick={() => window.location.reload()}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -495,5 +638,17 @@ export default function ReviewPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 text-slate-100 p-4 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+      </div>
+    }>
+      <ReviewPageContent />
+    </Suspense>
   );
 }

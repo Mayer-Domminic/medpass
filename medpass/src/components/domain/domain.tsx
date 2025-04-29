@@ -5,6 +5,8 @@ import Subdomain, {subdomainQuestion} from './subdomain';
 export type SubdomainType = {
   id: string;
   title: string;
+  confidence: number;
+  proficiency: number;
   questions: subdomainQuestion[];
   isLatestConf?: boolean;
 };
