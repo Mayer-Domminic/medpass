@@ -1,4 +1,4 @@
-from ..core.database import get_question_with_details, get_db, get_question, get_content_areas
+from ..core.database import get_question_with_details, get_db, get_question, get_content_areas, get_latest_student_review_performance_data
 from ..services.rag_service import ingest_document, search_documents, search_chat_contexts
 from ..services.gemini_service import get_chat_history, get_entire_chat, chat_model
 import os
@@ -85,6 +85,7 @@ if __name__ == "__main__":
             print(f"Content Preview:\n{result['content'][:1000]}...\n")
     '''
     
+    '''
     messages = [{"role": "user", "content": "What is a clinical rotation?"}]
     
     rag_query = "What is a clinical rotation?"
@@ -92,3 +93,8 @@ if __name__ == "__main__":
     model_message = chat_model(messages=messages, rag_query=rag_query, conversation_id=1)
     
     print(model_message)
+    '''
+    performance_data = get_latest_student_review_performance_data(db, 5, 298)
+    
+    print(performance_data)
+    

@@ -140,3 +140,11 @@ class ExamResultsWithPerformancesResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        
+# Review Table
+class StudentQuestionPerformanceResponseReview(BaseModel):
+    questionid: int
+    prompt: str
+    result: bool
+    confidence: Optional[int] = None
+    timestamp: datetime

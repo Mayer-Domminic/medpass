@@ -26,7 +26,7 @@ from app.models import (
     ChatMessage
 )
 from app.schemas.reportschema import StudentReport, ExamReport, GradeReport, DomainReport
-from app.schemas.question import ExamResultsCreate
+from app.schemas.question import ExamResultsCreate, StudentQuestionPerformanceResponseReview
 from app.schemas.pydantic_base_models import user_schemas
 
 engine = create_engine(settings.sync_database_url)
@@ -670,4 +670,35 @@ def get_chat_message(chat_message_id, db):
         "MessageCost": message_data[7],
         "Metadata": message_data[8]
     }
+    
+def get_latest_student_review_performance_data(db, exam_id, student_id):
+    
+    questions_performance = db.query(
+        StudentQuestionPerformance.questionid,
+        Question.prompt,
+        StudentQuestionPerformance.result,
+        StudentQuestionPerformance.confidence,
+        ExamResults.timestamp
+    ).join(
+        Question, StudentQuestionPerformance.questionid == Question.questionid
+    ).join(
+        ExamResults, StudentQuestionPerformance.examresultid == ExamResults.examresultsid
+    ).filter(
+        ExamResults.examid == exam_id, ExamResults.studentid == student_id
+    ).distinct(
+        StudentQuestionPerformance.questionid
+    ).order_by(
+        StudentQuestionPerformance.questionid, ExamResults.timestamp.desc()
+    ).all()
 
+    performance_data = []
+    for question in questions_performance:
+        performance_data.append(StudentQuestionPerformanceResponseReview(
+            questionid = question[0],
+            prompt = question[1],
+            result = question[2],
+            confidence  = question[3],
+            timestamp = question[4]
+        ))
+        
+    return performance_data

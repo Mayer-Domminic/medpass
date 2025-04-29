@@ -5,7 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from datetime import datetime
 
-from app.core.database import get_db, get_question, get_question_with_details, get_historical_performance, generate_question_embedding
+from app.core.security import get_current_active_user
+from app.models import (
+    LoginInfo as User
+)
+from app.core.database import get_db, get_question, get_question_with_details, get_historical_performance, generate_question_embedding, get_latest_student_review_performance_data
 from app.schemas.question import (
     QuestionCreate,
     QuestionOptionCreate,
@@ -20,6 +24,7 @@ from app.schemas.question import (
     BulkExamResultsResponse,
     BulkStudentQuestionPerformanceResponse,
     ExamResultsWithPerformancesResponse,
+    StudentQuestionPerformanceResponseReview
 )
 from app.models.exam_models import Question, ContentArea, Option, QuestionOption, QuestionClassification
 from app.models.result_models import ExamResults, StudentQuestionPerformance, GradeClassification
@@ -877,4 +882,44 @@ async def get_historical_performance_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}"
+        )
+        
+@router.get("/review-performance/", response_model=List[StudentQuestionPerformanceResponseReview])
+async def get_review_performance(
+    exam_id: Optional[int] = 5,
+    current_user: User = Depends(get_current_active_user), 
+    db: Session = Depends(get_db)
+):
+    
+    try:
+        if current_user.issuperuser:
+            raise HTTPException(
+                status_code=403,
+                detail="Admins accounts can not access student review performance route"
+            )
+
+        studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
+        if not studentid:
+            raise HTTPException(
+                status_code=404,
+                detail="Login Info is not Attached to a Student"
+            )
+        
+        performance_data = get_latest_student_review_performance_data(db, exam_id, studentid)
+        if not performance_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No Performance Data Info Found"
+            )
+        
+        return performance_data
+            
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
         )
