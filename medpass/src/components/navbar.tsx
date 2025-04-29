@@ -12,6 +12,7 @@ import {
   User,
   LogOut,
   ClipboardList,
+  Shield
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
@@ -56,6 +57,7 @@ const Sidebar = () => (
       <NavItem icon={<MessageSquare />} label="Chat" href="/dashboard/chat" />
       <NavItem icon={<FileText />} label="Notes" href="/dashboard/notes" />
       <NavItem icon={<Calendar />} label="Calendar" href="/dashboard/calendar" />
+      <NavItem icon={<Shield />} label="Risk" href="/dashboard/risk" />
     </div>
     {/* Footer Navigation */}
     <div className="px-3 py-4 flex flex-col items-center gap-2">

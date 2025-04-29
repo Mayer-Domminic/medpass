@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/domainreport`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/domainreport`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
       .then(res => res.json())

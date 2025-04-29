@@ -8,7 +8,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 from .endpoints import mock_risk
 api_router.include_router(mock_risk.router, prefix="/info", tags=["info"])
 
-# api_router.include_router(risk.router, prefix="/info", tags=["info"])
+api_router.include_router(risk.router, prefix="/inf", tags=["info"])
 
 api_router.include_router(student.router, prefix="/student", tags=["student"])
 api_router.include_router(faculty.router, prefix="/faculty", tags=["faculty"])

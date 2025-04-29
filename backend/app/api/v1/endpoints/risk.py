@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
+from app.core.security import get_current_active_user
+from app.models import LoginInfo as User
+
 
 from ....schemas.wrisks import RiskAssessmentResponse, StrengthWeakness, MLPrediction
 from ....core.database import get_db
@@ -388,7 +391,7 @@ def convert_models_to_dicts(models: List[Any]) -> List[Dict]:
 
 @router.get("/risk", response_model=RiskAssessmentResponse)
 async def get_risk_assessment(
-    student_id: int,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -397,6 +400,8 @@ async def get_risk_assessment(
     """
     try:
         # Try to get student data from pre-loaded JSON first
+        student_id = db.query(Student).filter(Student.logininfoid == current_user.logininfoid).first()
+        student_id = student_id.studentid
         student_data = get_student_from_json(student_id)
         
         # If not found, check if student exists in database
