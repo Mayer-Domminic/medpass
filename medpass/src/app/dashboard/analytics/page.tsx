@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StudyAnalytics from '@/components/analytics';
 import Sidebar from '@/components/navbar';
 import MiniMetric from '@/components/TrendCard';
+import QuestionPerformance from '@/components/results/QuestionHistory';
 
 const MedalliaAnalytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<string>('Last 7 Days');
-  
-  
+
+
   //returns an array of objects with random values for the trend data
   const generateTrendData = (points = 20) => {
     return Array.from({ length: points }, (_, i) => ({
@@ -18,8 +19,7 @@ const MedalliaAnalytics: React.FC = () => {
     }));
   };
 
-//mocked metrics for demo purposes
-
+  //mocked metrics for demo purposes
   const metrics = [
     {
       title: "Average Session Length",
@@ -60,7 +60,7 @@ const MedalliaAnalytics: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-white">How Are We Doing Overall?</h2>
-            <select 
+            <select
               className="bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
@@ -92,6 +92,10 @@ const MedalliaAnalytics: React.FC = () => {
               <StudyAnalytics />
             </CardContent>
           </Card>
+
+          <div className="mt-8">
+            <QuestionPerformance />
+          </div>
         </div>
       </div>
     </div>

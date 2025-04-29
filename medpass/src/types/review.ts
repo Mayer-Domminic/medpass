@@ -62,3 +62,16 @@ export const confidenceToInt = (confidenceStr: string): number => {
         default: return 3; // Default to neutral if unknown
     }
 };
+
+// Define the return type for the submitQuizResultsToDatabase function
+export interface SubmissionSuccessResult {
+    success: true;
+    data: any;
+}
+
+export interface SubmissionErrorResult {
+    success: false;
+    message: string;
+}
+
+export type SubmissionResult = SubmissionSuccessResult | SubmissionErrorResult;

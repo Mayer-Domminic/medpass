@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import Subdomain from './subdomain';
 import { DomainProps, Question, Performance, Attempt } from '@/types/results';
 
-const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
+const Domain: React.FC<DomainProps> = ({
+  examResult,
+  performances,
+  onQuestionSelect,
+  selectedQuestions = []
+}) => {
   // All hooks must be called at the top level
   const [expanded, setExpanded] = useState<boolean>(false);
   const [attemptsData, setAttemptsData] = useState<Record<string, Attempt[]>>({});
@@ -21,7 +26,6 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
 
     // Create attempts data from performances
     const newAttemptsData: Record<string, Attempt[]> = {};
-
     performances.forEach(performance => {
       const questionId = performance.QuestionID.toString();
 
@@ -47,7 +51,7 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
 
     // Mark initial mount as complete
     isInitialMount.current = false;
-  }, []); // Empty dependency array - runs only on mount
+  }, []); // Empty dependency array to run only on mount
 
   // Check if data is available
   if (!examResult || !performances || performances.length === 0) {
@@ -55,15 +59,23 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
   }
 
   // Transform performances into Question[] expected by Subdomain
+  // and mark questions as checked if they're in the selectedQuestions array
   const questions: Question[] = performances.map((performance: Performance) => ({
     id: performance.QuestionID.toString(),
     text: performance.QuestionPrompt,
     difficulty: performance.QuestionDifficulty.toLowerCase(),
     result: performance.Result,
     confidence: performance.Confidence || 1,
-    isChecked: false,
+    isChecked: selectedQuestions.includes(performance.QuestionID.toString()),
     isCorrect: performance.Result === true,
   }));
+
+  // Handle question selection from subdomain
+  const handleQuestionToggle = (questionId: string, isChecked: boolean) => {
+    if (onQuestionSelect) {
+      onQuestionSelect(questionId, isChecked);
+    }
+  };
 
   return (
     <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-lg max-w-2xl mx-auto">
@@ -83,6 +95,7 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
           </span>
         </div>
       </div>
+
       {expanded && (
         <div className="mt-4 space-y-2">
           <Subdomain
@@ -95,6 +108,7 @@ const Domain: React.FC<DomainProps> = ({ examResult, performances }) => {
             }}
             isExpanded={true}
             onToggle={() => { }}
+            onQuestionToggle={handleQuestionToggle}
             attempts={attemptsData}
           />
         </div>

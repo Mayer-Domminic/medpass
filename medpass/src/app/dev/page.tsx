@@ -1,12 +1,11 @@
 'use client';
-
-import SystemsViewer from "@/components/SystemsViewer";
-import { Sidebar } from "lucide-react";
-import EditableField from "@/components/EditableText";
-import Question from "@/components/QuestionComp/Question";
-import Domain from "@/components/results/domain";
-import Subdomain from "@/components/results/subdomain";
+import QuestionPerformance from "@/components/results/QuestionHistory";
 
 export default function DevPage() {
-  return <Domain title={"Title"} subdomains={[{ id: "1", title: "Subdomain Title", questions: [] }]} />;
+  return (
+    <div className="min-h-screen bg-gray-900 p-6">
+      <h1 className="text-xl font-semibold text-white mb-6">Development Page</h1>
+      <QuestionPerformance />
+    </div>
+  );
 }
