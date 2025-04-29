@@ -1,12 +1,13 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
+import { Button } from "@/components/ui/button";
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/navbar';
 import { useSession } from 'next-auth/react';
 import { ChevronDown, ChevronRight, Heart, Brain, Microscope, User, Users, Wind, Thermometer, Zap, Stethoscope, Pill } from 'lucide-react';
 import AnimatedProgressBar from '@/components/ProgressComponents/AnimatedProgressBar';
-import DomainQuestions from '@/components/domain/DomainQuestions';
 
 interface SubdomainQuestion {
   id: string;
@@ -66,68 +67,6 @@ const getDomainIcon = (domainName: string) => {
   return iconMapping[domainName] || { icon: Stethoscope, color: 'blue' };
 };
 
-// Mock data function - would be replaced with actual API call
-const getMockSubdomains = (domainName: string): Subdomain[] => {
-  switch (domainName) {
-    case 'cardiovascular-system':
-      return [
-        {
-          id: 'cardio-1',
-          title: 'Cardiac Anatomy',
-          confidence: 85,
-          proficiency: 75,
-          questions: [
-            { id: '1', text: 'Structure of heart chambers', difficulty: 'easy', points: 5, isChecked: false },
-            { id: '2', text: 'Coronary vessels anatomy', difficulty: 'med', points: 8, isChecked: false },
-          ],
-        },
-        {
-          id: 'cardio-2',
-          title: 'Cardiac Physiology',
-          confidence: 65,
-          proficiency: 60,
-          questions: [
-            { id: '3', text: 'Cardiac action potential', difficulty: 'hard', points: 10, isChecked: false },
-          ],
-        },
-      ];
-    case 'respiratory-and-renal-urinary-systems':
-      return [
-        {
-          id: 'resp-1',
-          title: 'Pulmonary Anatomy',
-          confidence: 70,
-          proficiency: 65,
-          questions: [
-            { id: '4', text: 'Bronchial tree structure', difficulty: 'easy', points: 5, isChecked: false },
-          ],
-        },
-        {
-          id: 'resp-2',
-          title: 'Pulmonary Physiology',
-          confidence: 80,
-          proficiency: 75,
-          questions: [
-            { id: '5', text: 'Gas exchange mechanisms', difficulty: 'med', points: 8, isChecked: false },
-          ],
-        },
-      ];
-    // Add more cases for other domains
-    default:
-      return [
-        {
-          id: 'default-1',
-          title: 'General Topics',
-          confidence: 60,
-          proficiency: 55,
-          questions: [
-            { id: '6', text: 'Basic concepts', difficulty: 'easy', points: 5, isChecked: false },
-          ],
-        },
-      ];
-  }
-};
-
 interface SubdomainComponentProps {
   subdomain: Subdomain;
   isExpanded: boolean;
@@ -141,6 +80,87 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
   onToggle,
   domainName
 }) => {
+  const router = useRouter();
+  const [generatingAIQuestions, setGeneratingAIQuestions] = useState(false);
+  const { data: session } = useSession();
+  // add state for questions
+  const [questions, setQuestions] = useState<SubdomainQuestion[]>(subdomain.questions || []);
+  const [additionalContext, setAdditionalContext] = useState('');
+  
+  const fetchQuestions = async () => {
+    if (!session?.accessToken) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data.questions)) {
+        const formattedQuestions = data.questions.map((q: any) => ({
+          id: q.id,
+          text: q.text,
+          difficulty: q.difficulty === 'medium' ? 'med' : q.difficulty,
+          points: 5,
+          isChecked: false
+        }));
+        
+        setQuestions(formattedQuestions);
+      }
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+    }
+  };
+
+  useEffect(() => {
+    setQuestions(subdomain.questions || []);
+    
+    // fetch questions when component expands
+    if (isExpanded && session?.accessToken) {
+      fetchQuestions();
+    }
+  }, [subdomain, isExpanded, session?.accessToken]);
+
+  const generateAIQuestions = async () => {
+    if (!session?.accessToken) return;
+    
+    setGeneratingAIQuestions(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/generate?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}&count=5&rag=true&additional_context=${encodeURIComponent(additionalContext)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.accessToken}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      await fetchQuestions();
+      
+      setAdditionalContext('');
+    } catch (error) {
+      console.error('Error generating AI questions:', error);
+    } finally {
+      setGeneratingAIQuestions(false);
+    }
+  };
+
   return (
     <div className="w-full bg-gray-800 rounded-lg p-4">
       <div 
@@ -155,6 +175,41 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
           )}
         </div>
         <span className="text-base font-bold text-white flex-grow">{subdomain.title}</span>
+
+        <div className="flex items-center gap-2 mr-4">
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-600/30"
+            onClick={(e) => {
+              e.stopPropagation();
+              generateAIQuestions();
+            }}
+            disabled={generatingAIQuestions}
+          >
+            {generatingAIQuestions ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                Generating...
+              </>
+            ) : (
+              "Generate AI Questions"
+            )}
+          </Button>
+          
+          <Button
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(
+                `/dashboard/review?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}&practice=true`
+              );
+            }}
+          >
+            Practice Questions
+          </Button>
+        </div>
 
         <div className="flex items-center gap-8 ml-auto">
           <div className="flex flex-col items-center gap-1">
@@ -186,35 +241,52 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
             isExpanded ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {/* Questions List */}
+          {/* Context input at top */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">Questions</h3>
-            <div className="space-y-2">
-              {subdomain.questions.map(question => (
-                <div key={question.id} className="flex items-center gap-3 text-gray-300 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    question.difficulty === 'easy' 
-                      ? 'bg-green-900/30 text-green-400' 
-                      : question.difficulty === 'med' 
-                        ? 'bg-yellow-900/30 text-yellow-400' 
-                        : 'bg-red-900/30 text-red-400'
-                  }`}>
-                    {question.difficulty}
-                  </span>
-                  <span>{question.text}</span>
-                  <span className="ml-auto text-gray-400">{question.points} pts</span>
-                </div>
-              ))}
+            <div className="flex gap-2 mb-4">
+              <textarea
+                id={`additionalContext-${subdomain.id}`}
+                value={additionalContext}
+                onChange={e => setAdditionalContext(e.target.value)}
+                className="flex-grow bg-gray-800 text-gray-300 border border-gray-700 rounded-md p-2"
+                placeholder="Any specific topics or areas you'd like to focus on"
+                rows={2}
+              />
+              <Button
+                onClick={generateAIQuestions}
+                disabled={generatingAIQuestions}
+                className="bg-blue-600 hover:bg-blue-700 text-white self-end"
+              >
+                {generatingAIQuestions ? 'Generating...' : 'Generate More'}
+              </Button>
             </div>
-          </div>
           
-          {/* Practice Questions Generator using Gemini API */}
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">Practice Questions</h3>
-            <DomainQuestions 
-              domain={domainName}
-              subdomain={subdomain.title}
-            />
+            {/* Questions List */}
+            <h3 className="text-lg font-semibold text-gray-300 mb-4">
+              Questions ({questions.length})
+            </h3>
+            <div className="space-y-2">
+              {questions.length > 0 ? (
+                questions.map(question => (
+                  <div key={question.id} className="flex items-center gap-3 text-gray-300 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      question.difficulty === 'easy' 
+                        ? 'bg-green-900/30 text-green-400' 
+                        : question.difficulty === 'med' 
+                          ? 'bg-yellow-900/30 text-yellow-400' 
+                          : 'bg-red-900/30 text-red-400'
+                    }`}>
+                      {question.difficulty}
+                    </span>
+                    <span>{question.text}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-400 text-sm italic">
+                  No questions yet. Click "Generate AI Questions" to generate some.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -223,6 +295,7 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
 };
 
 export default function DomainPage() {
+  const router = useRouter();
   const { domainName } = useParams();
   const { data: session } = useSession();
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
@@ -233,32 +306,66 @@ export default function DomainPage() {
   const formattedDomainName = formatDomainName(domainName as string);
   const { icon: DomainIcon, color } = getDomainIcon(domainName as string);
 
-    useEffect(() => {
-        if (!session?.accessToken) return;
-        fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/domains/${encodeURIComponent(formattedDomainName)}/subdomains`,
-            { headers: { Authorization: `Bearer ${session.accessToken}` } }
-        )
-            .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json() as Promise<string[]>;
-            })
-            .then(names => {
-            const subs = names.map(name => ({
-                id: name,
-                title: name,
-                confidence: 0,
-                proficiency: 0,
-                questions: []
-            }));
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    
+    // Fetch subdomains first
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/domains/${encodeURIComponent(formattedDomainName)}/subdomains`,
+      { headers: { Authorization: `Bearer ${session.accessToken}` } }
+    )
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<string[]>;
+      })
+      .then(names => {
+        const subs = names.map(name => ({
+          id: name,
+          title: name,
+          confidence: 0,
+          proficiency: 0,
+          questions: []
+        }));
 
-            setSubdomains(subs);
-            })
-            .catch(err => {
-            console.error('Failed to fetch subdomains:', err);
-            })
-            .finally(() => setLoading(false));
-    }, [formattedDomainName, session]);
+        setSubdomains(subs);
+        
+        // After getting subdomains, fetch the stats
+        return fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/stats?domain=${encodeURIComponent(formattedDomainName)}`,
+          { headers: { Authorization: `Bearer ${session.accessToken}` } }
+        );
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(statsData => {
+        // Update subdomains with stats
+        setSubdomains(prev => {
+          const updated = [...prev];
+          
+          // Loop through each subdomain and update with stats if available
+          for (let i = 0; i < updated.length; i++) {
+            const subdomain = updated[i];
+            const stats = statsData.subdomains?.[subdomain.title];
+            
+            if (stats) {
+              updated[i] = {
+                ...subdomain,
+                confidence: stats.confidence || 0,
+                proficiency: stats.proficiency || 0
+              };
+            }
+          }
+          
+          return updated;
+        });
+      })
+      .catch(err => {
+        console.error('Failed to fetch data:', err);
+      })
+      .finally(() => setLoading(false));
+  }, [formattedDomainName, session]);
   
   const toggleSubdomain = (id: string) => {
     if (expandedSubdomain === id) {
@@ -275,13 +382,15 @@ export default function DomainPage() {
         <div className="max-w-7xl mx-auto">
           {/* Domain Title */}
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg bg-${color}-500/10`}>
-                <DomainIcon className={`w-8 h-8 text-${color}-400`} />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">{formattedDomainName}</h1>
-                <p className="text-gray-400">Comprehensive study of {formattedDomainName.toLowerCase()}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg bg-${color}-500/10`}>
+                  <DomainIcon className={`w-8 h-8 text-${color}-400`} />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">{formattedDomainName}</h1>
+                  <p className="text-gray-400">Comprehensive study of {formattedDomainName.toLowerCase()}</p>
+                </div>
               </div>
             </div>
           </div>
