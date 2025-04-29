@@ -76,6 +76,7 @@ class AccessibleStudentInfo(BaseModel):
 class ExamDate(BaseModel):
     examresultsid: int
     timestamp: datetime
+    score: int
 
 class StudentStatistics(BaseModel):
     total_exams_taken: int 

@@ -427,13 +427,13 @@ async def get_stats_average(
                 detail="Student Average Data Info Not Found"
             )
         
-        db_exam_dates = db.query(ExamResults.examresultsid, ExamResults.examid).filter(
+        db_exam_dates = db.query(ExamResults.examresultsid, ExamResults.timestamp, ExamResults.score).filter(
             ExamResults.studentid == studentid, ExamResults.examid == 5
         ).order_by(
             ExamResults.timestamp
         )
         
-        exam_dates = [ExamDate(examresultsid=result[0], timestamp=result[1]) for result in db_exam_dates]
+        exam_dates = [ExamDate(examresultsid=result[0], timestamp=result[1], score=result[2]) for result in db_exam_dates]
         
         average_statistics.exam_dates = exam_dates
         
