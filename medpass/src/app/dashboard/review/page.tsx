@@ -7,10 +7,8 @@ declare global {
   }
 }
 
-import { Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
@@ -36,15 +34,8 @@ import {
   fetchStudentInfo
 } from '@/lib/reviewUtils';
 
-// Main content component
-function ReviewPageContent() {
-  const { data: session } = useSession();
-  const router = useRouter();
+export default function ReviewPage() {
   const searchParams = useSearchParams();
-  const domain = searchParams.get('domain');
-  const subdomain = searchParams.get('subdomain');
-  const isPracticeMode = searchParams.get('practice') === 'true';
-  const allDomainQuestions = searchParams.get('allDomainQuestions') === 'true';
 
   // replace mock data with state for loaded questions
   const [questions, setQuestions] = useState<QuestionResponseData[]>([]);
@@ -61,24 +52,6 @@ function ReviewPageContent() {
   const [studentId, setStudentId] = useState<number | null>(null);
   const [loadingStudentInfo, setLoadingStudentInfo] = useState(false);
   const [studentInfoError, setStudentInfoError] = useState<string | null>(null);
-
-  const handleGenerateQuestions = () => {
-    if (domain) {
-      if (subdomain) {
-        router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}?expandedSubdomain=${encodeURIComponent(subdomain)}`);
-      } else {
-        router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}`);
-      }
-    } else {
-      router.push('/dashboard');
-    }
-  };
-
-  useEffect(() => {
-    if (isPracticeMode) {
-      localStorage.removeItem('reviewSessionState');
-    }
-  }, [isPracticeMode]);
 
   // Load student information
   useEffect(() => {
@@ -104,96 +77,66 @@ function ReviewPageContent() {
     getStudentInfo();
   }, []);
 
-  // Load questions from API
+  // Parse question IDs from URL parameters
+  const parseQuestionIds = (): number[] => {
+    try {
+      // Get the questionIds parameter from the URL
+      const questionIdsParam = searchParams.get('questionIds');
+
+      // If no parameter is provided, return empty array
+      if (!questionIdsParam) {
+        console.warn("No questionIds parameter found in URL");
+        return [];
+      }
+
+      // Parse the comma-separated string into an array of numbers
+      const ids = questionIdsParam.split(',')
+        .map(id => id.trim())
+        .filter(id => id.length > 0)
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+
+      console.log("Parsed question IDs from URL:", ids);
+      return ids;
+    } catch (error) {
+      console.error("Error parsing question IDs:", error);
+      return [];
+    }
+  };
+
+  // Load questions from API based on URL parameters
   useEffect(() => {
     const loadQuestions = async () => {
       try {
         setLoading(true);
-        
-        if (domain) {
-          // determine which API endpoint to use
-          let url = allDomainQuestions 
-            ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/domain-questions/?domain=${encodeURIComponent(domain)}&random=true`
-            : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/?domain=${encodeURIComponent(domain)}`;
-          
-          if (!allDomainQuestions && subdomain) {
-            url += `&subdomain=${encodeURIComponent(subdomain)}`;
-          }
-          
-          const response = await fetch(url, {
-            headers: {
-              Authorization: `Bearer ${session?.accessToken}`
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          console.log("API Response data:", data);
-          
-          if (Array.isArray(data.questions) && data.questions.length > 0) {
-            const formattedQuestions = data.questions.map((q: any) => {
-              let parsedOptions = [];
-              
-              try {
-                if (typeof q.options === 'string') {
-                  parsedOptions = JSON.parse(q.options);
-                } else if (Array.isArray(q.options)) {
-                  parsedOptions = q.options;
-                }
-              } catch (e) {
-                console.error("Error parsing options:", e);
-                parsedOptions = [];
-              }
-              
-              // map the answer options
-              const questionOptions = parsedOptions.map((opt: any, index: number) => ({
-                OptionID: opt.id || index + 1,
-                CorrectAnswer: !!opt.isCorrect,
-                Explanation: opt.isCorrect ? (q.explanation || "Correct answer") : "Incorrect option",
-                OptionDescription: opt.text
-              }));
-              
-              return {
-                Question: {
-                  QuestionID: q.id,
-                  ExamID: 1,
-                  Prompt: q.text,
-                  QuestionDifficulty: q.difficulty || "medium",
-                  ImageUrl: null,
-                  ImageDependent: false,
-                  ImageDescription: null,
-                  ExamName: domain
-                },
-                Options: questionOptions,
-                GradeClassification: {
-                  GradeClassificationID: 1,
-                  ClassificationName: q.category || subdomain || domain
-                }
-              };
-            });
-            
-            console.log("Formatted questions with options:", formattedQuestions);
-            setQuestions(formattedQuestions);
-            
-            const possiblePoints = calculateTotalPossiblePoints(formattedQuestions);
-            setTotalPossiblePoints(possiblePoints);
-          } else if (subdomain && !allDomainQuestions) {
-            setError(`No practice questions found for ${subdomain}. Please generate questions first.`);
-          } else {
-            setError(`No practice questions found for ${domain}. Please generate questions for specific subdomains first.`);
-          }
-        } else {
-          const questionIds = [10, 11, 12]; // Example IDs
-          const loadedQuestions = await fetchQuizQuestions(questionIds);
-          setQuestions(loadedQuestions);
-          
-          const possiblePoints = calculateTotalPossiblePoints(loadedQuestions);
-          setTotalPossiblePoints(possiblePoints);
+
+        // Get question IDs from URL parameters
+        const questionIds = parseQuestionIds();
+
+        // Check if we have valid question IDs
+        if (questionIds.length === 0) {
+          setError('No valid question IDs provided. Please go back and select some questions.');
+          setLoading(false);
+          return;
         }
-        
+
+        // Fetch questions using the parsed IDs
+        const loadedQuestions = await fetchQuizQuestions(questionIds);
+
+        // Check if we received any questions
+        if (!loadedQuestions || loadedQuestions.length === 0) {
+          setError('No questions found with the provided IDs. Please try again with different questions.');
+          setLoading(false);
+          return;
+        }
+
+        setQuestions(loadedQuestions);
+
+        // Calculate total possible points immediately after loading questions
+        const possiblePoints = calculateTotalPossiblePoints(loadedQuestions);
+        console.log(`Total possible points calculated: ${possiblePoints}`);
+        setTotalPossiblePoints(possiblePoints);
+
         setLoading(false);
       } catch (err) {
         setError('Failed to load questions. Please try again later.');
@@ -201,15 +144,13 @@ function ReviewPageContent() {
         console.error('Error loading questions:', err);
       }
     };
-  
-    if (session?.accessToken) {
-      loadQuestions();
-    }
-  }, [session?.accessToken, domain, subdomain, allDomainQuestions]);
+
+    loadQuestions();
+  }, [searchParams]); // Re-run if search parameters change
 
   // load saved state when component mounts and after questions are loaded
   useEffect(() => {
-    if (questions.length > 0 && !loading && !isPracticeMode) {
+    if (questions.length > 0 && !loading) {
       const savedState = loadQuizState();
       if (savedState) {
         setCurrentQuestionIndex(savedState.currentQuestionIndex);
@@ -223,11 +164,11 @@ function ReviewPageContent() {
         }
       }
     }
-  }, [questions, loading, isPracticeMode]);
+  }, [questions, loading]);
 
   // save state whenever key state variables changes
   useEffect(() => {
-    if (questions.length > 0 && !isPracticeMode) {
+    if (questions.length > 0) {
       saveQuizState(
         currentQuestionIndex,
         userAnswers,
@@ -236,7 +177,7 @@ function ReviewPageContent() {
         totalPossiblePoints
       );
     }
-  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, totalPossiblePoints, questions, isPracticeMode]);
+  }, [currentQuestionIndex, userAnswers, answeredQuestions, score, totalPossiblePoints, questions]);
 
   // update global window prop to track current question index
   useEffect(() => {
@@ -373,7 +314,7 @@ function ReviewPageContent() {
     // Update submission status
     setSubmissionStatus('submitting');
 
-    const examId = questions[0]?.Question?.ExamID || 1;
+    const examId = questions[0].Question.ExamID;
     const result = await submitQuizResultsToDatabase(
       studentId,
       examId,
@@ -414,6 +355,11 @@ function ReviewPageContent() {
     }
   }, [questions, totalPossiblePoints]);
 
+  // Back to results function
+  const handleBackToResults = () => {
+    window.location.href = '/dashboard/results';
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
       <Sidebar />
@@ -424,18 +370,22 @@ function ReviewPageContent() {
 
         {/* Right side: Progress information and user info */}
         <div className="flex items-center">
-          <span className="text-slate-400 mr-3">
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </span>
-          <div className="w-64 h-2 bg-slate-800 rounded-full mr-3">
-            <div
-              className="h-full bg-blue-600 rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-          <span className="text-slate-400 mr-4">
-            Score: {score}/{totalPossiblePoints}
-          </span>
+          {questions.length > 0 && (
+            <>
+              <span className="text-slate-400 mr-3">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </span>
+              <div className="w-64 h-2 bg-slate-800 rounded-full mr-3">
+                <div
+                  className="h-full bg-blue-600 rounded-full"
+                  style={{ width: `${progressPercentage}%` }}
+                ></div>
+              </div>
+              <span className="text-slate-400 mr-4">
+                Score: {score}/{totalPossiblePoints}
+              </span>
+            </>
+          )}
 
           {/* User info */}
           <div className="flex items-center">
@@ -444,35 +394,6 @@ function ReviewPageContent() {
         </div>
       </div>
 
-      {domain && (
-        <div className="flex gap-2 ml-20 mb-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/dashboard')}
-            className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-          >
-            Back to Domains
-          </Button>
-          {subdomain && (
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/dashboard/domain/${domain.toLowerCase().replace(/ /g, '-')}`)}
-              className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-            >
-              Back to {domain}
-            </Button>
-          )}
-          {!questions.length && (
-            <Button
-              onClick={handleGenerateQuestions}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Generate Questions
-            </Button>
-          )}
-        </div>
-      )}
-      
       {/* Loading state */}
       {loading && (
         <div className="container mx-auto text-center py-12">
@@ -487,20 +408,22 @@ function ReviewPageContent() {
           <div className="bg-red-800 text-white p-4 rounded-md mb-4 inline-block">
             <p>{error}</p>
           </div>
-          {domain && (
+          <div className="space-y-3">
             <Button
-              onClick={handleGenerateQuestions}
-              className="bg-blue-600 hover:bg-blue-700 text-white mr-3"
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Go Generate Questions
+              Try Again
             </Button>
-          )}
-          <Button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Try Again
-          </Button>
+            <div>
+              <Button
+                onClick={handleBackToResults}
+                className="bg-slate-600 hover:bg-slate-700 text-white"
+              >
+                Back to Results
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -624,31 +547,28 @@ function ReviewPageContent() {
                 {submissionStatus === 'error' && 'Save Failed - Try Again'}
               </Button>
 
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => {
-                  resetQuiz();
-                  setSubmissionStatus('idle');
-                }}
-              >
-                Retake Quiz
-              </Button>
+              <div className="flex space-x-2 w-full">
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    resetQuiz();
+                    setSubmissionStatus('idle');
+                  }}
+                >
+                  Retake Quiz
+                </Button>
+
+                <Button
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white"
+                  onClick={handleBackToResults}
+                >
+                  Back to Results
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         </div>
       )}
     </div>
-  );
-}
-
-export default function ReviewPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-900 text-slate-100 p-4 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-      </div>
-    }>
-      <ReviewPageContent />
-    </Suspense>
   );
 }

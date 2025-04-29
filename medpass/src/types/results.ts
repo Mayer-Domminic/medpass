@@ -46,6 +46,8 @@ export type ExamResultData = {
 export type DomainProps = {
   examResult: ExamResult;
   performances: Performance[];
+  onQuestionSelect?: (questionId: string, isSelected: boolean) => void;
+  selectedQuestions?: string[];
 };
 
 // Question-related types
@@ -128,7 +130,7 @@ export type PreviewQuestionProps = {
 export type SubdomainType = {
   id: string;
   title: string;
-  name?: string; 
+  name?: string;
   questions: Question[];
   isLatestConf: boolean;
 };
