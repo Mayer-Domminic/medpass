@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Message {
-  sender: "user" | "assistant";
+  sender: "user" | "assistant" | "bot" | "flash";
   content: string;
   timestamp: string;
 }
@@ -60,7 +60,6 @@ export default function ChatPage() {
         });
     }
   }, [showHistory, session?.accessToken]);
-  
 
   const startNewChat = async () => {
     setConversationId(null);
@@ -150,6 +149,14 @@ export default function ChatPage() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Helper function to render the correct sender name
+  const renderSender = (sender: string) => {
+    if (sender === "bot" || sender === "flash") {
+      return "Medpass AI Tutor"; 
+    }
+    return sender === "user" ? "You" : "Medpass AI Tutor";
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex">
       <Sidebar />
@@ -209,7 +216,7 @@ export default function ChatPage() {
                             <div className={`text-xs flex justify-between ${m.sender === "user" ? "text-blue-100" : "text-gray-400"}`}> 
                               <span>{getTimeString(m.timestamp, m.sender)}</span>
                               <span className="ml-2 px-2 py-0.5 rounded-full uppercase bg-gray-700 text-gray-300 text-[10px]">
-                                {m.sender === "user" ? "You" : "Medpass AI Tutor"}
+                                {renderSender(m.sendertype)}
                               </span>
                             </div>
                           </div>
