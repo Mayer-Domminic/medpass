@@ -32,10 +32,13 @@ class Document(Base):
     title = Column('title', String(255))
     author = Column('author', String(255))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    s3_key = Column('s3_key', String(512))
     facultyid = Column('facultyid', Integer, ForeignKey('faculty.facultyid'))
+    studentid = Column('studentid', Integer, ForeignKey('student.studentid'))
     
     faculty = relationship('Faculty', back_populates='documents')
     chunks = relationship('DocumentChunk', back_populates='documents')
+    student = relationship('Student', back_populates='documents')
     
 class DocumentChunk(Base):
     __tablename__ = 'documentchunk'

@@ -8,6 +8,7 @@ from app.models import (
     Faculty,
     Document,
     DocumentChunk,
+    Student
 )
 
 from ..core.database import get_db, get_question_with_details, get_chat_context, get_chat_message
@@ -20,6 +21,8 @@ import pypdf
 import docx
 import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from app.services.s3_service import s3, BUCKET
+
 
 #Pre Processing Step Before Embedding Converts a question to a string takes in a dictionary found in get_question_with_details
 def convert_question_to_text(question_response: dict) -> str:
@@ -190,6 +193,32 @@ def split_text(text: str) -> List[str]:
     chunks = text_splitter.split_text(text)
     return chunks
 
+# Nearly identical to the os extract but is support for S3 file objects
+def extract_text_pdf_from_s3(file_obj) -> str:
+    
+    pdf_reader = pypdf.PdfReader(file_obj)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
+    return text
+
+def extract_text_docx_from_s3(file_obj) -> str:
+    doc = docx.Document(file_obj)
+    text = ""
+    for paragraph in doc.paragraphs:
+        text += paragraph.text + "\n"
+    return text
+
+def extract_text_from_s3(file_obj, filename: str) :
+
+    _, ext = os.path.splitext(filename)
+    if ext.lower() == ".pdf":
+        return extract_text_pdf_from_s3(file_obj)
+    elif ext.lower() in [".docx", ".doc"]:
+        return extract_text_docx_from_s3(file_obj)
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
 def generate_document_embeddings(chunks):
     # Generate embeddings for the chunks
     embeddings = embed_texts(chunks)
@@ -266,6 +295,59 @@ def ingest_document_directory(directory_path: str):
         return None
     finally:
         db.close()
+        
+def ingest_document_from_s3(db, bucket_name, key, logininfo_id):
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=key)
+        content = response['Body'].read()
+        
+        filename = key.split('/')[-1]
+        
+        import io
+        
+        file_obj = io.BytesIO(content)
+        
+        text = extract_text_from_s3(file_obj, filename)
+        
+        chunks = split_text(text)
+        embeddings = generate_document_embeddings(chunks)
+        
+        student = db.query(Student).filter(Student.logininfoid == logininfo_id).first()
+        
+        if not student:
+            return None
+        
+        doc = Document(
+            title=filename,
+            author=student.firstname + " " + student.lastname,
+            studentid=student.studentid,
+            s3_key=key
+        )
+        
+        db.add(doc)
+        db.flush()
+        
+        for i, (text_chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            chunk = DocumentChunk(
+                documentid=doc.documentid,
+                chunkindex=i,
+                content=text_chunk,
+                embedding=embedding
+            )
+            db.add(chunk)
+        db.commit()
+        
+        print(f"Document {filename} ingested successfully with ID: {doc.documentid}")
+        
+        return doc.documentid
+        
+    except s3.exceptions.NoSuchKey:
+        print(f"File not found in S3: {key}")
+        return None
+        
+    except Exception as e:
+        print(f"Unexpected error with S3 file: {key}, {e}")
+        return None
         
 def search_documents(query: str, limit: int = 5, faculty_id: int = None, similiarity_threshold: float = 0.5):
     
@@ -391,6 +473,8 @@ def search_chat_contexts(db, user_id, query: str, limit: int = 5, similiarity_th
     ]
     
     return formatted_results
+
+
     
     
     
