@@ -6,7 +6,8 @@ import {
   BarChart,
   XAxis,
   YAxis,
-  Bar
+  Bar,
+  Tooltip
 } from 'recharts';
 
 export interface DomainRecord {
@@ -58,42 +59,96 @@ const StepOverview: React.FC<StepOverviewProps> = ({
     const slug = domainToSlug(domain);
     router.push(`/dashboard/domain/${slug}`);
   };
+
+  const getTitleClass = (domain: string) => {
+    if (domain.length < 20) return "text-lg";
+    if (domain.length < 35) return "text-base";
+    return "text-sm";
+  };
+
+  const getDynamicBarSize = (count: number) => {
+    if (count <= 3) return 30;
+    if (count <= 6) return 20;
+    return 14;
+  };
   
   return (
-    <div className="grid grid-cols-3 gap-4 bg-gray-900">
+    <div className="grid grid-cols-3 gap-4 bg-gray-900 p-4">
       {Object.entries(byDomain).map(([domain, records]) => (
         <div 
           key={domain} 
-          className="w-full bg-gray-800 rounded-xl p-4 transition-colors duration-250 hover:bg-gray-700 cursor-pointer"
+          className="w-full bg-gray-800 rounded-xl p-4 flex flex-col justify-between hover:bg-gray-700 cursor-pointer transition-colors duration-250"
           onMouseEnter={() => onCardMouseEnter?.(domain)}
           onMouseLeave={onCardMouseLeave}
           onClick={() => handleDomainClick(domain)}
         >
-          <h3 className="text-xl font-bold text-white mb-2">
-            {domain}
-          </h3>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart
-              data={records.map(r => ({
-                subject: r.subject,
-                Attempted: r.attempted,
-                Mastered: r.mastered
-              }))}
-            >
-              <XAxis dataKey="subject" tick={{ fontSize: 10 }} />
-              <YAxis />
-              <Bar
-                dataKey="Attempted"
-                key={`bar-attempted-${domain}`}
-                fill="#4B5563" // Default gray
-              />
-              <Bar
-                dataKey="Mastered"
-                key={`bar-mastered-${domain}`}
-                fill="#10B981" // Green
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="mb-2 min-h-[40px] flex items-start">
+            <h3 className={`font-bold text-white leading-tight ${getTitleClass(domain)}`}>
+              {domain}
+            </h3>
+          </div>
+
+          <div className="flex-grow flex items-end">
+            <div className="w-full h-[120px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={records.map(r => ({
+                    subject: r.subject,
+                    "Possible Points": r.attempted,
+                    "Points Earned": r.mastered
+                  }))}
+                  margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                >
+                  <XAxis dataKey="subject" tick={{ fontSize: 10 }} />
+                  <YAxis width={20} tick={{ fontSize: 10 }} />
+                  
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#E5E7EB' }}
+                    itemStyle={{ color: '#E5E7EB' }}
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length > 0) {
+                        return (
+                          <div className="p-2 bg-gray-800 border border-gray-700 rounded shadow-lg">
+                            <p className="text-gray-200 font-medium">{label}</p>
+                            {payload.map((entry, index) => (
+                              <p key={`item-${index}`} className="text-blue-400">
+                                {`${entry.name}: ${entry.value}`}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+
+                  <Bar
+                    dataKey="Possible Points"
+                    key={`bar-possible-${domain}`}
+                    fill="#4B5563"
+                    barSize={getDynamicBarSize(records.length)}
+                    isAnimationActive={true}
+                    animationDuration={400}
+                  />
+                  <Bar
+                    dataKey="Points Earned"
+                    key={`bar-earned-${domain}`}
+                    fill="#10B981"
+                    barSize={getDynamicBarSize(records.length)}
+                    isAnimationActive={true}
+                    animationDuration={400}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
         </div>
       ))}
     </div>
