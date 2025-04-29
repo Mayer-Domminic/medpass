@@ -8,6 +8,7 @@ declare global {
 }
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
@@ -34,6 +35,8 @@ import {
 } from '@/lib/reviewUtils';
 
 export default function ReviewPage() {
+  const searchParams = useSearchParams();
+
   // replace mock data with state for loaded questions
   const [questions, setQuestions] = useState<QuestionResponseData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,15 +77,59 @@ export default function ReviewPage() {
     getStudentInfo();
   }, []);
 
-  // Load questions from API
+  // Parse question IDs from URL parameters
+  const parseQuestionIds = (): number[] => {
+    try {
+      // Get the questionIds parameter from the URL
+      const questionIdsParam = searchParams.get('questionIds');
+
+      // If no parameter is provided, return empty array
+      if (!questionIdsParam) {
+        console.warn("No questionIds parameter found in URL");
+        return [];
+      }
+
+      // Parse the comma-separated string into an array of numbers
+      const ids = questionIdsParam.split(',')
+        .map(id => id.trim())
+        .filter(id => id.length > 0)
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+
+      console.log("Parsed question IDs from URL:", ids);
+      return ids;
+    } catch (error) {
+      console.error("Error parsing question IDs:", error);
+      return [];
+    }
+  };
+
+  // Load questions from API based on URL parameters
   useEffect(() => {
     const loadQuestions = async () => {
       try {
         setLoading(true);
-        // Example question IDs - replace with your actual question IDs
-        // You might want to fetch these from another endpoint or have them predefined
-        const questionIds = [10, 11, 12]; // Example IDs
+
+        // Get question IDs from URL parameters
+        const questionIds = parseQuestionIds();
+
+        // Check if we have valid question IDs
+        if (questionIds.length === 0) {
+          setError('No valid question IDs provided. Please go back and select some questions.');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch questions using the parsed IDs
         const loadedQuestions = await fetchQuizQuestions(questionIds);
+
+        // Check if we received any questions
+        if (!loadedQuestions || loadedQuestions.length === 0) {
+          setError('No questions found with the provided IDs. Please try again with different questions.');
+          setLoading(false);
+          return;
+        }
+
         setQuestions(loadedQuestions);
 
         // Calculate total possible points immediately after loading questions
@@ -99,7 +146,7 @@ export default function ReviewPage() {
     };
 
     loadQuestions();
-  }, []);
+  }, [searchParams]); // Re-run if search parameters change
 
   // load saved state when component mounts and after questions are loaded
   useEffect(() => {
@@ -308,6 +355,11 @@ export default function ReviewPage() {
     }
   }, [questions, totalPossiblePoints]);
 
+  // Back to results function
+  const handleBackToResults = () => {
+    window.location.href = '/dashboard/results';
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-slate-100 p-4">
       <Sidebar />
@@ -318,18 +370,22 @@ export default function ReviewPage() {
 
         {/* Right side: Progress information and user info */}
         <div className="flex items-center">
-          <span className="text-slate-400 mr-3">
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </span>
-          <div className="w-64 h-2 bg-slate-800 rounded-full mr-3">
-            <div
-              className="h-full bg-blue-600 rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-          <span className="text-slate-400 mr-4">
-            Score: {score}/{totalPossiblePoints}
-          </span>
+          {questions.length > 0 && (
+            <>
+              <span className="text-slate-400 mr-3">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </span>
+              <div className="w-64 h-2 bg-slate-800 rounded-full mr-3">
+                <div
+                  className="h-full bg-blue-600 rounded-full"
+                  style={{ width: `${progressPercentage}%` }}
+                ></div>
+              </div>
+              <span className="text-slate-400 mr-4">
+                Score: {score}/{totalPossiblePoints}
+              </span>
+            </>
+          )}
 
           {/* User info */}
           <div className="flex items-center">
@@ -352,12 +408,22 @@ export default function ReviewPage() {
           <div className="bg-red-800 text-white p-4 rounded-md mb-4 inline-block">
             <p>{error}</p>
           </div>
-          <Button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Try Again
-          </Button>
+          <div className="space-y-3">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Try Again
+            </Button>
+            <div>
+              <Button
+                onClick={handleBackToResults}
+                className="bg-slate-600 hover:bg-slate-700 text-white"
+              >
+                Back to Results
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -481,15 +547,24 @@ export default function ReviewPage() {
                 {submissionStatus === 'error' && 'Save Failed - Try Again'}
               </Button>
 
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => {
-                  resetQuiz();
-                  setSubmissionStatus('idle');
-                }}
-              >
-                Retake Quiz
-              </Button>
+              <div className="flex space-x-2 w-full">
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    resetQuiz();
+                    setSubmissionStatus('idle');
+                  }}
+                >
+                  Retake Quiz
+                </Button>
+
+                <Button
+                  className="flex-1 bg-slate-600 hover:bg-slate-700 text-white"
+                  onClick={handleBackToResults}
+                >
+                  Back to Results
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         </div>

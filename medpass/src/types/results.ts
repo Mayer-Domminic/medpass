@@ -46,6 +46,8 @@ export type ExamResultData = {
 export type DomainProps = {
   examResult: ExamResult;
   performances: Performance[];
+  onQuestionSelect?: (questionId: string, isSelected: boolean) => void;
+  selectedQuestions?: string[];
 };
 
 // Question-related types

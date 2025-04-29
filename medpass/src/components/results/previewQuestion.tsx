@@ -1,24 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Clock, BarChart2 } from 'lucide-react';
-import questionService from '@/lib/resultsUtils';
+import {QuestionOption, PreviewQuestionProps} from '@/types/results';
+import { getQuestionDetails, getHistoricalPerformance, getOptionLetter, combineAttempts } from '@/lib/resultsUtils';
 import { Attempt } from '@/types/results';
 import { useSession } from 'next-auth/react';
-
-interface QuestionOption {
-    id: string;
-    text: string;
-    isCorrect: boolean;
-}
-
-interface PreviewQuestionProps {
-    question: {
-        id: string;
-        text: string;
-        difficulty?: string;
-    };
-    classificationName: string;
-    attempts?: Attempt[];
-}
 
 const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
     question,
@@ -32,11 +17,24 @@ const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
     const [combinedAttempts, setCombinedAttempts] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState<boolean>(true);
 
+    // Helper function to format dates consistently
+    const formatDate = (dateInput: string | Date): string => {
+        if (!dateInput) return 'Unknown date';
+
+        const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+
+        // Check if date is valid
+        if (isNaN(date.getTime())) return 'Invalid date';
+
+        // Format as MM/DD/YYYY
+        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    };
+
     // Fetch question details (options) on component mount
     useEffect(() => {
         const fetchQuestionDetails = async () => {
             setLoading(true);
-            const details = await questionService.getQuestionDetails(question.id);
+            const details = await getQuestionDetails(question.id);
             if (details && details.options) {
                 setOptions(details.options);
             }
@@ -57,7 +55,7 @@ const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
 
             setLoadingHistory(true);
             // Pass the access token to the service instead of a hardcoded ID
-            const historyData = await questionService.getHistoricalPerformance(
+            const historyData = await getHistoricalPerformance(
                 session.accessToken,
                 question.id
             );
@@ -68,23 +66,57 @@ const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
         fetchHistoricalPerformance();
     }, [question.id, session]); // Add session as a dependency
 
+    // Helper function to create a unique identifier for an attempt
+    const getAttemptId = (attempt: any): string => {
+        // Create a unique ID based on date and answer
+        const date = attempt.date || attempt.ExamDate;
+        const answer = attempt.answer || attempt.SelectedOptionID;
+        return `${date}-${answer}`;
+    };
+
     // Combine current attempts with historical attempts
     useEffect(() => {
-        // Process historical attempts into the same format as current attempts
-        const processedHistorical = historicalAttempts.map((histAttempt, index) => ({
-            attemptNumber: attempts.length + index + 1,
-            answer: histAttempt.SelectedOptionID || 2,
-            correct: histAttempt.Result || false,
-            confidence: histAttempt.Confidence || 0,
-            date: histAttempt.ExamDate ? new Date(histAttempt.ExamDate).toLocaleDateString() : 'Unknown date',
-            examName: histAttempt.ExamName || 'Unknown exam'
+        // First, normalize current attempts to ensure they have properly formatted dates
+        const normalizedCurrentAttempts = attempts.map(attempt => ({
+            ...attempt,
+            date: formatDate(attempt.date),
+            attemptId: getAttemptId(attempt)
         }));
 
-        // Combine current and historical attempts
-        const allAttempts = [...attempts, ...processedHistorical];
+        // Process historical attempts into the same format as current attempts
+        const processedHistorical = historicalAttempts.map(histAttempt => {
+            const normalizedAttempt = {
+                answer: histAttempt.SelectedOptionID || 2,
+                correct: histAttempt.Result || false,
+                confidence: histAttempt.Confidence || 0,
+                date: formatDate(histAttempt.ExamDate),
+                examName: histAttempt.ExamName || 'Unknown exam',
+                attemptId: getAttemptId(histAttempt)
+            };
+            return normalizedAttempt;
+        });
+
+        // Create a map to track unique attempts
+        const uniqueAttemptsMap = new Map();
+
+        // Add current attempts to the map
+        normalizedCurrentAttempts.forEach(attempt => {
+            uniqueAttemptsMap.set(attempt.attemptId, attempt);
+        });
+
+        // Add historical attempts to the map (will overwrite duplicates)
+        processedHistorical.forEach(attempt => {
+            // Only add if not already in the map
+            if (!uniqueAttemptsMap.has(attempt.attemptId)) {
+                uniqueAttemptsMap.set(attempt.attemptId, attempt);
+            }
+        });
+
+        // Convert map back to array
+        const allUniqueAttempts = Array.from(uniqueAttemptsMap.values());
 
         // Sort by date (most recent first)
-        const sortedAttempts = allAttempts.sort((a, b) => {
+        const sortedAttempts = allUniqueAttempts.sort((a, b) => {
             const dateA = new Date(a.date).getTime();
             const dateB = new Date(b.date).getTime();
             return dateB - dateA; // Most recent first
