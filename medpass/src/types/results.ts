@@ -13,7 +13,6 @@ export interface ApiResponseItem {
   Performances: Performance[];
 }
 
-
 export type Performance = {
   StudentQuestionPerformanceID: number;
   ExamResultsID: number;
@@ -22,6 +21,7 @@ export type Performance = {
   Confidence: number;
   QuestionPrompt: string;
   QuestionDifficulty: string;
+  SelectedOptionID?: number; // Add this field which is used in the processing
 };
 
 export type ExamResult = {
@@ -64,6 +64,7 @@ export type Question = {
   options?: QuestionOption[];
   correctOption?: number;
   explanation?: string;
+  selectedOptionID?: number; // Add this field to track which option was selected
 };
 
 export type QuestionOption = {
@@ -115,15 +116,17 @@ export type Option = {
 
 export type Attempt = {
   attemptNumber: number;
-  answer: number;
+  answer: number; // This should match SelectedOptionID
   correct: boolean;
   confidence: number;
   date: string;
+  examName?: string; // Add exam context
+  examId?: number; // Add exam ID for better unique identification
 };
 
 export interface UserAnswer {
   questionIndex: number;
-  questionId?: number;  
+  questionId?: number;
   selectedAnswers: number[];
   confidenceLevel: string;
   isCorrect: boolean;

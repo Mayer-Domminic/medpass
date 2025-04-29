@@ -1,4 +1,3 @@
-
 export async function getQuestionDetails(questionId: string): Promise<any | null> {
     try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/question/${questionId}`);
@@ -17,7 +16,7 @@ export async function getQuestionDetails(questionId: string): Promise<any | null
 
 export async function getHistoricalPerformance(accessToken: string, questionId: string): Promise<any[]> {
     try {
-        // Use the auth token to let the backend determine the student
+        // First, get all exam results for the student
         const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/question/historical-performance/?skip=0&limit=100`,
             {
@@ -28,35 +27,48 @@ export async function getHistoricalPerformance(accessToken: string, questionId: 
                 }
             }
         );
+
         if (!response.ok) {
             console.error(`Failed to fetch historical performance. Status: ${response.status}`);
             return [];
         }
+
         const data = await response.json();
-        // Filter and process the data to find all instances of the specific questionId
-        const allPerformances: any[] = [];
+
+        // Extract all performances for this specific question ID across all exams
+        const allAttempts: any[] = [];
+
         // Loop through each exam result
         for (const result of data) {
-            // Check if this exam result has performances
             if (result.Performances && result.Performances.length > 0) {
-                // Look for the specific questionId in this exam's performances
+                // Filter to get only performances for this specific question ID
                 const matchingPerformances = result.Performances.filter(
                     (perf: any) => perf.QuestionID.toString() === questionId
                 );
-                // If found, add context from the exam result and add to our collection
+
                 if (matchingPerformances.length > 0) {
                     matchingPerformances.forEach((perf: any) => {
-                        allPerformances.push({
+                        // Add exam context to the performance
+                        allAttempts.push({
                             ...perf,
-                            ExamName: result.ExamResults.ExamName,
-                            ExamDate: result.ExamResults.Timestamp,
-                            ExamResultsID: result.ExamResults.ExamResultsID
+                            ExamName: result.ExamResults.ExamName || 'Unknown Exam',
+                            ExamDate: result.ExamResults.Timestamp || new Date().toISOString(),
+                            ExamResultsID: result.ExamResults.ExamResultsID,
+                            StudentID: result.ExamResults.StudentID
                         });
                     });
                 }
             }
         }
-        return allPerformances;
+
+        // Sort by date (most recent first)
+        const sortedAttempts = allAttempts.sort((a, b) => {
+            const dateA = new Date(a.ExamDate).getTime();
+            const dateB = new Date(b.ExamDate).getTime();
+            return dateB - dateA;
+        });
+
+        return sortedAttempts;
     } catch (error) {
         console.error('Error fetching historical performance:', error);
         return [];
@@ -76,10 +88,13 @@ export function formatDate(dateInput: string | Date): string {
 }
 
 export function getAttemptId(attempt: any): string {
-    // Create a unique ID based on date and answer
-    const date = attempt.date || attempt.ExamDate;
-    const answer = attempt.answer || attempt.SelectedOptionID;
-    return `${date}-${answer}`;
+    // Create a unique ID based on exam result ID, date, and answer to ensure true uniqueness
+    const examId = attempt.ExamResultsID || 'unknown';
+    const date = attempt.date || attempt.ExamDate || new Date().toISOString();
+    const answer = attempt.answer !== undefined ? attempt.answer :
+        (attempt.SelectedOptionID !== undefined ? attempt.SelectedOptionID : 'no-answer');
+
+    return `${examId}-${date}-${answer}`;
 }
 
 /**
@@ -93,20 +108,24 @@ export function getOptionLetter(index: number): string {
 
 export function combineAttempts(currentAttempts: any[], historicalAttempts: any[]): any[] {
     // First, normalize current attempts to ensure they have properly formatted dates
-    const normalizedCurrentAttempts = currentAttempts.map(attempt => ({
+    const normalizedCurrentAttempts = currentAttempts.filter(attempt => attempt !== null).map(attempt => ({
         ...attempt,
         date: formatDate(attempt.date),
         attemptId: getAttemptId(attempt)
     }));
 
     // Process historical attempts into the same format as current attempts
-    const processedHistorical = historicalAttempts.map(histAttempt => {
+    const processedHistorical = historicalAttempts.filter(histAttempt => {
+        // Filter out incomplete historical attempts that don't have required data
+        return histAttempt && histAttempt.SelectedOptionID !== undefined;
+    }).map(histAttempt => {
         const normalizedAttempt = {
-            answer: histAttempt.SelectedOptionID || 2,
-            correct: histAttempt.Result || false,
+            answer: histAttempt.SelectedOptionID, // Remove default value that could create phantom attempts
+            correct: histAttempt.Result === true, // Explicit boolean check
             confidence: histAttempt.Confidence || 0,
             date: formatDate(histAttempt.ExamDate),
             examName: histAttempt.ExamName || 'Unknown exam',
+            examId: histAttempt.ExamResultsID,
             attemptId: getAttemptId(histAttempt)
         };
         return normalizedAttempt;
@@ -122,8 +141,8 @@ export function combineAttempts(currentAttempts: any[], historicalAttempts: any[
 
     // Add historical attempts to the map (will overwrite duplicates)
     processedHistorical.forEach(attempt => {
-        // Only add if not already in the map
-        if (!uniqueAttemptsMap.has(attempt.attemptId)) {
+        // Only add if not already in the map and if it has valid data
+        if (!uniqueAttemptsMap.has(attempt.attemptId) && attempt.answer !== undefined) {
             uniqueAttemptsMap.set(attempt.attemptId, attempt);
         }
     });
@@ -142,7 +161,10 @@ export function combineAttempts(currentAttempts: any[], historicalAttempts: any[
 }
 
 export function calculatePerformanceMetrics(attempts: any[]) {
+    console.log('[calculatePerformanceMetrics] Input attempts:', attempts);
+
     if (!attempts || attempts.length === 0) {
+        console.log('[calculatePerformanceMetrics] No attempts provided');
         return {
             totalAttempts: 0,
             successRate: 0,
@@ -150,11 +172,42 @@ export function calculatePerformanceMetrics(attempts: any[]) {
         };
     }
 
+    // Just use the array length directly - don't filter
     const totalAttempts = attempts.length;
-    const correctAttempts = attempts.filter(a => a.correct).length;
+    console.log(`[calculatePerformanceMetrics] Total attempts: ${totalAttempts}`);
+
+    // Count correct attempts
+    const correctAttempts = attempts.filter(a => {
+        const isCorrect = a.correct === true || a.Result === true;
+        console.log(`[calculatePerformanceMetrics] Attempt ${a.answer || a.SelectedOptionID} correct: ${isCorrect}`);
+        return isCorrect;
+    }).length;
+
+    console.log(`[calculatePerformanceMetrics] Correct attempts: ${correctAttempts}`);
+
+    // Calculate success rate
     const successRate = Math.round((correctAttempts / totalAttempts) * 100);
-    const totalConfidence = attempts.reduce((acc, curr) => acc + (curr.confidence || 0), 0);
-    const avgConfidence = parseFloat((totalConfidence / totalAttempts).toFixed(1));
+    console.log(`[calculatePerformanceMetrics] Success rate: ${successRate}%`);
+
+    // Calculate average confidence, handling various ways confidence might be stored
+    let totalConfidence = 0;
+    let confidenceCount = 0;
+
+    attempts.forEach(a => {
+        const confidence = a.confidence !== undefined ? a.confidence : a.Confidence;
+
+        if (confidence !== undefined && confidence !== null) {
+            console.log(`[calculatePerformanceMetrics] Adding confidence: ${confidence}`);
+            totalConfidence += Number(confidence);
+            confidenceCount++;
+        }
+    });
+
+    const avgConfidence = confidenceCount > 0
+        ? parseFloat((totalConfidence / confidenceCount).toFixed(1))
+        : 0;
+
+    console.log(`[calculatePerformanceMetrics] Avg confidence: ${avgConfidence}`);
 
     return {
         totalAttempts,
