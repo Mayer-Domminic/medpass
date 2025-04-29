@@ -1,5 +1,8 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+//fix for build error?
+
 // extends window (global object) to include currentQuestionIndex, used by Question component
 declare global {
   interface Window {
