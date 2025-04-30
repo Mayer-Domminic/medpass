@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {
+import { format, parseISO, addMonths } from 'date-fns';
+import { 
   RiskAssessment, 
-  StudyPlanRequestPayload, 
+  WeaknessStrength,
   FullCalendarEvent, 
-  CalendarEvent, 
-  WeaknessStrength, 
+  StudyPlanRequestPayload,
   StudyPlanGenerationResponse
-} from '@/types/calendar';
-import { fetchFromApi } from '@/lib/calendarUtils';
-import { format, parseISO, isValid, addMonths } from 'date-fns';
+} from './calendar-view';
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
@@ -33,6 +31,57 @@ interface StudyPlanModalProps {
   onPlanGenerated: (planId?: string) => void;
   existingEvents: FullCalendarEvent[];
 }
+
+// Fetch function for API calls
+const fetchFromApi = async <T,>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1${endpoint}`;
+    
+    // Get auth token from session
+    const session = await fetch('/api/auth/session');
+    const data = await session.json();
+    const token = data?.accessToken;
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers
+    };
+    
+    const response = await fetch(url, { 
+      ...options, 
+      headers,
+      credentials: 'include'
+    });
+
+    if (response.status === 401) {
+      throw new Error("Authentication required. Please log in again.");
+    }
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { detail: response.statusText };
+      }
+      
+      const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    // Handle No Content responses
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return { message: 'Operation successful' } as T;
+    }
+
+    return await response.json() as T;
+  } catch (error) {
+    console.error('API Fetch Error:', error);
+    throw error;
+  }
+};
 
 // Create default risk assessment with sample data
 const createDefaultRiskAssessment = (): RiskAssessment => {
@@ -119,12 +168,8 @@ const StudyPlanModal: React.FC<StudyPlanModalProps> = ({
       const fetchRiskData = async () => {
         setLoadingRisk(true);
         try {
-          // For API access, fetch from the risk endpoint
-          const studentId = 1; // In a real app, this would come from authentication context
-          
-          // Attempt to fetch risk data, but be prepared to handle errors gracefully
           try {
-            const data = await fetchFromApi<RiskAssessment>(`/info/risk?student_id=${studentId}`);
+            const data = await fetchFromApi<RiskAssessment>(`/inf/risk`);
             console.log("Fetched risk assessment:", data);
             setRiskAssessment(data);
             setApiError(false);
@@ -198,8 +243,8 @@ const StudyPlanModal: React.FC<StudyPlanModalProps> = ({
       preferred_locations: preferredLocations.split(',').map(loc => loc.trim()).filter(loc => loc)
     };
   
-    // Simplified payload with only necessary fields to reduce validation errors
-    const payload = {
+    // Simplified payload with only necessary fields
+    const payload: StudyPlanRequestPayload = {
       exam_date: examDate.toISOString(),
       weaknesses: riskAssessment.weaknesses || [],
       strengths: riskAssessment.strengths || [],
@@ -269,24 +314,34 @@ const StudyPlanModal: React.FC<StudyPlanModalProps> = ({
   };  
 
   // Handle PDF export
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!lastPlanId) return;
     
-    // Create a download link
-    const downloadLink = document.createElement("a");
-    downloadLink.href = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/calendar/export-plan/${lastPlanId}`;
-    downloadLink.target = "_blank";
-    downloadLink.download = "USMLE_Study_Plan.pdf";
-    
-    // Add to document, click and remove
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    
-    toast({
-      title: "Exporting PDF",
-      description: "Your study plan PDF is being downloaded.",
-    });
+    try {
+      // Create a download link
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      const downloadLink = document.createElement("a");
+      downloadLink.href = `${baseUrl}/api/v1/calendar/export-plan/${lastPlanId}`;
+      downloadLink.target = "_blank";
+      downloadLink.download = "USMLE_Study_Plan.pdf";
+      
+      // Add to document, click and remove
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      toast({
+        title: "Exporting PDF",
+        description: "Your study plan PDF is being downloaded.",
+      });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({
+        title: "Error Exporting PDF",
+        description: "Could not export the study plan as PDF.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Helper to format date for display in Popover button
@@ -635,5 +690,4 @@ const StudyPlanModal: React.FC<StudyPlanModalProps> = ({
     </Dialog>
   );
 };
-
 export default StudyPlanModal;

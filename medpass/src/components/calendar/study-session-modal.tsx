@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StudySession, EventUpdatePayload } from '@/types/calendar';
-import { updateEvent } from '@/lib/calendarUtils';
 import { format, parseISO } from 'date-fns';
+import { StudySession, EventUpdatePayload, updateEvent, deleteEvent } from './calendar-view';
 
 import {
   Dialog,
@@ -30,8 +29,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface StudySessionModalProps {
   isOpen: boolean;
@@ -182,11 +181,16 @@ const StudySessionModal: React.FC<StudySessionModalProps> = ({
     setError(null);
     
     try {
-      onDelete(event.id);
-      toast({
-        title: "Session Deleted",
-        description: "The study session has been removed from your calendar.",
-      });
+      const deleted = await deleteEvent(event.id);
+      if (deleted) {
+        onDelete(event.id);
+        toast({
+          title: "Session Deleted",
+          description: "The study session has been removed from your calendar.",
+        });
+      } else {
+        throw new Error("Failed to delete study session");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to delete session");
       toast({

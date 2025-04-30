@@ -26,7 +26,7 @@ export default function NotesPage() {
   });
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<S3File[]>([]);
-  const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/notes`;
+  const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL}/notes`;
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

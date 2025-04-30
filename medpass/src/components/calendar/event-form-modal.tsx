@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarEvent, EventCreatePayload, EventUpdatePayload, FullCalendarEvent } from '@/types/calendar';
-import { createEvent, updateEvent, deleteEvent } from '@/lib/calendarUtils';
-import { DateClickArg } from '@fullcalendar/interaction';
 import { format, parseISO } from 'date-fns';
+import { DateClickArg } from '@fullcalendar/interaction';
+import { CalendarEvent, EventCreatePayload, EventUpdatePayload, FullCalendarEvent, createEvent, updateEvent, deleteEvent } from './calendar-view';
 
 import {
   Dialog,
@@ -40,7 +39,14 @@ interface EventModalProps {
   dateInfo: DateClickArg | null;
 }
 
-const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDelete, event, dateInfo }) => {
+const EventModal: React.FC<EventModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  event, 
+  dateInfo 
+}) => {
   const { toast } = useToast();
 
   // form state
