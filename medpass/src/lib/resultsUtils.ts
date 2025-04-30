@@ -1,6 +1,6 @@
 export async function getQuestionDetails(questionId: string): Promise<any | null> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/question/${questionId}`);
+        const response = await fetch(`http://medpass.unr.dev/api/v1/question/${questionId}`);
         if (!response.ok) {
             console.error(`Failed to fetch question details for ID ${questionId}`);
             return null;
@@ -18,7 +18,7 @@ export async function getHistoricalPerformance(accessToken: string, questionId: 
     try {
         // First, get all exam results for the student
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/question/historical-performance/?skip=0&limit=100`,
+            `http://medpass.unr.dev/api/v1/question/historical-performance/?skip=0&limit=100`,
             {
                 method: 'GET',
                 headers: {
