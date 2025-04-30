@@ -35,7 +35,7 @@ export default function ChatPage() {
   const [history, setHistory] = useState<ConversationSummary[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/gemini/chat`;
+  const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/gemini/chat`;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
