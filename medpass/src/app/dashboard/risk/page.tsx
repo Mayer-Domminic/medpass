@@ -39,7 +39,7 @@ const RiskPage: React.FC = () => {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/inf/risk`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/inf/risk`, {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       })
       .then(async (res) => {

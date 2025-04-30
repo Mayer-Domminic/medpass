@@ -34,9 +34,7 @@ export const getHeaders = async (): Promise<Record<string, string>> => {
 
 // API base URL determination - keep the server-side check
 export const getApiBaseUrl = (): string => {
-    return typeof window === "undefined"
-        ? "http://backend:8000"
-        : "http://localhost:8000";
+    return `${process.env.NEXT_PUBLIC_API_URL}`
 };
 
 // Function to fetch student information (including student_id)
