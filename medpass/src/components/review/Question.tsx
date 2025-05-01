@@ -1,19 +1,111 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-// Import from shared interface and utility files
-import { QuestionProps, confidenceLevels } from '@/types/review';
-import {
-  checkIfCorrect,
-  getCorrectAnswerCount,
-  shouldDisplayImage,
-  getGradeClassificationName,
-} from '@/lib/reviewUtils';
+// ============= INTERFACES =============
+
+export interface Option {
+  OptionID: number;
+  CorrectAnswer: boolean;
+  Explanation: string;
+  OptionDescription: string;
+}
+
+export interface QuestionDetail {
+  QuestionID: number;
+  ExamID: number;
+  Prompt: string;
+  QuestionDifficulty: string;
+  ImageUrl: string | null;
+  ImageDependent: boolean;
+  ImageDescription: string | null;
+}
+
+export interface GradeClassification {
+  GradeClassificationID: number;
+  ClassificationName: string;
+  UnitType: string;
+}
+
+export interface QuestionData {
+  Question: QuestionDetail;
+  Options: Option[];
+  GradeClassification?: GradeClassification;
+  ContentAreas?: any[];
+}
+
+export interface QuestionProps {
+  questionData: QuestionData;
+  showFeedback?: boolean;
+  savedAnswers?: number[];
+  savedConfidenceLevel?: string;
+}
+
+export const confidenceLevels = [
+  { id: "1", label: "1: Guessing" },
+  { id: "2", label: "2: Unsure" },
+  { id: "3", label: "3: Neutral" },
+  { id: "4", label: "4: Confident" },
+  { id: "5", label: "5: Very Confident" }
+];
+
+// ============= UTILITY FUNCTIONS =============
+
+export function checkIfCorrect(selectedAnswers: number[], options: Option[]): boolean {
+  // No answers selected
+  if (!selectedAnswers || selectedAnswers.length === 0) {
+    return false;
+  }
+
+  // Get all correct option IDs
+  const correctOptionIds = options
+    .filter(option => option.CorrectAnswer)
+    .map(option => option.OptionID);
+
+  // If no correct answers in the question data, fail
+  if (correctOptionIds.length === 0) {
+    return false;
+  }
+
+  // Check if user selected all correct options and no incorrect ones
+  const allCorrectOptionsSelected = correctOptionIds.every(id =>
+    selectedAnswers.includes(id));
+  const noIncorrectOptionsSelected = selectedAnswers.every(id =>
+    correctOptionIds.includes(id));
+
+  return allCorrectOptionsSelected && noIncorrectOptionsSelected;
+}
+
+export function getCorrectAnswerCount(questionData: QuestionData): number {
+  if (!questionData || !questionData.Options) {
+    return 0;
+  }
+
+  return questionData.Options.filter(option => option.CorrectAnswer).length;
+}
+
+export function shouldDisplayImage(questionData: QuestionData): boolean {
+  return (
+    questionData &&
+    questionData.Question &&
+    questionData.Question.ImageDependent === true &&
+    (questionData.Question.ImageUrl !== null ||
+      questionData.Question.ImageDescription !== null)
+  );
+}
+
+export function getGradeClassificationName(questionData: QuestionData): string {
+  if (questionData &&
+    questionData.GradeClassification &&
+    questionData.GradeClassification.ClassificationName) {
+    return questionData.GradeClassification.ClassificationName;
+  }
+  return "Unknown";
+}
 
 // extends window to include custom attribute, currentQuestionIndex
 declare global {
@@ -22,21 +114,26 @@ declare global {
   }
 }
 
+// ============= COMPONENT =============
+
 const Question = ({
   questionData,
   showFeedback = false,
   savedAnswers = [],
   savedConfidenceLevel = ""
 }: QuestionProps) => {
+  // ===== STATE HOOKS =====
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [confidenceLevel, setConfidenceLevel] = useState(savedConfidenceLevel);
   const [isShowingFeedback, setIsShowingFeedback] = useState(showFeedback);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  // update state when props change - making sure component stays in sync with parent
-  useEffect(() => {
-    console.log("Question component received savedAnswers:", savedAnswers);
+  // ===== EFFECT HOOKS =====
 
+  /**
+   * Update state when props change - making sure component stays in sync with parent
+   */
+  useEffect(() => {
     // Only update selected answers if savedAnswers exists and is an array
     if (Array.isArray(savedAnswers)) {
       setSelectedAnswers([...savedAnswers]); // Create a new array to ensure state update
@@ -54,7 +151,8 @@ const Question = ({
     }
   }, [questionData, savedAnswers, savedConfidenceLevel, showFeedback]);
 
-  // Handle option change for multiple/single answer selection
+  // ===== EVENT HANDLERS =====
+
   const handleOptionChange = (optionId: number) => {
     if (!isShowingFeedback) {
       // Check if this is a single-answer question (only one correct answer)
@@ -77,15 +175,12 @@ const Question = ({
     }
   };
 
+  /**
+   * Handle submission of answer and confidence
+   */
   const handleSubmit = () => {
-    console.log("Submit button clicked");
-    console.log("Selected Answers:", selectedAnswers);
-    console.log("Confidence Level:", confidenceLevel);
-    console.log("Is Showing Feedback:", isShowingFeedback);
-
     // Make sure we have both answers and confidence level
     if (selectedAnswers.length === 0 || !confidenceLevel) {
-      console.log("Missing required inputs - not submitting");
       return;
     }
 
@@ -93,13 +188,6 @@ const Question = ({
     const correct = questionData && questionData.Options ? checkIfCorrect(selectedAnswers, questionData.Options) : false;
     setIsCorrect(correct);
     setIsShowingFeedback(true);
-
-    console.log("Dispatching event with data:", {
-      questionIndex: window.currentQuestionIndex || 0,
-      isCorrect: correct,
-      selectedAnswers,
-      confidenceLevel
-    });
 
     // Create and dispatch the custom event
     const event = new CustomEvent('questionAnswered', {
@@ -112,12 +200,13 @@ const Question = ({
     });
 
     window.dispatchEvent(event);
-    console.log("Event dispatched");
   };
 
+  // ===== RENDER JSX =====
   return (
     <Card className="w-full max-w-2xl mx-auto bg-slate-900 text-slate-100 border-slate-800 cursor-default">
       <CardHeader className="pb-4">
+        {/* Header with Title and Classification Badges */}
         <div className="flex justify-between items-start w-full">
           <div className="text-2xl font-bold tracking-tight">Question</div>
           <div className="flex space-x-2">
@@ -145,7 +234,7 @@ const Question = ({
         {/* Question Text Section*/}
         <div className="pb-6">
           <p className="text-base text-slate-400 mt-2">
-            {questionData && questionData.Question ? questionData.Question.Prompt : ''}
+            {questionData?.Question?.Prompt || ''}
           </p>
           {questionData && getCorrectAnswerCount(questionData) > 1 && (
             <p className="text-sm text-blue-400 mt-2">
@@ -178,7 +267,7 @@ const Question = ({
       </CardHeader>
 
       <CardContent>
-        {/* Answer Options - Custom implementation for multiple selection */}
+        {/* Answer Options */}
         <div className="space-y-3">
           {questionData && questionData.Options && questionData.Options.map(option => {
             // determines if option is selected, correct, or incorrect
@@ -269,6 +358,7 @@ const Question = ({
           })}
         </div>
 
+        {/* Confidence Levels */}
         <div className="mt-8">
           <div className="text-xs tracking-wider text-slate-400 uppercase mb-3">
             Confidence Level
@@ -292,6 +382,7 @@ const Question = ({
           </div>
         </div>
 
+        {/* Submit Button */}
         <div className="mt-6">
           <Button
             className={`w-full py-2 transition-all duration-200 ${isShowingFeedback

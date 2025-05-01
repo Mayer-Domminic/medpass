@@ -1,6 +1,80 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Subdomain from './subdomain';
-import { DomainProps, Question, Performance, Attempt } from '@/types/results';
+
+// ============= INTERFACES =============
+
+export type ExamResult = {
+  ExamResultsID: number;
+  StudentID: number;
+  StudentName: string;
+  ExamID: number;
+  ExamName: string;
+  Score: number;
+  PassOrFail: boolean;
+  Timestamp?: string | null;
+  ClerkshipID?: number | null;
+};
+
+export type Performance = {
+  StudentQuestionPerformanceID: number;
+  ExamResultsID: number;
+  QuestionID: number;
+  Result: boolean;
+  Confidence: number;
+  QuestionPrompt: string;
+  QuestionDifficulty: string;
+  SelectedOptionID?: number;
+};
+
+export type Question = {
+  id: string;
+  text: string;
+  difficulty: string;
+  result: boolean;
+  confidence: number;
+  isChecked: boolean;
+  isCorrect: boolean;
+  imageUrl?: string | null;
+  imageDescription?: string | null;
+  options?: QuestionOption[];
+  correctOption?: number;
+  explanation?: string;
+  selectedOptionID?: number;
+};
+
+export type QuestionOption = {
+  id: number;
+  text: string;
+  isCorrect: boolean;
+  explanation?: string;
+};
+
+export type Attempt = {
+  attemptNumber: number;
+  answer: number;
+  correct: boolean;
+  confidence: number;
+  date: string;
+  examName?: string;
+  examId?: number;
+};
+
+export type DomainProps = {
+  examResult: ExamResult;
+  performances: Performance[];
+  onQuestionSelect?: (questionId: string, isSelected: boolean) => void;
+  selectedQuestions?: string[];
+};
+
+export type SubdomainType = {
+  id: string;
+  title: string;
+  name?: string;
+  questions: Question[];
+  isLatestConf: boolean;
+};
+
+// ============= DOMAIN COMPONENT =============
 
 const Domain: React.FC<DomainProps> = ({
   examResult,
@@ -8,16 +82,34 @@ const Domain: React.FC<DomainProps> = ({
   onQuestionSelect,
   selectedQuestions = []
 }) => {
-  // All hooks must be called at the top level
+  // ===== STATE HOOKS =====
   const [expanded, setExpanded] = useState<boolean>(false);
   const [attemptsData, setAttemptsData] = useState<Record<string, Attempt[]>>({});
   const isInitialMount = useRef(true);
 
+  // ===== EVENT HANDLERS =====
+
+  /**
+   * Toggle the expanded state of the domain
+   */
   const toggleExpand = () => {
     setExpanded(!expanded);
   };
 
-  // Process data when component mounts or when performances change
+  /**
+   * Handle question selection from subdomain
+   */
+  const handleQuestionToggle = (questionId: string, isChecked: boolean) => {
+    if (onQuestionSelect) {
+      onQuestionSelect(questionId, isChecked);
+    }
+  };
+
+  // ===== EFFECT HOOKS =====
+
+  /**
+   * Process performance data when component mounts
+   */
   useEffect(() => {
     // Skip if no data or on subsequent renders with same data
     if (!performances || performances.length === 0) {
@@ -53,6 +145,8 @@ const Domain: React.FC<DomainProps> = ({
     isInitialMount.current = false;
   }, []); // Empty dependency array to run only on mount
 
+  // ===== DATA TRANSFORMATION =====
+
   // Check if data is available
   if (!examResult || !performances || performances.length === 0) {
     return null;
@@ -70,15 +164,10 @@ const Domain: React.FC<DomainProps> = ({
     isCorrect: performance.Result === true,
   }));
 
-  // Handle question selection from subdomain
-  const handleQuestionToggle = (questionId: string, isChecked: boolean) => {
-    if (onQuestionSelect) {
-      onQuestionSelect(questionId, isChecked);
-    }
-  };
-
+  // ===== RENDER JSX =====
   return (
     <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-lg max-w-2xl mx-auto">
+      {/* Domain header with exam information */}
       <div className="flex items-center justify-between cursor-pointer" onClick={toggleExpand}>
         <h2 className="text-lg font-semibold text-gray-300">{examResult.ExamName}</h2>
         <div className="flex items-center space-x-4">
@@ -96,6 +185,7 @@ const Domain: React.FC<DomainProps> = ({
         </div>
       </div>
 
+      {/* Expanded content with questions */}
       {expanded && (
         <div className="mt-4 space-y-2">
           <Subdomain

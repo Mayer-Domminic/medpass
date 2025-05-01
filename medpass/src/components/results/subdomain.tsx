@@ -1,7 +1,59 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Check, X } from 'lucide-react';
-import { SubdomainType, Question, SubdomainProps, Attempt } from '@/types/results';
 import PreviewQuestion from './previewQuestion';
+
+// ============= INTERFACES =============
+
+export type QuestionOption = {
+  id: number;
+  text: string;
+  isCorrect: boolean;
+  explanation?: string;
+};
+
+export type Question = {
+  id: string;
+  text: string;
+  difficulty: string;
+  result: boolean;
+  confidence: number;
+  isChecked: boolean;
+  isCorrect: boolean;
+  imageUrl?: string | null;
+  imageDescription?: string | null;
+  options?: QuestionOption[];
+  correctOption?: number;
+  explanation?: string;
+  selectedOptionID?: number;
+};
+
+export type Attempt = {
+  attemptNumber: number;
+  answer: number;
+  correct: boolean;
+  confidence: number;
+  date: string;
+  examName?: string;
+  examId?: number;
+};
+
+export type SubdomainType = {
+  id: string;
+  title: string;
+  name?: string;
+  questions: Question[];
+  isLatestConf: boolean;
+};
+
+export type SubdomainProps = {
+  subdomain: SubdomainType;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onQuestionToggle?: (questionId: string, isChecked: boolean) => void;
+  attempts?: Record<string, Attempt[]>;
+};
+
+// ============= COMPONENT =============
 
 const Subdomain: React.FC<SubdomainProps> = ({
   subdomain,
@@ -10,9 +62,11 @@ const Subdomain: React.FC<SubdomainProps> = ({
   onQuestionToggle,
   attempts = {}
 }) => {
+  // ===== STATE HOOKS =====
   const [previewQuestionId, setPreviewQuestionId] = useState<string | null>(null);
 
-  // Modified function to get the most recent attempt for a question
+  // ===== UTILITY FUNCTIONS =====
+
   const getMostRecentAttemptForQuestion = (questionId: string): Attempt | null => {
     if (!attempts || !attempts[questionId] || attempts[questionId].length === 0) {
       return null;
@@ -30,7 +84,6 @@ const Subdomain: React.FC<SubdomainProps> = ({
     return sortedAttempts[0];
   };
 
-  // Function to get all attempts for a question (for preview purposes)
   const getAllAttemptsForQuestion = (questionId: string): Attempt[] => {
     if (!attempts || !attempts[questionId]) {
       return [];
@@ -48,7 +101,8 @@ const Subdomain: React.FC<SubdomainProps> = ({
     }));
   };
 
-  // Handle question selection
+  // ===== EVENT HANDLERS =====
+
   const handleQuestionToggle = (questionId: string, event: React.MouseEvent) => {
     event.stopPropagation();
 
@@ -63,17 +117,20 @@ const Subdomain: React.FC<SubdomainProps> = ({
     }
   };
 
-  // Handle preview question
   const handleQuestionClick = (questionId: string) => {
     setPreviewQuestionId(questionId);
   };
 
-  // Close preview modal
+  /**
+   * Close preview modal
+   */
   const closePreview = () => {
     setPreviewQuestionId(null);
   };
 
-  // Handle select all questions
+  /**
+   * Handle select all questions
+   */
   const handleSelectAll = () => {
     if (onQuestionToggle) {
       // Check if all questions are already selected
@@ -86,6 +143,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
     }
   };
 
+  // ===== RENDER JSX =====
   return (
     <div className="bg-gray-900 rounded-xl shadow-lg">
       {/* Preview Question Modal */}
@@ -93,7 +151,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
           <div className="max-w-4xl w-3/4 mx-auto">
             <div className="relative flex flex-col items-center">
-              {/* Add close button */}
+              {/* Close Button */}
               <button
                 onClick={closePreview}
                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
@@ -125,6 +183,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
 
       {isExpanded && (
         <div className="p-4">
+          {/* Header with Select All button */}
           <div className="grid grid-cols-12 gap-2 mb-4 items-center">
             <div className="col-span-4">
               <button
@@ -149,6 +208,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
             </div>
           </div>
 
+          {/* Questions List */}
           <div className="space-y-3">
             {subdomain.questions.map((question: Question) => {
               // Get the most recent attempt for this question
@@ -158,6 +218,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
               const isCorrect = mostRecentAttempt ? mostRecentAttempt.correct : question.isCorrect;
               const confidence = mostRecentAttempt ? mostRecentAttempt.confidence : question.confidence;
 
+              // Set colors based on difficulty
               let difficultyColor = "border-green-500";
               let difficultyTextColor = "text-green-500";
               let difficultyBg = "bg-green-500/10";
@@ -174,9 +235,10 @@ const Subdomain: React.FC<SubdomainProps> = ({
 
               return (
                 <div key={question.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-gray-800">
+                  {/* Question Text and Checkbox */}
                   <div className="col-span-6">
                     <div className="flex items-center">
-                      {/* Checkbox area - only this will toggle the checkbox */}
+                      {/* Checkbox Area*/}
                       <div
                         className="w-5 h-5 mr-3 flex items-center justify-center border border-gray-600 rounded cursor-pointer hover:border-gray-400 transition-colors"
                         onClick={(e) => handleQuestionToggle(question.id, e)}
@@ -184,7 +246,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
                         {question.isChecked && <span className="w-3 h-3 bg-white rounded-sm"></span>}
                       </div>
 
-                      {/* Question text area - clicking this will open the preview */}
+                      {/* Question Text Area */}
                       <span
                         className="text-sm text-gray-300 cursor-pointer hover:text-white transition-colors"
                         onClick={() => handleQuestionClick(question.id)}
@@ -194,12 +256,14 @@ const Subdomain: React.FC<SubdomainProps> = ({
                     </div>
                   </div>
 
+                  {/* Difficulty Badge */}
                   <div className="col-span-2 flex justify-center">
                     <div className={`px-3 py-1 rounded-full border ${difficultyColor} ${difficultyBg}`}>
                       <span className={`${difficultyTextColor} text-xs font-medium`}>{question.difficulty}</span>
                     </div>
                   </div>
 
+                  {/* Answer Result */}
                   <div className="col-span-2 flex justify-center">
                     {isCorrect ? (
                       <div className="bg-green-900/20 w-8 h-8 rounded-full flex items-center justify-center">
@@ -212,6 +276,7 @@ const Subdomain: React.FC<SubdomainProps> = ({
                     )}
                   </div>
 
+                  {/* Confidence Level */}
                   <div className="col-span-2 flex justify-center">
                     {/* Display confidence if available */}
                     {confidence !== undefined ? (
