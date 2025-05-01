@@ -59,7 +59,8 @@ const AboutPage: React.FC = () => {
   const instructors: Instructor[] = [
     { name: 'Sara Davis' },
     { name: 'Vinh Le' },
-    { name: 'Levi Scully' }
+    { name: 'Levi Scully' },
+    { name: 'David Feil-Sefier'}
   ];
 
   const advisors: Advisor[] = [
@@ -241,6 +242,25 @@ const AboutPage: React.FC = () => {
 
           <div className="mt-6 text-right text-gray-400">
             <p><strong>Project Date:</strong> {projectDate}</p>
+          </div>
+        </section>
+
+        {/* Demo Video section */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 text-white border-b border-[#2a3449] pb-2">Project Video</h2>
+          <div className="rounded-lg bg-[#242e42] p-6 shadow-md">
+            <div className="aspect-w-16 aspect-h-9">
+              <iframe
+                src="https://www.youtube.com/embed/aEjCo02pySc"
+                title="MedPass Project Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-[500px] rounded"
+              ></iframe>
+            </div>
+            <div className=" italic text-sm mt-4 text-gray-300">
+              <p>Follow <b>Bron's</b> journey to see MedPass in action!</p>
+            </div>
           </div>
         </section>
 
