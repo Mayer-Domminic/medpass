@@ -11,6 +11,7 @@ class LoginInfo(BaseModel):
     CreatedAt: Optional[date] = None
     UpdatedAt: Optional[date] = None
     Email: Optional[EmailStr] = None
+    Bio: Optional[str] = Field(None, max_length=255)
     
     class Config:
         from_attributes = True

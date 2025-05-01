@@ -9,14 +9,7 @@ from app.schemas.settings import UserUpdateRequest, UserUpdateResponse
 router = APIRouter()
 
 def get_user_type(db: Session, current_user: User):
-    """
-    helper function to determine user type, returns user type
-    
-    args:
-        db (Session): Database session
-        current_user (User): User object
-    
-    """
+
     student = db.query(Student).filter(Student.logininfoid == current_user.logininfoid).first()
     faculty = db.query(Faculty).filter(Faculty.logininfoid == current_user.logininfoid).first()
 
@@ -29,22 +22,6 @@ def get_user_type(db: Session, current_user: User):
     }
 
 def update_user_profile(db: Session, current_user: User, student: Student = None, faculty: Faculty = None, username: str = None, email: str = None, password: str = None, firstname: str = None, lastname: str = None, position: str = None):
-    """
-    helper function that takes validated user object and updates profile, returns dict of updated user info
-    
-    args:
-        db (Session): Database session
-        current_user (User): Current authenticated user
-        student (Student, optional): Student object if user is a student
-        faculty (Faculty, optional): Faculty object if user is faculty
-        username (str, optional): New username
-        email (str, optional): New email
-        password (str, optional): New password
-        firstname (str, optional): New first name
-        lastname (str, optional): New last name
-        position (str, optional): New position (faculty only)
-    
-    """
 
     #logininfo fields
     if username:

@@ -328,30 +328,6 @@ export default function SettingsPage() {
                     {updateSuccess}
                   </div>
                 )}
-                
-                {/* Profile Picture Section */}
-                <div className="flex items-start space-x-4">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src="/api/placeholder/96/96" alt="Profile picture" />
-                    <AvatarFallback>
-                      {studentInfo?.FirstName?.charAt(0) || ''}{studentInfo?.LastName?.charAt(0) || ''}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className={getThemeClass('border-gray-700 hover:bg-gray-700', 'border-gray-300 hover:bg-gray-100')}
-                    >
-                      Change picture
-                    </Button>
-                    <p className={`text-sm ${getThemeClass('text-gray-400', 'text-gray-500')}`}>
-                      An avatar helps personalize your account.
-                    </p>
-                  </div>
-                </div>
-
-                <Separator className={getThemeClass('bg-gray-700', 'bg-gray-200')} />
 
                 {/* Name Section */}
                 <div className="space-y-4">
@@ -388,9 +364,6 @@ export default function SettingsPage() {
                       onChange={(e) => handleUpdate('bio', e.target.value)}
                     />
                   </div>
-                  <p className={`text-sm ${getThemeClass('text-gray-400', 'text-gray-500')}`}>
-                    This will be displayed on your public profile.
-                  </p>
                 </div>
 
                  {/*TODO: Add autofill once logininfo route is implemented */}
@@ -403,7 +376,7 @@ export default function SettingsPage() {
                     placeholder={studentInfo?.Email || "Enter your email address"}
                   />
                   <p className={`text-sm ${getThemeClass('text-gray-400', 'text-gray-500')}`}>
-                    This email will be used for account-related notifications
+                    This field changes your email address
                   </p>
                 </div>
                 
