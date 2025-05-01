@@ -61,7 +61,7 @@ export default function ResultsContent() {
     const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
     // ===== CONFIGURATION =====
-    const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
     // ===== EFFECT HOOKS =====
 
@@ -80,9 +80,7 @@ export default function ResultsContent() {
             const response = await fetch(
                 `${apiBase}/question/historical-performance/?skip=0&limit=100`,
                 {
-                    method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session?.accessToken}`
                     }
                 }

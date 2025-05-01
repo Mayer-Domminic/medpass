@@ -9,6 +9,7 @@ class UserUpdateRequest(BaseModel):
     firstname: Optional[str] = None
     lastname: Optional[str] = None
     position: Optional[str] = None  #note: faculty only
+    bio: Optional[str] = None 
 
 class UserUpdateResponse(BaseModel):
     username: str
@@ -18,6 +19,7 @@ class UserUpdateResponse(BaseModel):
     position: Optional[str] = None  # note: faculty only
     is_student: bool
     is_faculty: bool
+    bio: Optional[str] = None
     message: str
 
     class Config:

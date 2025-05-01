@@ -73,7 +73,7 @@ const PreviewQuestion: React.FC<PreviewQuestionProps> = ({
     const { data: session } = useSession();
 
     // ===== CONFIGURATION =====
-    const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
     // ===== UTILITY FUNCTIONS =====
 

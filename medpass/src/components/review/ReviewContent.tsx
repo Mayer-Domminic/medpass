@@ -99,8 +99,7 @@ export default function ReviewContent() {
     const [studentInfoError, setStudentInfoError] = useState<string | null>(null);
     const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
 
-    // API base URL - use environment variable with fallback
-    const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
     // ===== UTILITY FUNCTIONS =====
 
@@ -195,11 +194,13 @@ export default function ReviewContent() {
     // Fetch student information
     const fetchStudentInfo = async (): Promise<any> => {
         try {
-            const headers = await getHeaders();
-            const response = await fetch(`${apiBase}/student/info`, {
-                method: 'GET',
-                headers
-            });
+
+            const response = await fetch(`${apiBase}/student/info`, { 
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session?.accessToken}`,
+                }
+             });
 
             if (!response.ok) throw new Error(`Error: ${response.status}`);
             return await response.json();
@@ -246,8 +247,6 @@ export default function ReviewContent() {
                 : `/question/review/${encodeURIComponent(domain)}/${encodeURIComponent(subdomain)}`;
 
             const response = await fetch(`${apiBase}${endpoint}`, {
-                method: 'GET',
-                headers
             });
 
             if (!response.ok) throw new Error(`Error: ${response.status}`);

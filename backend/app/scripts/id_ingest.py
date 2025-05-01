@@ -303,7 +303,8 @@ if __name__ == "__main__":
     ],
     'isactive': [True, True],
     'issuperuser': [True, False],
-    'email': ['amongus@gmail.com', 'amongus@gmail.com']
+    'email': ['amongus@gmail.com', 'amongus@gmail.com'],
+    'bio': ['Admin user biography', 'This is Bron Jameson\'s biography.']
     }   
     
     df_login_data = pd.DataFrame(login_data)
@@ -315,14 +316,16 @@ if __name__ == "__main__":
                 Password = row['password'],
                 IsActive = row['isactive'],
                 IsSuperUser = row['issuperuser'],
-                Email = row['email']
+                Email = row['email'],
+                Bio = row['bio']
             ) 
             db_logininfo_data = LoginInfo(
                  username = logininfo_data.Username,
                  password = logininfo_data.Password,
                  isactive = logininfo_data.IsActive,
                  issuperuser = logininfo_data.IsSuperUser,
-                 email = logininfo_data.Email
+                 email = logininfo_data.Email,
+                 bio = logininfo_data.Bio
             )
             db.add(db_logininfo_data)
         db.commit()
@@ -331,7 +334,7 @@ if __name__ == "__main__":
         
         if user:
             user.firstname = 'Bron'
-            user.lastname = 'Jamenson'
+            user.lastname = 'Jameson'
             db.commit()
         print('Mock Login Info Data Loaded in Database')
         

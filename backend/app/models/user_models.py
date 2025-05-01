@@ -13,6 +13,7 @@ class LoginInfo(Base):
     createdat = Column('createdat', Date)
     updatedat = Column('updatedat', Date)
     email = Column('email', String(255))
+    bio = Column('bio', String(255), nullable=True)
     
     student = relationship('Student', back_populates='loginInfo') 
     faculty = relationship('Faculty', back_populates='loginInfo')
