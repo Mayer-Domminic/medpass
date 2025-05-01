@@ -2,32 +2,93 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Check, X, Filter, ArrowRight } from 'lucide-react';
+import { Check, X, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSession } from 'next-auth/react';
-import {
-    Performance,
-    ApiResponseItem,
-    QuestionDetail,
-    Option,
-    ContentArea,
-    GradeClassification,
-    QuestionData
-} from '@/types/results';
-import {
-    formatDate,
-    getQuestionDetails,
-    getHistoricalPerformance,
-    getOptionLetter,
-    combineAttempts,
-    calculatePerformanceMetrics
-} from '@/lib/resultsUtils';
-import PreviewQuestion from './previewQuestion';
 
-// Define local types
+// ============= INTERFACES =============
+
+export type ExamResult = {
+    ExamResultsID: number;
+    StudentID: number;
+    StudentName: string;
+    ExamID: number;
+    ExamName: string;
+    Score: number;
+    PassOrFail: boolean;
+    Timestamp?: string | null;
+    ClerkshipID?: number | null;
+};
+
+export type Performance = {
+    StudentQuestionPerformanceID: number;
+    ExamResultsID: number;
+    QuestionID: number;
+    Result: boolean;
+    Confidence: number;
+    QuestionPrompt: string;
+    QuestionDifficulty: string;
+    SelectedOptionID?: number;
+};
+
+export type ApiResponseItem = {
+    ExamResults: ExamResult;
+    Performances: Performance[];
+};
+
+export type ContentArea = {
+    ContentAreaID: number;
+    ContentName: string;
+    Description: string;
+    Discipline: string;
+};
+
+export type GradeClassification = {
+    GradeClassificationID: number;
+    ClassificationName: string;
+    UnitType: string;
+    ClassOfferingID: number;
+};
+
+export type QuestionDetail = {
+    QuestionID: number;
+    ExamID: number;
+    Prompt: string;
+    QuestionDifficulty: string;
+    ImageUrl: string | null;
+    ImageDependent: boolean;
+    ImageDescription: string | null;
+    GradeClassificationID: number;
+};
+
+export type Option = {
+    OptionID: number;
+    CorrectAnswer: boolean;
+    Explanation: string;
+    OptionDescription: string;
+};
+
+export type QuestionData = {
+    Question: QuestionDetail;
+    Options: Option[];
+    ContentAreas: ContentArea[];
+    GradeClassification: GradeClassification;
+};
+
+export type Attempt = {
+    attemptNumber: number;
+    answer: number;
+    correct: boolean;
+    confidence: number;
+    date: string;
+    examName?: string;
+    examId?: number;
+};
+
+// Local extended interface
 interface EnhancedPerformance extends Performance {
     isChecked?: boolean;
     domain?: string;
@@ -36,7 +97,10 @@ interface EnhancedPerformance extends Performance {
     Timestamp?: string;
 }
 
-const QuestionPerformance: React.FC = () => {
+// ============= COMPONENT =============
+
+const QuestionHistory: React.FC = () => {
+    // ===== STATE HOOKS =====
     const [performances, setPerformances] = useState<EnhancedPerformance[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [previewQuestionId, setPreviewQuestionId] = useState<number | null>(null);
@@ -46,7 +110,6 @@ const QuestionPerformance: React.FC = () => {
     const [resultFilter, setResultFilter] = useState<string>('all');
     const [previewQuestion, setPreviewQuestion] = useState<QuestionData | null>(null);
     const [error, setError] = useState<string | null>(null);
-    // New state for historical attempts
     const [historicalAttempts, setHistoricalAttempts] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
     const [performanceMetrics, setPerformanceMetrics] = useState({
@@ -54,33 +117,83 @@ const QuestionPerformance: React.FC = () => {
         successRate: 0,
         avgConfidence: 0
     });
+
+    // ===== HOOKS =====
     const router = useRouter();
     const { data: session } = useSession();
 
-    // Fetch historical performance data
-    useEffect(() => {
+    // ===== CONFIGURATION =====
+    const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+
+    // ===== UTILITY FUNCTIONS =====
+
+    const formatDate = (dateInput: string | Date): string => {
+        if (!dateInput) return 'Unknown date';
+
+        const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+
+        // Check if date is valid
+        if (isNaN(date.getTime())) return 'Invalid date';
+
+        // Format as MM/DD/YYYY
+        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    };
+
+    const getOptionLetter = (index: number): string => {
+        return String.fromCharCode(65 + index);
+    };
+
+    const getDifficultyColor = (difficulty?: string) => {
+        if (!difficulty) return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
+
+        switch (difficulty.toLowerCase()) {
+            case 'easy':
+                return { color: 'border-green-500', bg: 'bg-green-500/10', text: 'text-green-500' };
+            case 'medium':
+                return { color: 'border-yellow-500', bg: 'bg-yellow-500/10', text: 'text-yellow-500' };
+            case 'hard':
+                return { color: 'border-red-500', bg: 'bg-red-500/10', text: 'text-red-500' };
+            default:
+                return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
+        }
+    };
+
+    // ===== API FUNCTIONS =====
+
+    const getQuestionDetails = async (questionId: string): Promise<any | null> => {
+        try {
+            const response = await fetch(`${apiBase}/question/${questionId}`, {
+                headers: session?.accessToken ? {
+                    'Authorization': `Bearer ${session.accessToken}`
+                } : {}
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const fetchHistoricalPerformance = async (questionId?: string) => {
         if (!session?.accessToken) {
             setError("Authentication required. Please sign in to view performance data.");
             setLoading(false);
-            return;
+            return null;
         }
 
-        fetchHistoricalPerformance();
-    }, [session]);
-
-    const fetchHistoricalPerformance = async () => {
-        setLoading(true);
-        setError(null);
-
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const response = await fetch(
-                `${apiUrl}/api/v1/question/historical-performance/?skip=0&limit=100`,
+                `${apiBase}/question/historical-performance/?skip=0&limit=100`,
                 {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session?.accessToken}`
+                        'Authorization': `Bearer ${session.accessToken}`
                     }
                 }
             );
@@ -91,63 +204,153 @@ const QuestionPerformance: React.FC = () => {
 
             const data: ApiResponseItem[] = await response.json();
 
-            // Extract all performances from all exam results
-            const allPerformances: EnhancedPerformance[] = [];
-            // Use a Set to track question IDs we've already processed to avoid duplicates
-            const processedQuestionIds = new Set<number>();
+            // If questionId is provided, filter for that specific question's history
+            if (questionId) {
+                const allAttempts: any[] = [];
 
-            for (const item of data) {
-                if (item.Performances && item.Performances.length > 0) {
-                    // Add each performance with exam context, but only if we haven't seen this question before
-                    for (const perf of item.Performances) {
-                        // Skip if we've already processed this question
-                        if (!processedQuestionIds.has(perf.QuestionID)) {
-                            processedQuestionIds.add(perf.QuestionID);
+                for (const result of data) {
+                    if (result.Performances && result.Performances.length > 0) {
+                        const matchingPerformances = result.Performances.filter(
+                            (perf: any) => perf.QuestionID.toString() === questionId
+                        );
 
-                            allPerformances.push({
-                                ...perf,
-                                isChecked: false,
-                                ExamName: item.ExamResults.ExamName || 'Unknown Exam',
-                                Timestamp: item.ExamResults.Timestamp || new Date().toISOString()
+                        if (matchingPerformances.length > 0) {
+                            matchingPerformances.forEach((perf: any) => {
+                                allAttempts.push({
+                                    ...perf,
+                                    ExamName: result.ExamResults.ExamName || 'Unknown Exam',
+                                    ExamDate: result.ExamResults.Timestamp || new Date().toISOString(),
+                                    ExamResultsID: result.ExamResults.ExamResultsID,
+                                    StudentID: result.ExamResults.StudentID
+                                });
                             });
                         }
                     }
                 }
+
+                const sortedAttempts = allAttempts.sort((a, b) => {
+                    const dateA = new Date(a.ExamDate).getTime();
+                    const dateB = new Date(b.ExamDate).getTime();
+                    return dateB - dateA;
+                });
+
+                return sortedAttempts;
             }
+            // For initial data load, process all performances
+            else {
+                const allPerformances: EnhancedPerformance[] = [];
+                const processedQuestionIds = new Set<number>();
 
-            // Fetch additional details for each question (domain, content areas)
-            const enhancedPerformances = await Promise.all(
-                allPerformances.map(async (perf) => {
-                    try {
-                        const details = await getQuestionDetails(perf.QuestionID.toString());
+                for (const item of data) {
+                    if (item.Performances && item.Performances.length > 0) {
+                        for (const perf of item.Performances) {
+                            if (!processedQuestionIds.has(perf.QuestionID)) {
+                                processedQuestionIds.add(perf.QuestionID);
 
-                        if (details) {
-                            return {
-                                ...perf,
-                                domain: details.GradeClassification?.ClassificationName || 'Unknown',
-                                contentAreas: details.ContentAreas || []
-                            };
+                                allPerformances.push({
+                                    ...perf,
+                                    isChecked: false,
+                                    ExamName: item.ExamResults.ExamName || 'Unknown Exam',
+                                    Timestamp: item.ExamResults.Timestamp || new Date().toISOString()
+                                });
+                            }
                         }
-
-                        return perf;
-                    } catch (error) {
-                        console.error(`Error fetching details for question ${perf.QuestionID}:`, error);
-                        return perf;
                     }
-                })
-            );
+                }
 
-            setPerformances(enhancedPerformances);
+                // Fetch additional details for each question (domain, content areas)
+                const enhancedPerformances = await Promise.all(
+                    allPerformances.map(async (perf) => {
+                        try {
+                            const details = await getQuestionDetails(perf.QuestionID.toString());
+
+                            if (details) {
+                                return {
+                                    ...perf,
+                                    domain: details.GradeClassification?.ClassificationName || 'Unknown',
+                                    contentAreas: details.ContentAreas || []
+                                };
+                            }
+
+                            return perf;
+                        } catch (error) {
+                            return perf;
+                        }
+                    })
+                );
+
+                setPerformances(enhancedPerformances);
+                setLoading(false);
+                return null;
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching data';
             setError(errorMessage);
-            console.error('Fetch error:', err);
-        } finally {
             setLoading(false);
+            return null;
         }
     };
 
-    // Handle question selection
+    const calculatePerformanceMetrics = (attempts: any[]) => {
+        if (!attempts || attempts.length === 0) {
+            return {
+                totalAttempts: 0,
+                successRate: 0,
+                avgConfidence: 0
+            };
+        }
+
+        const totalAttempts = attempts.length;
+
+        const correctAttempts = attempts.filter(a => {
+            const isCorrect = a.correct === true || a.Result === true;
+            return isCorrect;
+        }).length;
+
+        const successRate = Math.round((correctAttempts / totalAttempts) * 100);
+
+        let totalConfidence = 0;
+        let confidenceCount = 0;
+
+        attempts.forEach(a => {
+            const confidence = a.confidence !== undefined ? a.confidence : a.Confidence;
+
+            if (confidence !== undefined && confidence !== null) {
+                totalConfidence += Number(confidence);
+                confidenceCount++;
+            }
+        });
+
+        const avgConfidence = confidenceCount > 0
+            ? parseFloat((totalConfidence / confidenceCount).toFixed(1))
+            : 0;
+
+        return {
+            totalAttempts,
+            successRate,
+            avgConfidence
+        };
+    };
+
+    // ===== EFFECT HOOKS =====
+
+    /**
+     * Fetch historical performance data on component mount
+     */
+    useEffect(() => {
+        if (!session?.accessToken) {
+            setError("Authentication required. Please sign in to view performance data.");
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        fetchHistoricalPerformance();
+    }, [session]);
+
+    // ===== EVENT HANDLERS =====
+
     const handleQuestionToggle = (questionId: number) => {
         setPerformances(prevPerformances =>
             prevPerformances.map(p =>
@@ -166,89 +369,60 @@ const QuestionPerformance: React.FC = () => {
     };
 
     const handleQuestionClick = async (questionId: number) => {
-        console.log(`[handleQuestionClick] Starting for questionId: ${questionId}`);
         setPreviewQuestionId(questionId);
         setLoadingHistory(true);
         setHistoricalAttempts([]); // Reset previous attempts
 
         try {
             // Fetch question details for the preview modal
-            console.log(`[handleQuestionClick] Fetching question details for questionId: ${questionId}`);
             const details = await getQuestionDetails(questionId.toString());
 
             if (details) {
-                console.log('[handleQuestionClick] Question details received:', details);
                 setPreviewQuestion(details);
             } else {
-                console.error(`[handleQuestionClick] Could not load details for question ${questionId}`);
                 setError(`Could not load details for question ${questionId}`);
             }
 
             // Fetch historical attempts for this question ID
             if (session?.accessToken) {
-                console.log(`[handleQuestionClick] Fetching historical performance with accessToken: ${session.accessToken.substring(0, 10)}...`);
+                const historyData = await fetchHistoricalPerformance(questionId.toString());
 
-                const historyData = await getHistoricalPerformance(
-                    session.accessToken,
-                    questionId.toString()
-                );
+                if (historyData) {
+                    setHistoricalAttempts(historyData);
 
-                console.log('[handleQuestionClick] Raw history data received:', historyData);
-                console.log(`[handleQuestionClick] Number of history records: ${historyData.length}`);
-
-                // Check each record to understand what data is missing
-                historyData.forEach((record, index) => {
-                    console.log(`[handleQuestionClick] Record ${index} details:`, {
-                        hasSelectedOptionID: record.SelectedOptionID !== undefined,
-                        selectedOptionID: record.SelectedOptionID,
-                        result: record.Result,
-                        confidence: record.Confidence,
-                        recordKeys: Object.keys(record)
-                    });
-                });
-
-                // IMPORTANT: Changed the filter logic to not filter out records!
-                // The API is returning the correct StudentQuestionPerformance objects but they might not have
-                // a SelectedOptionID property as expected
-                setHistoricalAttempts(historyData);
-
-                // Calculate performance metrics for this question
-                const attempts = historyData.map(histAttempt => {
-                    const mappedAttempt = {
+                    // Calculate performance metrics for this question
+                    const attempts = historyData.map(histAttempt => ({
                         answer: histAttempt.SelectedOptionID,
                         correct: histAttempt.Result === true,
                         confidence: histAttempt.Confidence || 0,
                         date: formatDate(histAttempt.ExamDate || histAttempt.Timestamp),
                         examName: histAttempt.ExamName || 'Unknown exam',
                         examId: histAttempt.ExamResultsID
-                    };
-                    console.log('[handleQuestionClick] Mapped attempt:', mappedAttempt);
-                    return mappedAttempt;
-                });
+                    }));
 
-                const metrics = calculatePerformanceMetrics(attempts);
-                console.log('[handleQuestionClick] Calculated metrics:', metrics);
-                setPerformanceMetrics(metrics);
-            } else {
-                console.error('[handleQuestionClick] No access token available');
+                    const metrics = calculatePerformanceMetrics(attempts);
+                    setPerformanceMetrics(metrics);
+                }
             }
         } catch (error) {
-            console.error('[handleQuestionClick] Error:', error);
             setError('Failed to load question details');
         } finally {
             setLoadingHistory(false);
-            console.log('[handleQuestionClick] Completed');
         }
     };
 
-    // Close preview modal
+    /**
+     * Close preview modal
+     */
     const closePreview = () => {
         setPreviewQuestionId(null);
         setPreviewQuestion(null);
         setHistoricalAttempts([]);
     };
 
-    // Handle select all questions
+    /**
+     * Handle select all questions
+     */
     const handleSelectAll = () => {
         const allFilteredSelected = filteredPerformances.every(p => p.isChecked);
 
@@ -281,6 +455,24 @@ const QuestionPerformance: React.FC = () => {
         }
     };
 
+    /**
+     * Handle creating mock quiz
+     */
+    const handleCreateMockQuiz = () => {
+        if (selectedQuestions.length === 0) {
+            alert('Please select at least one question');
+            return;
+        }
+
+        // Store selected question IDs in URL query
+        router.push(`/dashboard/review/?questionids=${selectedQuestions.join(',')}`);
+
+        // Clear any localStorage data that might interfere with the new quiz
+        localStorage.removeItem('reviewSessionState');
+    };
+
+    // ===== COMPUTED VALUES =====
+
     // Apply filters to performances
     const filteredPerformances = performances.filter(p => {
         // Domain filter
@@ -300,36 +492,7 @@ const QuestionPerformance: React.FC = () => {
     // Get unique domains for filter
     const domains = Array.from(new Set(performances.filter(p => p.domain).map(p => p.domain)));
 
-    // Create mock quiz
-    const handleCreateMockQuiz = () => {
-        if (selectedQuestions.length === 0) {
-            alert('Please select at least one question');
-            return;
-        }
-
-        // Store selected question IDs in URL query
-        router.push(`/dashboard/review/?questionids=${selectedQuestions.join(',')}`);
-
-        // Clear any localStorage data that might interfere with the new quiz
-        localStorage.removeItem('reviewSessionState');
-    };
-
-    // Get difficulty color
-    const getDifficultyColor = (difficulty?: string) => {
-        if (!difficulty) return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
-
-        switch (difficulty.toLowerCase()) {
-            case 'easy':
-                return { color: 'border-green-500', bg: 'bg-green-500/10', text: 'text-green-500' };
-            case 'medium':
-                return { color: 'border-yellow-500', bg: 'bg-yellow-500/10', text: 'text-yellow-500' };
-            case 'hard':
-                return { color: 'border-red-500', bg: 'bg-red-500/10', text: 'text-red-500' };
-            default:
-                return { color: 'border-gray-500', bg: 'bg-gray-500/10', text: 'text-gray-500' };
-        }
-    };
-
+    // ===== RENDER JSX =====
     return (
         <Card className="bg-gray-800/50 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -343,17 +506,16 @@ const QuestionPerformance: React.FC = () => {
                     >
                         SELECT ALL
                     </Button>
-
                 </div>
             </CardHeader>
 
             <CardContent>
-                {/* Modified Preview Question Modal with Attempt History */}
+                {/* Preview Question Modal with Attempt History */}
                 {previewQuestionId && previewQuestion && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
                         <div className="max-w-4xl w-3/4 mx-auto">
                             <div className="relative flex flex-col items-center">
-                                {/* Add close button */}
+                                {/* Close button */}
                                 <button
                                     onClick={closePreview}
                                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
@@ -363,8 +525,9 @@ const QuestionPerformance: React.FC = () => {
                                 </button>
 
                                 <div className="w-full">
-                                    {/* Switch to showing question details and historical attempts */}
+                                    {/* Question details and historical attempts */}
                                     <div className="bg-gray-800 rounded-lg p-6 shadow-xl">
+                                        {/* Badges */}
                                         <div className="mb-4">
                                             <Badge className={`${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).bg} ${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).text} border ${getDifficultyColor(previewQuestion.Question.QuestionDifficulty).color}`}>
                                                 {previewQuestion.Question.QuestionDifficulty}
@@ -374,6 +537,7 @@ const QuestionPerformance: React.FC = () => {
                                             </Badge>
                                         </div>
 
+                                        {/* Question Text */}
                                         <h3 className="text-xl font-semibold text-white mb-6">
                                             {previewQuestion.Question.Prompt}
                                         </h3>
@@ -645,4 +809,4 @@ const QuestionPerformance: React.FC = () => {
     );
 };
 
-export default QuestionPerformance;
+export default QuestionHistory;
