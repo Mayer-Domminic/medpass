@@ -1,3 +1,4 @@
+from typing import Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ....core.security import get_current_active_user, get_password_hash
@@ -21,7 +22,7 @@ def get_user_type(db: Session, current_user: User):
         "user_type": "student" if student else "faculty" if faculty else None
     }
 
-def update_user_profile(db: Session, current_user: User, student: Student = None, faculty: Faculty = None, username: str = None, email: str = None, password: str = None, firstname: str = None, lastname: str = None, position: str = None):
+def update_user_profile(db: Session, current_user: User, student: Student = None, faculty: Faculty = None, username: str = None, email: str = None, password: str = None, firstname: str = None, lastname: str = None, position: str = None, bio: str = None):
 
     #logininfo fields
     if username:
@@ -30,6 +31,8 @@ def update_user_profile(db: Session, current_user: User, student: Student = None
         current_user.email = email
     if password:
         current_user.password = get_password_hash(password)
+    if bio is not None:  # Use is not None to allow empty string
+        current_user.bio = bio
     
     #student fields
     if student and (firstname or lastname):
@@ -62,6 +65,7 @@ def update_user_profile(db: Session, current_user: User, student: Student = None
         "position": None,
         "is_student": student is not None,
         "is_faculty": faculty is not None,
+        "bio": current_user.bio,
         "message": "User information updated successfully"
     }
 
@@ -75,7 +79,6 @@ def update_user_profile(db: Session, current_user: User, student: Student = None
 
     return response
 
-    
 
 @router.patch("/update", response_model=UserUpdateResponse)
 async def update_user_settings(
@@ -118,7 +121,8 @@ async def update_user_settings(
             password=user_data.password,
             firstname=user_data.firstname,
             lastname=user_data.lastname,
-            position=user_data.position if user_type == "faculty" else None
+            position=user_data.position if user_type == "faculty" else None,
+            bio=user_data.bio
         )
         
         return updated_user
@@ -132,3 +136,20 @@ async def update_user_settings(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request"
         )
+    
+@router.get("/bio", response_model=Dict[str, Optional[str]])
+async def get_user_bio(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the bio for the currently authenticated user
+    """
+    try:
+        return {"bio": current_user.bio}
+    except Exception as e:
+        print(f"Get user bio error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while fetching user bio"
+    )

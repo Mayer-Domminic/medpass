@@ -123,7 +123,7 @@ const QuestionHistory: React.FC = () => {
     const { data: session } = useSession();
 
     // ===== CONFIGURATION =====
-    const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
     // ===== UTILITY FUNCTIONS =====
 
@@ -187,10 +187,8 @@ const QuestionHistory: React.FC = () => {
         }
 
         try {
-            const response = await fetch(
-                `${apiBase}/question/historical-performance/?skip=0&limit=100`,
+            const response = await fetch(`${apiBase}/question/historical-performance/?skip=0&limit=100`,
                 {
-                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.accessToken}`
