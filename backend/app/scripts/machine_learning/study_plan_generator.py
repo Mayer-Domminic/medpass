@@ -3,24 +3,12 @@ import json
 import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-import google.generativeai as genai
 from fastapi import HTTPException
 from app.core.config import settings
-
-try:
-    api_key = settings.GEMINI_API_KEYS # USE GEMINI SERVICE PLEASE
-    if not api_key:
-        print("Warning: No API key found for Gemini. Using fallback generator.")
-        GEMINI_AVAILABLE = False
-    else:
-        genai.configure(api_key=api_key)
-        GEMINI_AVAILABLE = True
-except Exception as e:
-    print(f"Error configuring Gemini API: {str(e)}")
-    GEMINI_AVAILABLE = False
+from app.services.gemini_service import chat_model
 
 # Model to use
-MODEL = "gemini-1.5-pro"
+MODEL = "gemini-2.5-flash-preview-04-17"
 
 # Study session durations (in hours)
 SESSION_DURATIONS = [1, 1.5, 2, 2.5, 3]
@@ -52,15 +40,12 @@ def generate_study_plan(
         A dictionary containing the study plan and summary
     """
     try:
-        # Make both datetimes naive or aware to avoid comparison issues
-        # Convert exam_date to naive if it has timezone info
-        if hasattr(exam_date, 'tzinfo') and exam_date.tzinfo is not None:
-            # Convert to UTC then remove timezone info
-            exam_date = exam_date.astimezone(timezone.utc).replace(tzinfo=None)
-            
         # Calculate days until exam
         current_date = datetime.now()
-        # Ensure current_date is also naive
+        # Ensure both dates are naive or both have timezone
+        if hasattr(exam_date, 'tzinfo') and exam_date.tzinfo is not None:
+            # Convert to naive for comparison
+            exam_date = exam_date.replace(tzinfo=None)
         current_date = current_date.replace(tzinfo=None)
         
         days_until_exam = (exam_date - current_date).days
@@ -71,33 +56,19 @@ def generate_study_plan(
                 detail="Exam date must be in the future"
             )
         
-        # Prepare the prompt for Gemini
-        if GEMINI_AVAILABLE:
-            plan_data = generate_with_gemini(
-                student_id=student_id,
-                exam_date=exam_date,
-                weaknesses=weaknesses,
-                strengths=strengths,
-                existing_events=existing_events,
-                study_hours_per_day=study_hours_per_day,
-                focus_areas=focus_areas,
-                additional_notes=additional_notes,
-                days_until_exam=days_until_exam
-            )
-            return plan_data
-        else:
-            print("fallback used")
-            # Fallback to basic algorithm if Gemini is not available
-            return generate_fallback_plan(
-                student_id=student_id,
-                exam_date=exam_date,
-                weaknesses=weaknesses,
-                strengths=strengths,
-                existing_events=existing_events,
-                study_hours_per_day=study_hours_per_day,
-                focus_areas=focus_areas,
-                days_until_exam=days_until_exam
-            )
+        # Generate the plan using Gemini service
+        plan_data = generate_with_gemini(
+            student_id=student_id,
+            exam_date=exam_date,
+            weaknesses=weaknesses,
+            strengths=strengths,
+            existing_events=existing_events,
+            study_hours_per_day=study_hours_per_day,
+            focus_areas=focus_areas,
+            additional_notes=additional_notes,
+            days_until_exam=days_until_exam
+        )
+        return plan_data
     
     except Exception as e:
         print(f"Error generating study plan: {str(e)}")
@@ -190,44 +161,47 @@ def generate_with_gemini(
     """
     
     try:
-        # Make the API request to Gemini
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        response = model.generate_content(prompt)
+        messages = [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
         
-        if not response or not response.text:
-            raise Exception("Empty response from Gemini API")
+        response_text = chat_model(messages, MODEL)
         
         # Extract JSON from the response
-        response_text = response.text
-        
-        # Sometimes the response comes with markdown code blocks
+        json_match = None
         if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
+            json_match = response_text.split("```json")[1].split("```")[0].strip()
         elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
+            json_match = response_text.split("```")[1].split("```")[0].strip()
         
-        # Print the raw JSON for debugging
-        print("Raw JSON response (first 100 chars):", response_text[:100])
-        
-        # Validate and fix JSON if needed
-        try:
-            # Parse the JSON response
-            plan_data = json.loads(response_text)
-        except json.JSONDecodeError as json_err:
-            print(f"JSON parsing error: {str(json_err)}")
-            
-            # Attempt to fix common JSON issues (like single quotes instead of double quotes)
-            fixed_text = response_text.replace("'", "\"")
+        if json_match:
             try:
-                plan_data = json.loads(fixed_text)
-                print("Successfully fixed and parsed JSON after replacing quotes")
-            except:
-                # If fixing didn't work, fall back to the default generator
-                raise Exception(f"Could not parse JSON response: {str(json_err)}")
+                plan_data = json.loads(json_match)
+                print("Successfully parsed JSON from code block")
+            except json.JSONDecodeError:
+                json_match = None
+        
+        if not json_match:
+            try:
+                start_index = response_text.find('{')
+                end_index = response_text.rfind('}')
+                
+                if start_index != -1 and end_index != -1 and end_index > start_index:
+                    cleaned_response_text = response_text[start_index:end_index + 1]
+                    plan_data = json.loads(cleaned_response_text)
+                    print("Successfully parsed JSON directly from response")
+                else:
+                    raise ValueError("Could not find valid JSON structure in API response")
+            except json.JSONDecodeError as e:
+                print(f"Direct JSON decode error: {e}")
+                raise ValueError(f"Failed to parse JSON response: {e}")
         
         # Validate the response format
         if "events" not in plan_data or "summary" not in plan_data:
-            raise Exception("Invalid response format from Gemini API")
+            raise ValueError("Invalid response format: missing 'events' or 'summary'")
         
         # Process the events into the expected format for the API
         study_events = process_study_events(plan_data["events"], student_id)

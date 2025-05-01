@@ -7,8 +7,6 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import { EventClickArg } from '@fullcalendar/core';
 
-import { CalendarEvent, FullCalendarEvent, StudySession } from '@/types/calendar';
-import { fetchEvents, createEvent, updateEvent, deleteEvent, exportStudyPlanPdf } from '@/lib/calendarUtils';
 import EventModal from './event-form-modal';
 import StudyPlanModal from './study-plan-modal';
 import StudySessionModal from './study-session-modal';
@@ -31,8 +29,201 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Helper to map backend event to FullCalendar event
-const mapToFullCalendarEvent = (event: CalendarEvent): FullCalendarEvent => ({
+// RecurrenceRule type
+interface RecurrenceRule {
+  frequency: string; 
+  interval?: number;
+  days_of_week?: number[]; 
+  end_date?: string; 
+  count?: number;
+}
+
+// Main CalendarEvent type
+export interface CalendarEvent {
+  id: string;
+  student_id?: number; 
+  title: string;
+  description?: string;
+  start: string;
+  end: string;
+  allDay: boolean; 
+  type: string; 
+  recurrence?: RecurrenceRule | null; 
+  location?: string;
+  color?: string;
+  priority?: number;
+  topicName?: string;
+  completed?: boolean;
+  createdAt?: string; 
+  updatedAt?: string; 
+
+  extendedProps?: {
+    [key: string]: any;
+    type: string;
+    description?: string;
+    location?: string;
+    priority?: number;
+    topicName?: string;
+    completed?: boolean;
+  };
+}
+
+// Study Session specialized type
+export interface StudySession extends CalendarEvent {
+  topicName: string;
+  completed: boolean;
+  plan_id?: string;
+}
+
+// EventCreatePayload for API
+export interface EventCreatePayload {
+  title: string;
+  description?: string;
+  start_time: string; 
+  end_time: string; 
+  all_day?: boolean;
+  event_type: string;
+  recurrence?: RecurrenceRule | null;
+  location?: string;
+  color?: string;
+  priority?: number;
+  topic_name?: string; 
+  completed?: boolean;
+}
+
+// EventUpdatePayload for API
+export interface EventUpdatePayload extends Partial<EventCreatePayload> {}
+
+// WeaknessStrength for StudyPlan
+export interface WeaknessStrength {
+  subject: string;
+  performance: number; 
+  is_weakness?: boolean; 
+  unit_type?: string; 
+  performance_score?: number; 
+}
+
+// FullCalendarEvent for FullCalendar library
+export interface FullCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  color?: string;
+  extendedProps: {
+    [key: string]: any;
+    type: string;
+    description?: string;
+    location?: string;
+    priority?: number;
+    topicName?: string;
+    completed?: boolean;
+  };
+}
+
+// StudyPlan related types
+export interface StudyPlanRequestPayload {
+  exam_date: string; 
+  weaknesses: WeaknessStrength[];
+  strengths: WeaknessStrength[];
+  events: CalendarEvent[];
+  study_hours_per_day?: number;
+  focus_areas?: string[];
+  additional_notes?: string; 
+}
+
+export interface StudyPlanSummary {
+  total_study_hours: number;
+  topics_count: number;
+  focus_areas: { [key: string]: number };
+  weekly_breakdown: { [key: string]: number };
+}
+
+export interface StudyPlanGenerationResponse {
+  plan: StudyPlanResponseData;
+  summary: StudyPlanSummary;
+}
+
+export interface StudyPlanResponseData {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  examDate: string; 
+  events: StudyPlanEventResponse[];
+  createdAt: string;
+}
+
+export interface StudyPlanEventResponse {
+  id: string;
+  title: string;
+  description?: string;
+  start: string; 
+  end: string; 
+  allDay: boolean;
+  type: string; 
+  topicName?: string;
+  completed?: boolean;
+}
+
+export interface StudyPlanProgress {
+  total_sessions: number;
+  completed_sessions: number;
+  completion_percentage: number;
+  hours_studied: number;
+  hours_remaining: number;
+  progress_by_topic: { [key: string]: number };
+}
+
+export interface RiskAssessment {
+  risk_score: number;
+  risk_level: 'Low' | 'Medium' | 'High';
+  strengths: WeaknessStrength[];
+  weaknesses: WeaknessStrength[];
+  ml_prediction: {
+    prediction: number;
+    probability: number;
+    prediction_text: string;
+    confidence_score: number;
+  };
+  details?: {
+    student_name?: string;
+    total_exams?: number;
+    passed_exams?: number;
+    total_grades?: number;
+  };
+}
+
+// ====== Integrated Calendar Utilities ======
+
+// Helper function to generate a UUID
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Get color based on event type
+export function getEventColor(eventType: string, completed?: boolean): string {
+  if (eventType === 'study') {
+    return completed ? '#059669' : '#10B981'; // Dark green for completed, light green for pending
+  }
+  
+  switch (eventType.toLowerCase()) {
+    case 'school': return '#3B82F6'; // Blue
+    case 'work': return '#F59E0B';   // Yellow
+    case 'extracurricular': return '#8B5CF6'; // Purple
+    case 'personal': return '#EC4899'; // Pink
+    default: return '#6B7280';      // Gray
+  }
+}
+
+// Map backend event to frontend format
+export const mapToFullCalendarEvent = (event: CalendarEvent): FullCalendarEvent => ({
   id: event.id,
   title: event.title,
   start: event.start,
@@ -49,23 +240,8 @@ const mapToFullCalendarEvent = (event: CalendarEvent): FullCalendarEvent => ({
   },
 });
 
-// Get event color based on type and completion status
-function getEventColor(eventType: string, completed?: boolean): string {
-  if (eventType === 'study') {
-    return completed ? '#059669' : '#10B981'; // Dark green for completed, light green for pending
-  }
-  
-  switch (eventType.toLowerCase()) {
-    case 'school': return '#3B82F6'; // Blue
-    case 'work': return '#F59E0B';   // Yellow
-    case 'extracurricular': return '#8B5CF6'; // Purple
-    case 'personal': return '#EC4899'; // Pink
-    default: return '#6B7280';      // Gray
-  }
-}
-
 // Helper functions to track study progress
-function calculateStudyProgress(events: FullCalendarEvent[]) {
+export function calculateStudyProgress(events: FullCalendarEvent[]) {
   const studyEvents = events.filter(e => e.extendedProps.type === 'study');
   const completedEvents = studyEvents.filter(e => e.extendedProps.completed);
   
@@ -75,6 +251,325 @@ function calculateStudyProgress(events: FullCalendarEvent[]) {
     percentage: studyEvents.length ? Math.round((completedEvents.length / studyEvents.length) * 100) : 0
   };
 }
+
+// Find latest study plan ID from events
+export const findLatestStudyPlanId = (events: CalendarEvent[]): string | null => {
+  try {
+    // Filter for study events
+    const studyEvents = events.filter(event => 
+      event.type === 'study' || 
+      (event.extendedProps && event.extendedProps.type === 'study')
+    );
+    
+    if (studyEvents.length === 0) {
+      return null;
+    }
+    
+    // Extract plan IDs
+    const planIds = studyEvents
+      .map(event => {
+        // Check different possible locations where plan_id might be stored
+        if (event.extendedProps && event.extendedProps.plan_id) {
+          return event.extendedProps.plan_id;
+        }
+        
+        // Try other common locations
+        return (event as any).plan_id || null;
+      })
+      .filter(Boolean); // Remove nulls
+    
+    if (planIds.length === 0) {
+      return null;
+    }
+    
+    // Remove duplicates and get the latest one (assuming they might be sorted by date)
+    const uniquePlanIds = [...new Set(planIds)];
+    return uniquePlanIds[0];
+  } catch (error) {
+    console.error("Error finding latest study plan ID:", error);
+    return null;
+  }
+};
+
+// Fetch events from API
+export const fetchEvents = async (): Promise<CalendarEvent[]> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1/calendar/events`;
+    
+    const token = await getAuthToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    
+    const response = await fetch(url, { 
+      headers,
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+      
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+    }
+    
+    const events = await response.json();
+    
+    if (!Array.isArray(events)) {
+      console.error("API Error: events endpoint did not return an array", events);
+      return [];
+    }
+    
+    return events.map(event => ({
+      id: event.id || event.event_id,
+      title: event.title || 'Untitled Event',
+      start: event.start || event.start_time,
+      end: event.end || event.end_time,
+      allDay: event.all_day || event.allDay || false,
+      type: event.event_type || event.type || 'other',
+      description: event.description,
+      location: event.location,
+      color: event.color || getEventColor(event.event_type || event.type || 'other', event.completed),
+      priority: event.priority,
+      topicName: event.topic_name || event.topicName,
+      completed: event.completed,
+      extendedProps: {
+        type: event.event_type || event.type || 'other',
+        description: event.description,
+        location: event.location,
+        priority: event.priority,
+        topicName: event.topic_name || event.topicName,
+        completed: event.completed,
+      }
+    }));
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    throw error;
+  }
+};
+
+// Create a new event
+export const createEvent = async (payload: EventCreatePayload): Promise<CalendarEvent> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1/calendar/events`;
+    
+    const token = await getAuthToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    
+    // Map frontend format to backend expected format
+    const backendPayload = {
+      title: payload.title,
+      description: payload.description,
+      start_time: payload.start_time,
+      end_time: payload.end_time,
+      all_day: payload.all_day,
+      event_type: payload.event_type,
+      recurrence: payload.recurrence,
+      location: payload.location,
+      color: payload.color,
+      priority: payload.priority,
+      topic_name: payload.topic_name,
+      completed: payload.completed
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(backendPayload),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+    }
+    
+    const event = await response.json();
+    
+    // Map the response back to the frontend format
+    return {
+      id: event.id || event.event_id,
+      title: event.title,
+      start: event.start || event.start_time,
+      end: event.end || event.end_time,
+      allDay: event.all_day || false,
+      type: event.event_type,
+      description: event.description,
+      location: event.location,
+      color: event.color,
+      priority: event.priority,
+      topicName: event.topic_name,
+      completed: event.completed,
+      extendedProps: {
+        type: event.event_type,
+        description: event.description,
+        location: event.location,
+        priority: event.priority,
+        topicName: event.topic_name,
+        completed: event.completed
+      }
+    };
+  } catch (error) {
+    console.error("Error creating event:", error);
+    throw error;
+  }
+};
+
+// Update an existing event
+export const updateEvent = async (eventId: string, payload: EventUpdatePayload): Promise<CalendarEvent> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1/calendar/events/${eventId}`;
+    
+    const token = await getAuthToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    
+    // Only include defined fields to avoid setting null values
+    const backendPayload: any = {};
+    
+    if (payload.title !== undefined) backendPayload.title = payload.title;
+    if (payload.description !== undefined) backendPayload.description = payload.description;
+    if (payload.start_time !== undefined) backendPayload.start_time = payload.start_time;
+    if (payload.end_time !== undefined) backendPayload.end_time = payload.end_time;
+    if (payload.all_day !== undefined) backendPayload.all_day = payload.all_day;
+    if (payload.event_type !== undefined) backendPayload.event_type = payload.event_type;
+    if (payload.recurrence !== undefined) backendPayload.recurrence = payload.recurrence;
+    if (payload.location !== undefined) backendPayload.location = payload.location;
+    if (payload.color !== undefined) backendPayload.color = payload.color;
+    if (payload.priority !== undefined) backendPayload.priority = payload.priority;
+    if (payload.topic_name !== undefined) backendPayload.topic_name = payload.topic_name;
+    if (payload.completed !== undefined) backendPayload.completed = payload.completed;
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(backendPayload),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+    }
+    
+    const event = await response.json();
+    
+    // Map the response back to the frontend format
+    return {
+      id: event.id || event.event_id,
+      title: event.title,
+      start: event.start || event.start_time,
+      end: event.end || event.end_time,
+      allDay: event.all_day || false,
+      type: event.event_type,
+      description: event.description,
+      location: event.location,
+      color: event.color,
+      priority: event.priority,
+      topicName: event.topic_name,
+      completed: event.completed,
+      extendedProps: {
+        type: event.event_type,
+        description: event.description,
+        location: event.location,
+        priority: event.priority,
+        topicName: event.topic_name,
+        completed: event.completed
+      }
+    };
+  } catch (error) {
+    console.error("Error updating event:", error);
+    throw error;
+  }
+};
+
+// Delete an event
+export const deleteEvent = async (eventId: string): Promise<boolean> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1/calendar/events/${eventId}`;
+    
+    const token = await getAuthToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers,
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    throw error;
+  }
+};
+
+// Export study plan as PDF
+export const exportStudyPlanPdf = async (planId: string): Promise<Blob> => {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const url = `${baseUrl}/api/v1/calendar/export-plan/${planId}`;
+    
+    const token = await getAuthToken();
+    
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error exporting study plan: ${response.statusText}`);
+    }
+    
+    return await response.blob();
+  } catch (error) {
+    console.error("Error exporting study plan:", error);
+    throw error;
+  }
+};
+
+// Get auth token from NextAuth session
+export const getAuthToken = async () => {
+  try {
+    const session = await fetch('/api/auth/session');
+    const data = await session.json();
+    return data?.accessToken;
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    return null;
+  }
+};
+
+// ====== Main Component ======
 
 const CalendarView: React.FC = () => {
   const router = useRouter();
@@ -148,7 +643,11 @@ const CalendarView: React.FC = () => {
       setStudyProgress(calculateStudyProgress(mappedEvents));
       
       // Find the latest study plan ID (if any)
-      findLatestStudyPlanId(calendarEvents);
+      const planId = findLatestStudyPlanId(calendarEvents);
+      if (planId) {
+        setLatestStudyPlanId(planId);
+        console.log("Found study plan ID:", planId);
+      }
     } catch (err: any) {
       console.error("Error fetching events:", err);
       
@@ -165,43 +664,6 @@ const CalendarView: React.FC = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Find the latest study plan ID by looking at study events
-  const findLatestStudyPlanId = (events: CalendarEvent[]) => {
-    try {
-      // Filter study events that might be part of a plan
-      const studyEvents = events.filter(e => e.type === 'study');
-      
-      if (studyEvents.length === 0) {
-        return;
-      }
-      
-      // Extract plan IDs if available
-      const planIds = studyEvents
-        .map(e => {
-          // Check for plan_id in extendedProps or other locations
-          if (e.extendedProps && typeof e.extendedProps === 'object') {
-            return (e.extendedProps as any).plan_id;
-          }
-          
-          // Check other possible locations
-          return (e as any).plan_id || (e as any).planId || null;
-        })
-        .filter(Boolean); // Remove nulls and undefined
-      
-      // If we found plan IDs, set the latest one
-      if (planIds.length > 0) {
-        // Use Set to remove duplicates and get the most recent one
-        const uniquePlanIds = [...new Set(planIds)];
-        setLatestStudyPlanId(uniquePlanIds[0]); // Most recent is usually first
-        console.log("Found study plan ID:", uniquePlanIds[0]);
-      } else {
-        console.log("No study plan IDs found in events");
-      }
-    } catch (error) {
-      console.error("Error finding latest study plan ID:", error);
     }
   };
 
@@ -257,7 +719,7 @@ const CalendarView: React.FC = () => {
         start: clickedEvent.start,
         end: clickedEvent.end,
         allDay: clickedEvent.allDay,
-        type: clickedEvent.extendedProps.type, // Add the type property
+        type: clickedEvent.extendedProps.type,
         color: clickedEvent.color,
         description: clickedEvent.extendedProps.description,
         location: clickedEvent.extendedProps.location,
@@ -526,7 +988,7 @@ const CalendarView: React.FC = () => {
             </Button>
           )}
           
-          {/* New Study Plan PDF Button */}
+          {/* Study Plan PDF Button */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
