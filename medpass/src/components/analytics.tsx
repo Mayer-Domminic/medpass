@@ -115,7 +115,7 @@ const StudyAnalytics = () => {
   const [statistics, setStatistics] = useState<StudentStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const apiBase = `${process.env.NEXT_PUBLIC_API_BASE_URL}` || '';
   
   const fetchStatistics = async () => {
     if (!session?.accessToken) return;
