@@ -1,11 +1,14 @@
 'use client';
-import QuestionPerformance from "@/components/results/QuestionHistory";
+import GeneralMetric from "@/components/analytics/generalMetric";
 
 export default function DevPage() {
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
-      <h1 className="text-xl font-semibold text-white mb-6">Development Page</h1>
-      <QuestionPerformance />
-    </div>
+    <GeneralMetric
+      title="Total Revenue"
+      value="$1,250.00"
+      trend={12.5}
+      color="#22c55e"
+      data={[]}
+    />
   );
 }
