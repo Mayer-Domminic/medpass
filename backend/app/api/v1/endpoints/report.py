@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import or_
+from urllib.parse import unquote
 from typing import Optional, List
 import json
 from app.core.database import (
@@ -117,31 +118,30 @@ async def generate_domain_report(
                 status_code=403,
                 detail="Admins accounts can not access student reports route"
             )
-
         studentid = db.query(Student.studentid).filter(Student.logininfoid == current_user.logininfoid).scalar()
         if not studentid:
             raise HTTPException(
                 status_code=404,
                 detail="Login Info is not Attached to a Student"
             )
-            
+           
         if domain_id:
             domain_grades = generateDomainReport(studentid, db, domain_id)
         else:
             domain_grades = generateDomainReport(studentid, db)
-            
+           
         domain_reports = {}
         for grades in domain_grades:
             domain_name = grades.DomainName
             if domain_name not in domain_reports:
                 domain_reports[domain_name] = []
             domain_reports[domain_name].append(grades)
-            
+           
         return {"Domains": domain_reports}
-    
+   
     except HTTPException:
         raise
-    
+   
     except Exception as e:
         print(f"Login error: {str(e)}")
         raise HTTPException(
@@ -160,18 +160,52 @@ async def get_domain_subdomains(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ) -> List[str]:
-    dom = db.query(Domain).filter(Domain.domainname == domain_name).first()
-    if not dom:
-        raise HTTPException(status_code=404, detail="Domain not found")
-    rows = (
-        db.query(GradeClassification.classificationname)
-        .join(ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid)
-        .join(ClassDomain, ClassDomain.classid == ClassOffering.classid)
-        .filter(ClassDomain.domainid == dom.domainid)
-        .distinct()
-        .all()
-    )
-    return [r[0] for r in rows]
+    try:
+        decoded_domain = unquote(domain_name)
+        
+        dom = db.query(Domain).filter(Domain.domainname == decoded_domain).first()
+        
+        if not dom:
+            if '%2F' in decoded_domain:
+                decoded_domain = decoded_domain.replace('%2F', '/')
+                dom = db.query(Domain).filter(Domain.domainname == decoded_domain).first()
+            
+            special_domains = {
+                "Biostatistics & Epidemiology/Population Health": "Biostatistics & Epidemiology/Population Health",
+                "Respiratory & Renal/Urinary Systems": "Respiratory & Renal/Urinary Systems",
+                "Behavioral Health & Nervous Systems/Special Senses": "Behavioral Health & Nervous Systems/Special Senses",
+                "Blood & Lymphoreticular/Immune Systems": "Blood & Lymphoreticular/Immune Systems"
+            }
+            
+            for original, formatted in special_domains.items():
+                if (decoded_domain == original or 
+                    decoded_domain.replace('/', ' ') == original.replace('/', ' ') or
+                    decoded_domain.replace('%20', ' ') == original):
+                    dom = db.query(Domain).filter(Domain.domainname == formatted).first()
+                    if dom:
+                        break
+        
+        if not dom:
+            raise HTTPException(status_code=404, detail=f"Domain not found: {decoded_domain}")
+        
+        rows = (
+            db.query(GradeClassification.classificationname)
+            .join(ClassOffering, GradeClassification.classofferingid == ClassOffering.classofferingid)
+            .join(ClassDomain, ClassDomain.classid == ClassOffering.classid)
+            .filter(ClassDomain.domainid == dom.domainid)
+            .distinct()
+            .all()
+        )
+        return [r[0] for r in rows]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching subdomains for domain '{domain_name}': {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while fetching subdomains: {str(e)}"
+        )
         
 @router.get("/faculty_report", response_model=StudentCompleteReport)
 async def generate_faculty_report(

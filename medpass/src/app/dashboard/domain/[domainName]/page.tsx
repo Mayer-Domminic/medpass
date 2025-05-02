@@ -30,15 +30,15 @@ const formatDomainName = (slug: string): string => {
   // Map slugs back to their original domain names
   const domainMapping: Record<string, string> = {
     'human-development': 'Human Development',
-    'blood-and-lymphoreticular-immune-systems': 'Blood & Lymphoreticular/Immune Systems',
-    'behavioral-health-and-nervous-systems-special-senses': 'Behavioral Health & Nervous Systems/Special Senses',
+    'blood-and-lymphoreticular-immune-systems': 'Blood & Lymphoreticular Immune Systems',
+    'behavioral-health-and-nervous-systems-special-senses': 'Behavioral Health & Nervous Systems Special Senses',
     'musculoskeletal-skin-and-subcutaneous-tissue': 'Musculoskeletal, Skin & Subcutaneous Tissue', 
     'cardiovascular-system': 'Cardiovascular System',
-    'respiratory-and-renal-urinary-systems': 'Respiratory & Renal/Urinary Systems',
+    'respiratory-and-renal-urinary-systems': 'Respiratory & Renal Urinary Systems',
     'gastrointestinal-system': 'Gastrointestinal System',
     'reproductive-and-endocrine-systems': 'Reproductive & Endocrine Systems',
     'multisystem-processes-and-disorders': 'Multisystem Processes & Disorders',
-    'biostatistics-and-epidemiology-population-health': 'Biostatistics & Epidemiology/Population Health',
+    'biostatistics-and-epidemiology-population-health': 'Biostatistics & Epidemiology Population Health',
     'social-sciences-communication-and-interpersonal-skills': 'Social Sciences: Communication and Interpersonal Skills'
   };
   
@@ -51,16 +51,16 @@ const formatDomainName = (slug: string): string => {
 // Get icon and color based on domain name
 const getDomainIcon = (domainName: string) => {
   const iconMapping: Record<string, { icon: React.ElementType; color: string }> = {
-    'human-development': { icon: User, color: 'blue' },
-    'blood-and-lymphoreticular-immune-systems': { icon: Microscope, color: 'red' },
-    'behavioral-health-and-nervous-systems-special-senses': { icon: Brain, color: 'purple' },
-    'musculoskeletal-skin-and-subcutaneous-tissue': { icon: Users, color: 'yellow' },
-    'cardiovascular-system': { icon: Heart, color: 'rose' },
-    'respiratory-and-renal-urinary-systems': { icon: Wind, color: 'cyan' },
-    'gastrointestinal-system': { icon: Thermometer, color: 'orange' },
-    'reproductive-and-endocrine-systems': { icon: Zap, color: 'green' },
-    'multisystem-processes-and-disorders': { icon: Stethoscope, color: 'indigo' },
-    'biostatistics-and-epidemiology-population-health': { icon: Pill, color: 'slate' },
+    'human-development': { icon: User, color: 'emerald' },
+    'blood-and-lymphoreticular-immune-systems': { icon: Microscope, color: 'emerald' },
+    'behavioral-health-and-nervous-systems-special-senses': { icon: Brain, color: 'emerald' },
+    'musculoskeletal-skin-and-subcutaneous-tissue': { icon: Users, color: 'emerald' },
+    'cardiovascular-system': { icon: Heart, color: 'emerald' },
+    'respiratory-and-renal-urinary-systems': { icon: Wind, color: 'emerald' },
+    'gastrointestinal-system': { icon: Thermometer, color: 'emerald' },
+    'reproductive-and-endocrine-systems': { icon: Zap, color: 'emerald' },
+    'multisystem-processes-and-disorders': { icon: Stethoscope, color: 'emerald' },
+    'biostatistics-and-epidemiology-population-health': { icon: Pill, color: 'emerald' },
     'social-sciences-communication-and-interpersonal-skills': { icon: Users, color: 'emerald' }
   };
 
@@ -161,6 +161,15 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
     }
   };
 
+  const handlePracticeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const encodedDomain = encodeURIComponent(domainName);
+    const encodedSubdomain = encodeURIComponent(subdomain.title);
+    router.push(
+      `/dashboard/review?domain=${encodedDomain}&subdomain=${encodedSubdomain}&practice=true`
+    );
+  };
+
   return (
     <div className="w-full bg-gray-800 rounded-lg p-4">
       <div 
@@ -200,12 +209,7 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
           <Button
             size="sm"
             className="bg-purple-600 hover:bg-purple-700 text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(
-                `/dashboard/review?domain=${encodeURIComponent(domainName)}&subdomain=${encodeURIComponent(subdomain.title)}&practice=true`
-              );
-            }}
+            onClick={handlePracticeClick}
           >
             Practice Questions
           </Button>
@@ -309,13 +313,18 @@ export default function DomainPage() {
   useEffect(() => {
     if (!session?.accessToken) return;
     
+    const encodedDomainName = encodeURIComponent(formattedDomainName);
+    
     // Fetch subdomains first
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/domains/${encodeURIComponent(formattedDomainName)}/subdomains`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/domains/${encodedDomainName}/subdomains`,
       { headers: { Authorization: `Bearer ${session.accessToken}` } }
     )
       .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          console.error(`Failed to fetch subdomains: HTTP ${res.status}`);
+          throw new Error(`HTTP ${res.status}`);
+        }
         return res.json() as Promise<string[]>;
       })
       .then(names => {
@@ -331,7 +340,7 @@ export default function DomainPage() {
         
         // After getting subdomains, fetch the stats
         return fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/stats?domain=${encodeURIComponent(formattedDomainName)}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/practice-questions/stats?domain=${encodedDomainName}`,
           { headers: { Authorization: `Bearer ${session.accessToken}` } }
         );
       })
