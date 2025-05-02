@@ -241,21 +241,45 @@ export default function ReviewContent() {
         try {
             const headers = await getHeaders();
             headers['Accept'] = 'application/json';
-
-            const endpoint = isPractice
-                ? `/question/practice/${encodeURIComponent(domain)}/${encodeURIComponent(subdomain)}`
-                : `/question/review/${encodeURIComponent(domain)}/${encodeURIComponent(subdomain)}`;
-
-            const response = await fetch(`${apiBase}${endpoint}`, {
-            });
-
+    
+            const response = await fetch(
+                `${apiBase}/practice-questions/?domain=${encodeURIComponent(domain)}&subdomain=${encodeURIComponent(subdomain)}`, 
+                {
+                    headers
+                }
+            );
+    
             if (!response.ok) throw new Error(`Error: ${response.status}`);
-
+    
             const data = await response.json();
-            if (!Array.isArray(data)) throw new Error("API returned invalid data format");
-
-            return data as QuestionResponseData[];
+            if (!data.questions || !Array.isArray(data.questions)) {
+                throw new Error("API returned invalid data format");
+            }
+    
+            return data.questions.map((q: any) => ({
+                Question: {
+                    QuestionID: q.id,
+                    ExamID: 0, 
+                    Prompt: q.text,
+                    QuestionDifficulty: q.difficulty,
+                    ImageUrl: null,
+                    ImageDependent: false,
+                    ImageDescription: null
+                },
+                Options: q.options.map((opt: any) => ({
+                    OptionID: opt.id,
+                    CorrectAnswer: opt.isCorrect,
+                    Explanation: q.explanation || '',
+                    OptionDescription: opt.text
+                })),
+                GradeClassification: {
+                    GradeClassificationID: 0,
+                    ClassificationName: subdomain,
+                    UnitType: 'Practice'
+                }
+            }));
         } catch (error) {
+            console.error('Error fetching questions:', error);
             throw error;
         }
     };

@@ -51,17 +51,17 @@ const formatDomainName = (slug: string): string => {
 // Get icon and color based on domain name
 const getDomainIcon = (domainName: string) => {
   const iconMapping: Record<string, { icon: React.ElementType; color: string }> = {
-    'human-development': { icon: User, color: 'emerald' },
-    'blood-and-lymphoreticular-immune-systems': { icon: Microscope, color: 'emerald' },
-    'behavioral-health-and-nervous-systems-special-senses': { icon: Brain, color: 'emerald' },
-    'musculoskeletal-skin-and-subcutaneous-tissue': { icon: Users, color: 'emerald' },
-    'cardiovascular-system': { icon: Heart, color: 'emerald' },
-    'respiratory-and-renal-urinary-systems': { icon: Wind, color: 'emerald' },
-    'gastrointestinal-system': { icon: Thermometer, color: 'emerald' },
-    'reproductive-and-endocrine-systems': { icon: Zap, color: 'emerald' },
-    'multisystem-processes-and-disorders': { icon: Stethoscope, color: 'emerald' },
-    'biostatistics-and-epidemiology-population-health': { icon: Pill, color: 'emerald' },
-    'social-sciences-communication-and-interpersonal-skills': { icon: Users, color: 'emerald' }
+    'human-development': { icon: User, color: 'green' },
+    'blood-and-lymphoreticular-immune-systems': { icon: Microscope, color: 'green' },
+    'behavioral-health-and-nervous-systems-special-senses': { icon: Brain, color: 'green' },
+    'musculoskeletal-skin-and-subcutaneous-tissue': { icon: Users, color: 'green' },
+    'cardiovascular-system': { icon: Heart, color: 'green' },
+    'respiratory-and-renal-urinary-systems': { icon: Wind, color: 'green' },
+    'gastrointestinal-system': { icon: Thermometer, color: 'green' },
+    'reproductive-and-endocrine-systems': { icon: Zap, color: 'green' },
+    'multisystem-processes-and-disorders': { icon: Stethoscope, color: 'green' },
+    'biostatistics-and-epidemiology-population-health': { icon: Pill, color: 'green' },
+    'social-sciences-communication-and-interpersonal-skills': { icon: Users, color: 'green' }
   };
 
   return iconMapping[domainName] || { icon: Stethoscope, color: 'blue' };
@@ -188,8 +188,7 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
         <div className="flex items-center gap-2 mr-4">
           <Button
             size="sm"
-            variant="outline"
-            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-600/30"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={(e) => {
               e.stopPropagation();
               generateAIQuestions();
@@ -213,25 +212,6 @@ const SubdomainComponent: React.FC<SubdomainComponentProps> = ({
           >
             Practice Questions
           </Button>
-        </div>
-
-        <div className="flex items-center gap-8 ml-auto">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs text-gray-400">Confidence</span>
-            <AnimatedProgressBar
-              value={subdomain.confidence}
-              color="bg-blue-400"
-              size="md"
-            />
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs text-gray-400">Proficiency</span>
-            <AnimatedProgressBar
-              value={subdomain.proficiency}
-              color="bg-green-400"
-              size="md"
-            />
-          </div>
         </div>
       </div>
 
