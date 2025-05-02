@@ -5,7 +5,8 @@ import {
   WeaknessStrength,
   FullCalendarEvent, 
   StudyPlanRequestPayload,
-  StudyPlanGenerationResponse
+  StudyPlanGenerationResponse,
+  getAuthToken
 } from './calendar-view';
 
 import {
@@ -39,9 +40,7 @@ const fetchFromApi = async <T,>(endpoint: string, options: RequestInit = {}): Pr
     const url = `${baseUrl}/api/v1${endpoint}`;
     
     // Get auth token from session
-    const session = await fetch('/api/auth/session');
-    const data = await session.json();
-    const token = data?.accessToken;
+    const token = await getAuthToken();
     
     const headers = {
       'Content-Type': 'application/json',

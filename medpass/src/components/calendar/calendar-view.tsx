@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import FullCalendar from '@fullcalendar/react';
@@ -291,6 +291,17 @@ export const findLatestStudyPlanId = (events: CalendarEvent[]): string | null =>
   }
 };
 
+export const getAuthToken = async () => {
+  try {
+    const session = await fetch('/api/auth/session');
+    const data = await session.json();
+    return data?.accessToken;
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    return null;
+  }
+};
+
 // Fetch events from API
 export const fetchEvents = async (): Promise<CalendarEvent[]> => {
   try {
@@ -557,18 +568,6 @@ export const exportStudyPlanPdf = async (planId: string): Promise<Blob> => {
   }
 };
 
-// Get auth token from NextAuth session
-export const getAuthToken = async () => {
-  try {
-    const session = await fetch('/api/auth/session');
-    const data = await session.json();
-    return data?.accessToken;
-  } catch (error) {
-    console.error("Error getting auth token:", error);
-    return null;
-  }
-};
-
 // ====== Main Component ======
 
 const CalendarView: React.FC = () => {
@@ -621,7 +620,7 @@ const CalendarView: React.FC = () => {
   };
 
   // Fetch events from API
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     if (!session) {
       console.warn("No session available for API request");
       setAuthError(true);
@@ -665,13 +664,13 @@ const CalendarView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session, toast]);
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
       loadEvents();
     }
-  }, [status, session]);
+  }, [status, session, loadEvents]);
 
   // Handle clicking on a date cell
   const handleDateClick = (arg: DateClickArg) => {
